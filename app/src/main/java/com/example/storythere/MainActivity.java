@@ -1,6 +1,7 @@
 package com.example.storythere;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -8,7 +9,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
-import android.view.View;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -21,10 +21,9 @@ import com.example.storythere.data.Book;
 import com.example.storythere.ui.BookAdapter;
 import com.example.storythere.ui.BookListViewModel;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+
+import java.util.Objects;
+
 
 public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 1;
@@ -149,9 +148,10 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, "Book imported: " + fileName, Toast.LENGTH_SHORT).show();
     }
     
+    @SuppressLint("Range")
     private String getFileName(Uri uri) {
         String result = null;
-        if (uri.getScheme().equals("content")) {
+        if (Objects.equals(uri.getScheme(), "content")) {
             try (android.database.Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
                 if (cursor != null && cursor.moveToFirst()) {
                     result = cursor.getString(cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME));
@@ -169,8 +169,7 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private String getFileType(String fileName) {
-        String extension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
-        return extension;
+        return fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
     }
     
     private void onBookClick(Book book) {

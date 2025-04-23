@@ -28,8 +28,10 @@ public class BookListViewModel extends AndroidViewModel {
     public void update(Book book) {
         repository.update(book);
     }
-    
+
+    // Use later
     public void delete(Book book) {
         repository.delete(book);
     }
+
 } 

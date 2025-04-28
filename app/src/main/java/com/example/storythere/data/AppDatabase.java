@@ -11,7 +11,7 @@ import androidx.room.TypeConverters;
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
     
-    public abstract BookDao bookDao();
+    public abstract BookDao bookDao(); // Using Room, which is an abstraction layer of SQLite
     
     public static AppDatabase getDatabase(final Context context) {
         if (INSTANCE == null) {

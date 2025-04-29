@@ -89,9 +89,7 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
         
         viewModel = new ViewModelProvider(this).get(BookListViewModel.class);
-        viewModel.getAllBooks().observe(this, books -> {
-            adapter.setBooks(books);
-        });
+        viewModel.getAllBooks().observe(this, books -> adapter.setBooks(books));
         
         FloatingActionButton fab = findViewById(R.id.fabAddBook);
         fab.setOnClickListener(v -> checkPermissionsAndImport());
@@ -153,7 +151,7 @@ public class MainActivity extends AppCompatActivity {
     
     private void showDeleteBottomSheet(Book book) {
         BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(this);
-        View bottomSheetView = LayoutInflater.from(this).inflate(R.layout.bottom_sheet_delete, null);
+        @SuppressLint("InflateParams") View bottomSheetView = LayoutInflater.from(this).inflate(R.layout.bottom_sheet_delete, null);
         bottomSheetDialog.setContentView(bottomSheetView);
 
         TextView deleteButton = bottomSheetView.findViewById(R.id.deleteButton);

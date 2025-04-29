@@ -2,9 +2,6 @@ package com.example.storythere;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.Bundle;
@@ -12,18 +9,24 @@ import android.os.ParcelFileDescriptor;
 import android.view.MenuItem;
 import android.view.ViewTreeObserver;
 import android.widget.ImageView;
+import android.widget.ScrollView;
+import android.widget.HorizontalScrollView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 
 public class PDFViewerActivity extends AppCompatActivity {
     private ImageView pdfImageView;
+    private ZoomLayout zoomLayout;
+    private ScrollView scrollView;
+    private HorizontalScrollView horizontalScrollView;
     private PdfRenderer renderer;
     private ParcelFileDescriptor fileDescriptor;
-    private int currentPage = 0;
+    private final int currentPage = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,6 +42,9 @@ public class PDFViewerActivity extends AppCompatActivity {
         }
 
         pdfImageView = findViewById(R.id.pdfImageView);
+        zoomLayout = findViewById(R.id.zoomLayout);
+        scrollView = findViewById(R.id.scrollView);
+        horizontalScrollView = findViewById(R.id.horizontalScrollView);
 
         // Get the PDF URI from the intent
         Intent intent = getIntent();
@@ -60,7 +66,9 @@ public class PDFViewerActivity extends AppCompatActivity {
             
             byte[] buffer = new byte[1024];
             int read;
-            while ((read = inputStream.read(buffer)) != -1) {
+            while (true) {
+                assert inputStream != null;
+                if ((read = inputStream.read(buffer)) == -1) break;
                 outputStream.write(buffer, 0, read);
             }
             
@@ -100,22 +108,27 @@ public class PDFViewerActivity extends AppCompatActivity {
                 
                 // Ensure scale is at least 1.0f
                 scale = Math.max(scale, 1.0f);
-                
+
                 // Create a bitmap for the page
                 Bitmap bitmap = Bitmap.createBitmap(
                     (int)(page.getWidth() * scale),
                     (int)(page.getHeight() * scale),
                     Bitmap.Config.ARGB_8888
                 );
-                
+
                 // Render the page to the bitmap
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-                
+
                 // Close the page
                 page.close();
                 
                 // Display the bitmap
                 pdfImageView.setImageBitmap(bitmap);
+                
+                // Set the image view size to match the bitmap
+                pdfImageView.getLayoutParams().width = bitmap.getWidth();
+                pdfImageView.getLayoutParams().height = bitmap.getHeight();
+                pdfImageView.requestLayout();
             }
         } catch (Exception e) {
             Toast.makeText(this, "Error displaying page: " + e.getMessage(), Toast.LENGTH_SHORT).show();

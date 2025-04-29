@@ -8,7 +8,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/delete_book"
+        android:text="@string/delete_file"
         android:textSize="20sp"
         android:textStyle="bold"
         android:layout_marginBottom="16dp"/><!-- fix later for localization-->
@@ -16,7 +16,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/are_you_sure_you_want_to_delete_this_book"
+        android:text="@string/you_sure_delete"
         android:layout_marginBottom="24dp"/><!-- fix later for localization-->
 
     <TextView

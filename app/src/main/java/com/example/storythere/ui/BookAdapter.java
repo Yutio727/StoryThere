@@ -14,14 +14,20 @@ import java.util.List;
 
 public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder> {
     private List<Book> books;
-    private OnBookClickListener listener;
+    private OnBookClickListener clickListener;
+    private OnBookLongClickListener longClickListener;
     
     public interface OnBookClickListener {
         void onBookClick(Book book);
     }
     
-    public BookAdapter(OnBookClickListener listener) {
-        this.listener = listener;
+    public interface OnBookLongClickListener {
+        void onBookLongClick(Book book);
+    }
+    
+    public BookAdapter(OnBookClickListener clickListener, OnBookLongClickListener longClickListener) {
+        this.clickListener = clickListener;
+        this.longClickListener = longClickListener;
     }
     
     @NonNull
@@ -46,7 +52,11 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
                 .into(holder.previewImageView);
         }
         
-        holder.itemView.setOnClickListener(v -> listener.onBookClick(book));
+        holder.itemView.setOnClickListener(v -> clickListener.onBookClick(book));
+        holder.itemView.setOnLongClickListener(v -> {
+            longClickListener.onBookLongClick(book);
+            return true;
+        });
     }
     
     @Override

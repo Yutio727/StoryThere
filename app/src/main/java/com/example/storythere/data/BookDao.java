@@ -27,4 +27,7 @@ public interface BookDao {
     
     @Query("SELECT * FROM books WHERE fileType = :fileType")
     LiveData<List<Book>> getBooksByType(String fileType);
+    
+    @Query("SELECT * FROM books WHERE filePath = :filePath")
+    LiveData<Book> getBookByPath(String filePath);
 } 

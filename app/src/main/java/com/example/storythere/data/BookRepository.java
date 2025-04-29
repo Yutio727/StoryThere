@@ -24,15 +24,29 @@ public class BookRepository {
         return bookDao.getBookById(bookId);
     }
     
+    public LiveData<Book> getBookByPath(String filePath) {
+        return bookDao.getBookByPath(filePath);
+    }
+    
     public void insert(Book book) {
-        executorService.execute(() -> bookDao.insert(book));
+        executorService.execute(() -> {
+            // Check if book already exists
+            Book existingBook = bookDao.getBookByPath(book.getFilePath()).getValue();
+            if (existingBook == null) {
+                bookDao.insert(book);
+            }
+        });
     }
     
     public void update(Book book) {
-        executorService.execute(() -> bookDao.update(book));
+        executorService.execute(() -> {
+            bookDao.update(book);
+        });
     }
     
     public void delete(Book book) {
-        executorService.execute(() -> bookDao.delete(book));
+        executorService.execute(() -> {
+            bookDao.delete(book);
+        });
     }
 } 

@@ -1,5 +1,6 @@
 package com.example.storythere;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -22,6 +23,7 @@ public class ReaderActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private Uri contentUri;
 
+    @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

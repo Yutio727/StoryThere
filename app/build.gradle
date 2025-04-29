@@ -58,6 +58,9 @@ dependencies {
     implementation libs.room.ktx
     annotationProcessor libs.androidx.room.compiler
     
+    // iText
+    implementation libs.itext7.core
+    
     testImplementation libs.junit
     androidTestImplementation libs.androidx.junit
     androidTestImplementation libs.androidx.espresso.core

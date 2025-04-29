@@ -42,6 +42,11 @@
             android:exported="false"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
 
+        <activity
+            android:name=".PDFViewerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.StoryThere.NoActionBar" />
+
     </application>
 
 </manifest>

@@ -16,7 +16,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 
 public class PDFViewerActivity extends AppCompatActivity {
@@ -107,7 +106,7 @@ public class PDFViewerActivity extends AppCompatActivity {
                 );
                 
                 // Ensure scale is at least 1.0f
-                scale = Math.max(scale, 1.0f);
+                scale = Math.max(scale, 2.0f);
 
                 // Create a bitmap for the page
                 Bitmap bitmap = Bitmap.createBitmap(

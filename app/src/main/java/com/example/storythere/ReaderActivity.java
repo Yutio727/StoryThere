@@ -120,9 +120,12 @@ public class ReaderActivity extends AppCompatActivity {
                             
                             while ((line = reader.readLine()) != null) {
                                 stringBuilder.append(line).append("<br>");
+                                // Add logging to show text content in terminal
+                                Log.d(TAG, "Text content: " + line);
                             }
                             
                             String content = stringBuilder.toString();
+                            Log.d(TAG, "Full text content: " + content);
                             String textViewerHtml = "<html><body style='padding: 20px; font-size: 16px; line-height: 1.6;'>" + content + "</body></html>";
                             webView.loadData(textViewerHtml, "text/html", "UTF-8");
                         } else {

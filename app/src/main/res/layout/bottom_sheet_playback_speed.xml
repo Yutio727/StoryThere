@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/background_blue">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Playback Speed"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_black"
+        android:fontFamily="@font/montserrat"
+        android:layout_marginBottom="16dp"/>
+
+    <RadioGroup
+        android:id="@+id/speedRadioGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/speed_025"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="0.25x"
+            android:padding="12dp"
+            android:textColor="@color/text_black"
+            android:fontFamily="@font/montserrat"/>
+
+        <RadioButton
+            android:id="@+id/speed_05"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="0.5x"
+            android:padding="12dp"
+            android:textColor="@color/text_black"
+            android:fontFamily="@font/montserrat"/>
+
+        <RadioButton
+            android:id="@+id/speed_1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1.0x"
+            android:padding="12dp"
+            android:checked="true"
+            android:textColor="@color/text_black"
+            android:fontFamily="@font/montserrat"/>
+
+        <RadioButton
+            android:id="@+id/speed_125"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1.25x"
+            android:padding="12dp"
+            android:textColor="@color/text_black"
+            android:fontFamily="@font/montserrat"/>
+
+        <RadioButton
+            android:id="@+id/speed_15"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1.5x"
+            android:padding="12dp"
+            android:textColor="@color/text_black"
+            android:fontFamily="@font/montserrat"/>
+
+        <RadioButton
+            android:id="@+id/speed_2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="2.0x"
+            android:padding="12dp"
+            android:textColor="@color/text_black"
+            android:fontFamily="@font/montserrat"/>
+    </RadioGroup>
+</LinearLayout> 

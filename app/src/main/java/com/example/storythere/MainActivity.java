@@ -211,13 +211,8 @@ public class MainActivity extends AppCompatActivity {
         return fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
     }
     
-    private void onBookClick(Book book) { // Change later to get other file types working
-        Intent intent;
-        if (book.getFileType().equalsIgnoreCase("pdf")) {
-            intent = new Intent(this, PDFViewerActivity.class);
-        } else {
-            intent = new Intent(this, ReaderActivity.class);
-        }
+    private void onBookClick(Book book) {
+        Intent intent = new Intent(this, BookOptionsActivity.class);
         intent.setData(Uri.parse(book.getFilePath()));
         intent.putExtra("fileType", book.getFileType());
         intent.putExtra("title", book.getTitle());

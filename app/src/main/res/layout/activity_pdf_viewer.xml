@@ -24,39 +24,55 @@
         app:layout_constraintBottom_toTopOf="@id/pageControls"
         app:layout_constraintTop_toBottomOf="@id/toolbar">
 
-        <ScrollView
-            android:id="@+id/scrollView"
+        <HorizontalScrollView
+            android:id="@+id/horizontalScrollView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:fillViewport="true">
+            android:fillViewport="true"
+            android:scrollbars="horizontal"
+            android:overScrollMode="never">
 
-            <LinearLayout
-                android:id="@+id/pageContainer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+            <ScrollView
+                android:id="@+id/scrollView"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:fillViewport="true"
+                android:scrollbars="vertical"
+                android:overScrollMode="never">
 
-                <TextView
-                    android:id="@+id/pdfTextView"
-                    android:layout_width="match_parent"
+                <LinearLayout
+                    android:id="@+id/pageContainer"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="16sp"
-                    android:lineSpacingExtra="4dp"
-                    tools:text="PDF text content will appear here" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
-                <ImageView
-                    android:id="@+id/pdfImageView"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:adjustViewBounds="true"
-                    android:scaleType="fitCenter"
-                    android:layout_marginTop="16dp"
-                    tools:ignore="ContentDescription" />
+                    <TextView
+                        android:id="@+id/pdfTextView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="16sp"
+                        android:lineSpacingExtra="4dp"
+                        android:includeFontPadding="false"
+                        android:textIsSelectable="true"
+                        android:minWidth="1000dp"
+                        tools:text="PDF text content will appear here" />
 
-            </LinearLayout>
+                    <ImageView
+                        android:id="@+id/pdfImageView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:layout_marginTop="16dp"
+                        android:minWidth="1000dp"
+                        tools:ignore="ContentDescription" />
 
-        </ScrollView>
+                </LinearLayout>
+
+            </ScrollView>
+
+        </HorizontalScrollView>
 
     </com.example.storythere.ZoomLayout>
 

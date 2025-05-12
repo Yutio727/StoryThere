@@ -51,6 +51,7 @@ dependencies {
     
     // Image loading
     implementation libs.glide
+    implementation libs.androidx.foundation.text
     annotationProcessor libs.compiler
     
     // Room database

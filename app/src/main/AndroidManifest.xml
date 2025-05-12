@@ -45,7 +45,7 @@
         <activity
             android:name=".PDFViewerActivity"
             android:exported="false"
-            android:theme="@style/Theme.StoryThere.NoActionBar" />
+            android:theme="@style/Theme.StoryThere.Light" />
 
         <activity
             android:name=".BookOptionsActivity"

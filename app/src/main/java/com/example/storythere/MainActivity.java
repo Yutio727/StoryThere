@@ -212,7 +212,12 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void onBookClick(Book book) {
-        Intent intent = new Intent(this, BookOptionsActivity.class);
+        Intent intent;
+        if (book.getFileType().equalsIgnoreCase("pdf")) {
+            intent = new Intent(this, PDFViewerActivity.class);
+        } else {
+            intent = new Intent(this, BookOptionsActivity.class);
+        }
         intent.setData(Uri.parse(book.getFilePath()));
         intent.putExtra("fileType", book.getFileType());
         intent.putExtra("title", book.getTitle());

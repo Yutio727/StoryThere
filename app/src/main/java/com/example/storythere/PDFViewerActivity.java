@@ -2,30 +2,29 @@ package com.example.storythere;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.ParcelFileDescriptor;
 import android.view.MenuItem;
-import android.view.ViewTreeObserver;
+import android.view.View;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ScrollView;
-import android.widget.HorizontalScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
+import java.util.List;
 
 public class PDFViewerActivity extends AppCompatActivity {
     private ImageView pdfImageView;
+    private TextView pdfTextView;
+    private TextView pageNumberText;
+    private ImageButton prevPageButton;
+    private ImageButton nextPageButton;
     private ZoomLayout zoomLayout;
     private ScrollView scrollView;
-    private HorizontalScrollView horizontalScrollView;
-    private PdfRenderer renderer;
-    private ParcelFileDescriptor fileDescriptor;
-    private final int currentPage = 0;
+    private List<PDFParser.ParsedPage> parsedPages;
+    private int currentPage = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,10 +39,18 @@ public class PDFViewerActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayShowHomeEnabled(true);
         }
 
+        // Initialize views
         pdfImageView = findViewById(R.id.pdfImageView);
+        pdfTextView = findViewById(R.id.pdfTextView);
+        pageNumberText = findViewById(R.id.pageNumberText);
+        prevPageButton = findViewById(R.id.prevPageButton);
+        nextPageButton = findViewById(R.id.nextPageButton);
         zoomLayout = findViewById(R.id.zoomLayout);
         scrollView = findViewById(R.id.scrollView);
-        horizontalScrollView = findViewById(R.id.horizontalScrollView);
+
+        // Setup page navigation buttons
+        prevPageButton.setOnClickListener(v -> goToPreviousPage());
+        nextPageButton.setOnClickListener(v -> goToNextPage());
 
         // Get the PDF URI from the intent
         Intent intent = getIntent();
@@ -58,34 +65,18 @@ public class PDFViewerActivity extends AppCompatActivity {
 
     private void loadPDF(Uri pdfUri) {
         try {
-            // Create a temporary file to store the PDF
-            File tempFile = File.createTempFile("temp_pdf", ".pdf", getCacheDir());
-            InputStream inputStream = getContentResolver().openInputStream(pdfUri);
-            FileOutputStream outputStream = new FileOutputStream(tempFile);
+            // Parse the PDF
+            parsedPages = PDFParser.parsePDF(this, pdfUri);
             
-            byte[] buffer = new byte[1024];
-            int read;
-            while (true) {
-                assert inputStream != null;
-                if ((read = inputStream.read(buffer)) == -1) break;
-                outputStream.write(buffer, 0, read);
+            if (parsedPages.isEmpty()) {
+                Toast.makeText(this, "Error parsing PDF", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
             }
-            
-            inputStream.close();
-            outputStream.close();
 
-            // Open the PDF file
-            fileDescriptor = ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY);
-            renderer = new PdfRenderer(fileDescriptor);
-            
-            // Wait for layout to be measured before displaying the page
-            pdfImageView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-                @Override
-                public void onGlobalLayout() {
-                    pdfImageView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                    displayPage(currentPage);
-                }
-            });
+            // Display first page
+            displayPage(0);
+            updatePageControls();
             
         } catch (Exception e) {
             Toast.makeText(this, "Error loading PDF: " + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -95,43 +86,58 @@ public class PDFViewerActivity extends AppCompatActivity {
 
     private void displayPage(int pageNumber) {
         try {
-            if (pageNumber >= 0 && pageNumber < renderer.getPageCount()) {
-                // Open the page
-                PdfRenderer.Page page = renderer.openPage(pageNumber);
+            if (pageNumber >= 0 && pageNumber < parsedPages.size()) {
+                PDFParser.ParsedPage page = parsedPages.get(pageNumber);
                 
-                // Calculate scale to fit screen
-                float scale = Math.min(
-                    pdfImageView.getWidth() / page.getWidth(),
-                    pdfImageView.getHeight() / page.getHeight()
-                );
+                // Display text
+                String text = page.text.trim();
+                if (text.isEmpty()) {
+                    pdfTextView.setVisibility(View.GONE);
+                } else {
+                    pdfTextView.setVisibility(View.VISIBLE);
+                    pdfTextView.setText(text);
+                }
                 
-                // Ensure scale is at least 1.0f
-                scale = Math.max(scale, 2.0f);
-
-                // Create a bitmap for the page
-                Bitmap bitmap = Bitmap.createBitmap(
-                    (int)(page.getWidth() * scale),
-                    (int)(page.getHeight() * scale),
-                    Bitmap.Config.ARGB_8888
-                );
-
-                // Render the page to the bitmap
-                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-
-                // Close the page
-                page.close();
+                // Display images if any
+                if (!page.images.isEmpty()) {
+                    pdfImageView.setVisibility(View.VISIBLE);
+                    // For now, just display the first image
+                    Bitmap image = page.images.get(0);
+                    pdfImageView.setImageBitmap(image);
+                } else {
+                    pdfImageView.setVisibility(View.GONE);
+                }
                 
-                // Display the bitmap
-                pdfImageView.setImageBitmap(bitmap);
+                // Reset scroll position
+                scrollView.scrollTo(0, 0);
                 
-                // Set the image view size to match the bitmap
-                pdfImageView.getLayoutParams().width = bitmap.getWidth();
-                pdfImageView.getLayoutParams().height = bitmap.getHeight();
-                pdfImageView.requestLayout();
+                // Update page number
+                pageNumberText.setText(String.format("Page %d of %d", pageNumber + 1, parsedPages.size()));
             }
         } catch (Exception e) {
             Toast.makeText(this, "Error displaying page: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             e.printStackTrace();
+        }
+    }
+
+    private void updatePageControls() {
+        prevPageButton.setEnabled(currentPage > 0);
+        nextPageButton.setEnabled(currentPage < parsedPages.size() - 1);
+    }
+
+    private void goToPreviousPage() {
+        if (currentPage > 0) {
+            currentPage--;
+            displayPage(currentPage);
+            updatePageControls();
+        }
+    }
+
+    private void goToNextPage() {
+        if (currentPage < parsedPages.size() - 1) {
+            currentPage++;
+            displayPage(currentPage);
+            updatePageControls();
         }
     }
 
@@ -142,20 +148,5 @@ public class PDFViewerActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        try {
-            if (renderer != null) {
-                renderer.close();
-            }
-            if (fileDescriptor != null) {
-                fileDescriptor.close();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 } 

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StoryThere</string>
+    <string name="you_sure_delete">Вы точно хотите удалить этот файл?</string>
+    <string name="delete">Удалить</string>
+    <string name="cancel">Отмена</string>
+    <string name="font_size">Размер шрифта</string>
+    <string name="letter_spacing">Междустрочный интервал</string>
+    <string name="line_height">Высота строки</string>
+    <string name="paragraph_spacing">Промежутки между параграфами</string>
+    <string name="text_alignment">Расположение текста</string>
+    <string name="left">Лево</string>
+    <string name="center">Центр</string>
+    <string name="right">Право</string>
+    <string name="reading">В читаемых</string>
+    <string name="favourite">Избранное</string>
+    <string name="already_read">Прочитанное</string>
+    <string name="choose_how_you_want_to_enjoy_this_book">Выберите как вы хотите насладиться книгой:</string>
+    <string name="read">Читать</string>
+    <string name="listen">Слушать</string>
+    <string name="start_reading">Начать читать</string>
+    <string name="playback_speed">Скорость проигрывания</string>
+    <string name="add_to_favourite">Добавить в избранное</string>
+    <string name="choose_voice">Выбрать тип голоса</string>
+</resources>

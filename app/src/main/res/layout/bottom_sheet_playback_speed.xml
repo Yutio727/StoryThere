@@ -10,7 +10,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Playback Speed"
+        android:text="@string/playback_speed"
         android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="@color/text_black"

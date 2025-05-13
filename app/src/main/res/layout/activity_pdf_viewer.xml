@@ -1,116 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    android:orientation="vertical">
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/slightly_blue"
+        android:background="?attr/colorPrimary"
+        android:elevation="4dp"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:title="PDF Viewer" />
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 
-    <com.example.storythere.ZoomLayout
-        android:id="@+id/zoomLayout"
+    <ScrollView
+        android:id="@+id/scrollView"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@id/pageControls"
-        app:layout_constraintTop_toBottomOf="@id/toolbar">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
         <HorizontalScrollView
             android:id="@+id/horizontalScrollView"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:fillViewport="true"
-            android:scrollbars="horizontal"
-            android:overScrollMode="never">
+            android:layout_height="wrap_content"
+            android:fillViewport="true">
 
-            <ScrollView
-                android:id="@+id/scrollView"
+            <com.example.storythere.PDFView
+                android:id="@+id/pdfView"
                 android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:fillViewport="true"
-                android:scrollbars="vertical"
-                android:overScrollMode="never">
-
-                <LinearLayout
-                    android:id="@+id/pageContainer"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:id="@+id/pdfTextView"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="16sp"
-                        android:lineSpacingExtra="4dp"
-                        android:includeFontPadding="false"
-                        android:textIsSelectable="true"
-                        android:minWidth="1000dp"
-                        tools:text="PDF text content will appear here" />
-
-                    <ImageView
-                        android:id="@+id/pdfImageView"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:adjustViewBounds="true"
-                        android:scaleType="fitCenter"
-                        android:layout_marginTop="16dp"
-                        android:minWidth="1000dp"
-                        tools:ignore="ContentDescription" />
-
-                </LinearLayout>
-
-            </ScrollView>
+                android:layout_height="wrap_content"
+                android:padding="16dp" />
 
         </HorizontalScrollView>
 
-    </com.example.storythere.ZoomLayout>
+    </ScrollView>
 
-    <LinearLayout
-        android:id="@+id/pageControls"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="8dp"
-        android:background="@android:color/white"
-        android:elevation="4dp"
-        app:layout_constraintBottom_toBottomOf="parent">
-
-        <ImageButton
-            android:id="@+id/prevPageButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@android:drawable/ic_media_previous"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Previous page" />
-
-        <TextView
-            android:id="@+id/pageNumberText"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:textSize="16sp"
-            tools:text="Page 1 of 10" />
-
-        <ImageButton
-            android:id="@+id/nextPageButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@android:drawable/ic_media_next"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Next page" />
-
-    </LinearLayout>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

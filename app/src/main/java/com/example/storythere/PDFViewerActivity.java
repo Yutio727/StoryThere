@@ -1,152 +1,169 @@
 package com.example.storythere;
 
 import android.content.Intent;
-import android.graphics.Bitmap;
+import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.ImageButton;
-import android.widget.ImageView;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
+import android.widget.HorizontalScrollView;
 import android.widget.ScrollView;
-import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import java.util.List;
 
-public class PDFViewerActivity extends AppCompatActivity {
-    private ImageView pdfImageView;
-    private TextView pdfTextView;
-    private TextView pageNumberText;
-    private ImageButton prevPageButton;
-    private ImageButton nextPageButton;
-    private ZoomLayout zoomLayout;
+public class PDFViewerActivity extends AppCompatActivity implements TextSettingsDialog.TextSettingsListener {
+    private static final String TAG = "PDFViewerActivity";
+    private PDFView pdfView;
     private ScrollView scrollView;
-    private List<PDFParser.ParsedPage> parsedPages;
-    private int currentPage = 0;
+    private HorizontalScrollView horizontalScrollView;
+    private ScaleGestureDetector scaleDetector;
+    private float scaleFactor = 1.0f;
+    private float lastTouchX;
+    private float lastTouchY;
+    private float posX = 0;
+    private float posY = 0;
+    private List<PDFParser.ParsedPage> pages;
+    private PDFParser.TextSettings currentSettings;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pdf_viewer);
 
-        // Setup toolbar
+        // Set up toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setDisplayShowHomeEnabled(true);
-        }
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         // Initialize views
-        pdfImageView = findViewById(R.id.pdfImageView);
-        pdfTextView = findViewById(R.id.pdfTextView);
-        pageNumberText = findViewById(R.id.pageNumberText);
-        prevPageButton = findViewById(R.id.prevPageButton);
-        nextPageButton = findViewById(R.id.nextPageButton);
-        zoomLayout = findViewById(R.id.zoomLayout);
+        pdfView = findViewById(R.id.pdfView);
         scrollView = findViewById(R.id.scrollView);
+        horizontalScrollView = findViewById(R.id.horizontalScrollView);
 
-        // Setup page navigation buttons
-        prevPageButton.setOnClickListener(v -> goToPreviousPage());
-        nextPageButton.setOnClickListener(v -> goToNextPage());
+        // Initialize scale detector
+        scaleDetector = new ScaleGestureDetector(this, new ScaleListener());
 
-        // Get the PDF URI from the intent
-        Intent intent = getIntent();
-        if (intent != null && intent.getData() != null) {
-            Uri pdfUri = intent.getData();
+        // Get PDF URI from intent
+        Uri pdfUri = getIntent().getData();
+        if (pdfUri != null) {
+            Log.d(TAG, "Loading PDF from URI: " + pdfUri);
             loadPDF(pdfUri);
         } else {
+            Log.e(TAG, "No PDF URI provided");
             Toast.makeText(this, "No PDF file provided", Toast.LENGTH_SHORT).show();
             finish();
         }
     }
 
     private void loadPDF(Uri pdfUri) {
-        try {
-            // Parse the PDF
-            parsedPages = PDFParser.parsePDF(this, pdfUri);
-            
-            if (parsedPages.isEmpty()) {
-                Toast.makeText(this, "Error parsing PDF", Toast.LENGTH_SHORT).show();
-                finish();
-                return;
-            }
+        // Create default text settings
+        currentSettings = new PDFParser.TextSettings();
+        currentSettings.fontSize = 54.0f;
+        currentSettings.letterSpacing = 0.0f;
+        currentSettings.textAlignment = Paint.Align.LEFT;
+        currentSettings.lineHeight = 1.2f;
+        currentSettings.paragraphSpacing = 1.5f;
 
-            // Display first page
-            displayPage(0);
-            updatePageControls();
-            
-        } catch (Exception e) {
-            Toast.makeText(this, "Error loading PDF: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        Log.d(TAG, "Loading PDF with settings - fontSize: " + currentSettings.fontSize + 
+                  ", letterSpacing: " + currentSettings.letterSpacing + 
+                  ", alignment: " + currentSettings.textAlignment);
+
+        // Parse PDF with settings
+        pages = PDFParser.parsePDF(this, pdfUri, currentSettings);
+        if (pages != null && !pages.isEmpty()) {
+            pdfView.setPages(pages);
+        } else {
+            Log.e(TAG, "No pages parsed from PDF");
+            Toast.makeText(this, "Failed to load PDF", Toast.LENGTH_SHORT).show();
             finish();
         }
     }
 
-    private void displayPage(int pageNumber) {
-        try {
-            if (pageNumber >= 0 && pageNumber < parsedPages.size()) {
-                PDFParser.ParsedPage page = parsedPages.get(pageNumber);
-                
-                // Display text
-                String text = page.text.trim();
-                if (text.isEmpty()) {
-                    pdfTextView.setVisibility(View.GONE);
-                } else {
-                    pdfTextView.setVisibility(View.VISIBLE);
-                    pdfTextView.setText(text);
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        scaleDetector.onTouchEvent(event);
+
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                lastTouchX = event.getX();
+                lastTouchY = event.getY();
+                return true;
+
+            case MotionEvent.ACTION_MOVE:
+                if (!scaleDetector.isInProgress()) {
+                    float deltaX = event.getX() - lastTouchX;
+                    float deltaY = event.getY() - lastTouchY;
+                    
+                    // Update scroll positions
+                    horizontalScrollView.scrollBy((int)-deltaX, 0);
+                    scrollView.scrollBy(0, (int)-deltaY);
+                    
+                    lastTouchX = event.getX();
+                    lastTouchY = event.getY();
                 }
-                
-                // Display images if any
-                if (!page.images.isEmpty()) {
-                    pdfImageView.setVisibility(View.VISIBLE);
-                    // For now, just display the first image
-                    Bitmap image = page.images.get(0);
-                    pdfImageView.setImageBitmap(image);
-                } else {
-                    pdfImageView.setVisibility(View.GONE);
-                }
-                
-                // Reset scroll position
-                scrollView.scrollTo(0, 0);
-                
-                // Update page number
-                pageNumberText.setText(String.format("Page %d of %d", pageNumber + 1, parsedPages.size()));
-            }
-        } catch (Exception e) {
-            Toast.makeText(this, "Error displaying page: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            e.printStackTrace();
+                return true;
         }
+        return super.onTouchEvent(event);
     }
 
-    private void updatePageControls() {
-        prevPageButton.setEnabled(currentPage > 0);
-        nextPageButton.setEnabled(currentPage < parsedPages.size() - 1);
-    }
-
-    private void goToPreviousPage() {
-        if (currentPage > 0) {
-            currentPage--;
-            displayPage(currentPage);
-            updatePageControls();
-        }
-    }
-
-    private void goToNextPage() {
-        if (currentPage < parsedPages.size() - 1) {
-            currentPage++;
-            displayPage(currentPage);
-            updatePageControls();
+    private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
+        @Override
+        public boolean onScale(ScaleGestureDetector detector) {
+            scaleFactor *= detector.getScaleFactor();
+            scaleFactor = Math.max(0.5f, Math.min(scaleFactor, 3.0f));
+            pdfView.setScale(scaleFactor);
+            return true;
         }
     }
 
     @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_pdf_viewer, menu);
+        return true;
+    }
+
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            onBackPressed();
+        int id = item.getItemId();
+
+        if (id == android.R.id.home) {
+            finish();
+            return true;
+        } else if (id == R.id.action_text_settings) {
+            showTextSettingsDialog();
             return true;
         }
+
         return super.onOptionsItemSelected(item);
+    }
+
+    private void showTextSettingsDialog() {
+        TextSettingsDialog dialog = TextSettingsDialog.newInstance(currentSettings);
+        dialog.show(getSupportFragmentManager(), "TextSettingsDialog");
+    }
+
+    @Override
+    public void onSettingsChanged(PDFParser.TextSettings settings) {
+        Log.d(TAG, "Text settings changed - fontSize: " + settings.fontSize + 
+                  ", letterSpacing: " + settings.letterSpacing + 
+                  ", alignment: " + settings.textAlignment);
+        
+        currentSettings = settings;
+        // Reparse PDF with new settings
+        Uri pdfUri = getIntent().getData();
+        if (pdfUri != null) {
+            pages = PDFParser.parsePDF(this, pdfUri, settings);
+            if (pages != null && !pages.isEmpty()) {
+                pdfView.setPages(pages);
+                // Reset scroll position
+                scrollView.scrollTo(0, 0);
+                horizontalScrollView.scrollTo(0, 0);
+            }
+        }
     }
 } 

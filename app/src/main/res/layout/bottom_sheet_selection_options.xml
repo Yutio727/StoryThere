@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/btnDelete"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:drawableStart="@android:drawable/ic_menu_delete"
+        android:drawablePadding="16dp"
+        android:gravity="center_vertical"
+        android:padding="16dp"
+        android:text="Delete"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/btnAddToFavourite"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:drawableStart="@android:drawable/btn_star_big_on"
+        android:drawablePadding="16dp"
+        android:gravity="center_vertical"
+        android:padding="16dp"
+        android:text="Add to Favourite"
+        android:textSize="16sp" />
+
+</LinearLayout> 

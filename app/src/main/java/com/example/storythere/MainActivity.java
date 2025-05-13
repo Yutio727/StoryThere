@@ -10,6 +10,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -25,16 +30,21 @@ import com.example.storythere.ui.BookAdapter;
 import com.example.storythere.ui.BookListViewModel;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.widget.TextView;
-
+import com.google.android.material.tabs.TabLayout;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 1;
     private BookListViewModel viewModel;
     private BookAdapter adapter;
+    private List<Book> allBooks = new ArrayList<>();
+    private String currentTab = "Reading";
+    private boolean isSelectionMode = false;
+    private TextView toolbarTitle;
+    private LinearLayout selectionModeButtons;
+    private FloatingActionButton fabAddBook;
     
     private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
         new ActivityResultContracts.StartActivityForResult(),
@@ -81,18 +91,54 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
+        // Initialize views
+        toolbarTitle = findViewById(R.id.toolbarTitle);
+        selectionModeButtons = findViewById(R.id.selectionModeButtons);
+        fabAddBook = findViewById(R.id.fabAddBook);
+        
         RecyclerView recyclerView = findViewById(R.id.bookRecyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        // On click - open the book
-        // On long click - show delete options
-        adapter = new BookAdapter(this::onBookClick, this::showDeleteBottomSheet);
+        
+        // Initialize adapter with selection callback
+        adapter = new BookAdapter(
+            this::onBookClick,
+            this::onSelectionChanged
+        );
         recyclerView.setAdapter(adapter);
         
         viewModel = new ViewModelProvider(this).get(BookListViewModel.class);
-        viewModel.getAllBooks().observe(this, books -> adapter.setBooks(books));
+        viewModel.getAllBooks().observe(this, books -> {
+            allBooks = books;
+            filterBooksByTab(currentTab);
+        });
         
-        FloatingActionButton fab = findViewById(R.id.fabAddBook);
-        fab.setOnClickListener(v -> checkPermissionsAndImport());
+        // Setup selection mode buttons
+        ImageButton btnCancelSelection = findViewById(R.id.btnCancelSelection);
+        ImageButton btnMoreOptions = findViewById(R.id.btnMoreOptions);
+        
+        btnCancelSelection.setOnClickListener(v -> exitSelectionMode());
+        btnMoreOptions.setOnClickListener(v -> showSelectionOptionsBottomSheet());
+        
+        fabAddBook.setOnClickListener(v -> checkPermissionsAndImport());
+
+        // Setup TabLayout
+        TabLayout tabLayout = findViewById(R.id.tabLayout);
+        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                currentTab = tab.getText().toString();
+                filterBooksByTab(currentTab);
+                if (isSelectionMode) {
+                    exitSelectionMode();
+                }
+            }
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {}
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {}
+        });
     }
     
     private void checkPermissionsAndImport() {
@@ -147,25 +193,6 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
             }
         }
-    }
-    
-    private void showDeleteBottomSheet(Book book) {
-        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(this);
-        @SuppressLint("InflateParams") View bottomSheetView = LayoutInflater.from(this).inflate(R.layout.bottom_sheet_delete, null);
-        bottomSheetDialog.setContentView(bottomSheetView);
-
-        TextView deleteButton = bottomSheetView.findViewById(R.id.deleteButton);
-        TextView cancelButton = bottomSheetView.findViewById(R.id.cancelButton);
-
-        deleteButton.setOnClickListener(v -> {
-            viewModel.delete(book);
-            bottomSheetDialog.dismiss();
-            Toast.makeText(this, "Book deleted", Toast.LENGTH_SHORT).show();
-        });
-
-        cancelButton.setOnClickListener(v -> bottomSheetDialog.dismiss());
-
-        bottomSheetDialog.show();
     }
     
     private void importBook(Uri uri) {
@@ -223,5 +250,95 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("title", book.getTitle());
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
+    }
+
+    private void filterBooksByTab(String tab) {
+        List<Book> filteredBooks = new ArrayList<>();
+        for (Book book : allBooks) {
+            switch (tab) {
+                case "Reading":
+                    if (!book.isFavourite() && !book.isAlreadyRead()) {
+                        filteredBooks.add(book);
+                    }
+                    break;
+                case "Favourite":
+                    if (book.isFavourite()) {
+                        filteredBooks.add(book);
+                    }
+                    break;
+                case "Already Read":
+                    if (book.isAlreadyRead()) {
+                        filteredBooks.add(book);
+                    }
+                    break;
+            }
+        }
+        adapter.setBooks(filteredBooks);
+    }
+
+    private void onSelectionChanged(int selectedCount) {
+        if (selectedCount > 0 && !isSelectionMode) {
+            enterSelectionMode();
+        } else if (selectedCount == 0 && isSelectionMode) {
+            exitSelectionMode();
+        }
+        updateToolbarTitle(selectedCount);
+    }
+
+    private void enterSelectionMode() {
+        isSelectionMode = true;
+        selectionModeButtons.setVisibility(View.VISIBLE);
+        fabAddBook.setVisibility(View.GONE);
+        adapter.setSelectionMode(true);
+    }
+
+    private void exitSelectionMode() {
+        isSelectionMode = false;
+        selectionModeButtons.setVisibility(View.GONE);
+        fabAddBook.setVisibility(View.VISIBLE);
+        adapter.setSelectionMode(false);
+        adapter.clearSelection();
+        updateToolbarTitle(0);
+    }
+
+    private void updateToolbarTitle(int selectedCount) {
+        if (isSelectionMode) {
+            toolbarTitle.setText(selectedCount + " selected");
+        } else {
+            toolbarTitle.setText("StoryThere");
+        }
+    }
+
+    private void showSelectionOptionsBottomSheet() {
+        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(this);
+        @SuppressLint("InflateParams") View bottomSheetView = LayoutInflater.from(this)
+            .inflate(R.layout.bottom_sheet_selection_options, null);
+        bottomSheetDialog.setContentView(bottomSheetView);
+
+        TextView btnDelete = bottomSheetView.findViewById(R.id.btnDelete);
+        TextView btnAddToFavourite = bottomSheetView.findViewById(R.id.btnAddToFavourite);
+
+        btnDelete.setOnClickListener(v -> {
+            List<Book> selectedBooks = adapter.getSelectedBooks();
+            for (Book book : selectedBooks) {
+                viewModel.delete(book);
+            }
+            bottomSheetDialog.dismiss();
+            exitSelectionMode();
+            Toast.makeText(this, "Books deleted", Toast.LENGTH_SHORT).show();
+        });
+
+        btnAddToFavourite.setOnClickListener(v -> {
+            List<Book> selectedBooks = adapter.getSelectedBooks();
+            for (Book book : selectedBooks) {
+                book.setFavourite(true);
+                viewModel.update(book);
+            }
+            bottomSheetDialog.dismiss();
+            exitSelectionMode();
+            Toast.makeText(this, "Books added to favourites", Toast.LENGTH_SHORT).show();
+        });
+
+        bottomSheetDialog.show();
     }
 } 

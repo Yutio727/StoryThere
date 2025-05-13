@@ -17,6 +17,8 @@ public class Book {
     private String previewImagePath;
     private Date lastOpened;
     private int currentPage;
+    private boolean isFavourite;
+    private boolean isAlreadyRead;
     
     public Book(String title, String author, String filePath, String fileType) {
         this.title = title;
@@ -25,6 +27,8 @@ public class Book {
         this.fileType = fileType;
         this.lastOpened = new Date();
         this.currentPage = 0;
+        this.isFavourite = false;
+        this.isAlreadyRead = false;
     }
     
     // Getters and Setters
@@ -54,4 +58,10 @@ public class Book {
     
     public int getCurrentPage() { return currentPage; }
     public void setCurrentPage(int currentPage) { this.currentPage = currentPage; }
+
+    public boolean isFavourite() { return isFavourite; }
+    public void setFavourite(boolean favourite) { isFavourite = favourite; }
+
+    public boolean isAlreadyRead() { return isAlreadyRead; }
+    public void setAlreadyRead(boolean alreadyRead) { isAlreadyRead = alreadyRead; }
 } 

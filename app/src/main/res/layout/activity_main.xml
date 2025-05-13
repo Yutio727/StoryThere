@@ -4,7 +4,9 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    android:clipToPadding="true"
+    android:fitsSystemWindows="true"
+    >
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
@@ -23,7 +25,7 @@
                 android:id="@+id/toolbarTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="StoryThere"
+                android:text="@string/app_name"
                 android:textColor="@android:color/white"
                 android:textSize="20sp" />
 
@@ -41,7 +43,7 @@
                     android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:src="@android:drawable/ic_menu_close_clear_cancel"
-                    android:tint="@android:color/white" />
+                    app:tint="@android:color/white" />
 
                 <ImageButton
                     android:id="@+id/btnMoreOptions"
@@ -49,7 +51,7 @@
                     android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:src="@android:drawable/ic_menu_more"
-                    android:tint="@android:color/white" />
+                    app:tint="@android:color/white" />
             </LinearLayout>
         </androidx.appcompat.widget.Toolbar>
 
@@ -63,17 +65,17 @@
             <com.google.android.material.tabs.TabItem
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Reading" />
+                android:text="@string/reading" />
 
             <com.google.android.material.tabs.TabItem
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Favourite" />
+                android:text="@string/favourite" />
 
             <com.google.android.material.tabs.TabItem
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Already Read" />
+                android:text="@string/already_read" />
 
         </com.google.android.material.tabs.TabLayout>
     </com.google.android.material.appbar.AppBarLayout>

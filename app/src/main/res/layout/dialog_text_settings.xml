@@ -13,7 +13,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Font Size"
+            android:text="@string/font_size"
             android:textStyle="bold" />
 
         <LinearLayout
@@ -42,7 +42,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Letter Spacing"
+            android:text="@string/letter_spacing"
             android:textStyle="bold"
             android:layout_marginTop="16dp" />
 
@@ -72,7 +72,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Line Height"
+            android:text="@string/line_height"
             android:textStyle="bold"
             android:layout_marginTop="16dp" />
 
@@ -102,7 +102,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Paragraph Spacing"
+            android:text="@string/paragraph_spacing"
             android:textStyle="bold"
             android:layout_marginTop="16dp" />
 
@@ -132,7 +132,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Text Alignment"
+            android:text="@string/text_alignment"
             android:textStyle="bold"
             android:layout_marginTop="16dp" />
 
@@ -148,21 +148,21 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Left" />
+                android:text="@string/left" />
 
             <RadioButton
                 android:id="@+id/alignCenter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Center" />
+                android:text="@string/center" />
 
             <RadioButton
                 android:id="@+id/alignRight"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Right" />
+                android:text="@string/right" />
         </RadioGroup>
 
     </LinearLayout>

@@ -36,6 +36,27 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            
+            <!-- PDF Viewer Intent Filter -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/pdf" />
+            </intent-filter>
+
+            <!-- EPUB Viewer Intent Filter -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/epub+zip" />
+            </intent-filter>
+
+            <!-- Audio Player Intent Filter -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="audio/*" />
+            </intent-filter>
         </activity>
 
         <activity
@@ -45,8 +66,15 @@
 
         <activity
             android:name=".PDFViewerActivity"
-            android:exported="false"
-            android:theme="@style/Theme.StoryThere.Light" />
+            android:exported="true"
+            android:theme="@style/Theme.StoryThere.Light">
+            <!-- PDF Viewer Intent Filter -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/pdf" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".BookOptionsActivity"
@@ -55,8 +83,15 @@
 
         <activity
             android:name=".AudioReaderActivity"
-            android:exported="false"
-            android:theme="@style/Theme.StoryThere.NoActionBar" />
+            android:exported="true"
+            android:theme="@style/Theme.StoryThere.NoActionBar">
+            <!-- Audio Player Intent Filter -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="audio/*" />
+            </intent-filter>
+        </activity>
 
     </application>
 

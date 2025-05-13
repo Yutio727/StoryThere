@@ -41,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
     private BookListViewModel viewModel;
     private BookAdapter adapter;
     private List<Book> allBooks = new ArrayList<>();
-    private String currentTab = "Reading";
+    private String currentTab;
     private boolean isSelectionMode = false;
     private TextView toolbarTitle;
     private LinearLayout selectionModeButtons;
@@ -124,6 +124,10 @@ public class MainActivity extends AppCompatActivity {
 
         // Setup TabLayout
         TabLayout tabLayout = findViewById(R.id.tabLayout);
+        // Set initial tab
+        currentTab = getString(R.string.reading);
+        filterBooksByTab(currentTab);
+        
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
@@ -269,22 +273,18 @@ public class MainActivity extends AppCompatActivity {
     private void filterBooksByTab(String tab) {
         List<Book> filteredBooks = new ArrayList<>();
         for (Book book : allBooks) {
-            switch (tab) {
-                case "Reading":
-                    if (!book.isFavourite() && !book.isAlreadyRead()) {
-                        filteredBooks.add(book);
-                    }
-                    break;
-                case "Favourite":
-                    if (book.isFavourite()) {
-                        filteredBooks.add(book);
-                    }
-                    break;
-                case "Already Read":
-                    if (book.isAlreadyRead()) {
-                        filteredBooks.add(book);
-                    }
-                    break;
+            if (tab.equals(getString(R.string.reading))) {
+                if (!book.isFavourite() && !book.isAlreadyRead()) {
+                    filteredBooks.add(book);
+                }
+            } else if (tab.equals(getString(R.string.favourite))) {
+                if (book.isFavourite()) {
+                    filteredBooks.add(book);
+                }
+            } else if (tab.equals(getString(R.string.already_read))) {
+                if (book.isAlreadyRead()) {
+                    filteredBooks.add(book);
+                }
             }
         }
         adapter.setBooks(filteredBooks);

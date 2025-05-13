@@ -12,6 +12,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
@@ -21,6 +22,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.bumptech.glide.Glide;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -77,6 +79,7 @@ public class AudioReaderActivity extends AppCompatActivity {
             String title = intent.getStringExtra("title");
             String author = intent.getStringExtra("author");
             boolean isRussian = intent.getBooleanExtra("is_russian", false);
+            String previewImagePath = intent.getStringExtra("previewImagePath");
             
             if (title != null && getSupportActionBar() != null) {
                 getSupportActionBar().setTitle(title);
@@ -84,6 +87,15 @@ public class AudioReaderActivity extends AppCompatActivity {
             
             bookTitle.setText(title);
             bookAuthor.setText(author);
+
+            // Load preview image if available
+            ImageView bookCoverImage = findViewById(R.id.bookCoverImage);
+            if (previewImagePath != null) {
+                Glide.with(this)
+                    .load(previewImagePath)
+                    .placeholder(R.drawable.ic_book_placeholder)
+                    .into(bookCoverImage);
+            }
             
             // Read text content
             textContent = readTextFromFile(contentUri);

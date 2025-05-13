@@ -34,6 +34,7 @@ import com.google.android.material.tabs.TabLayout;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import com.example.storythere.TextParser;
 
 public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 1;
@@ -195,11 +196,23 @@ public class MainActivity extends AppCompatActivity {
         }
     }
     
+    // Helper to format time as mm:ss (copied from AudioReaderActivity)
+    private String formatTime(int seconds) {
+        int minutes = seconds / 60;
+        seconds = seconds % 60;
+        return String.format("%02d:%02d", minutes, seconds);
+    }
+    
     private void importBook(Uri uri) {
         // Get file information
         String fileName = getFileName(uri);
         String fileType = getFileType(fileName);
-        
+
+        // Calculate listening time (same as AudioReaderActivity)
+        com.example.storythere.TextParser.ParsedText parsedText = com.example.storythere.TextParser.parseText(this, uri);
+        int totalDuration = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
+        String formattedTime = formatTime(totalDuration);
+
         // Create a new Book object
         Book book = new Book(
             fileName,
@@ -207,7 +220,8 @@ public class MainActivity extends AppCompatActivity {
             uri.toString(),
             fileType
         );
-        
+        book.setAnnotation(formattedTime); // Store listening time in annotation
+
         // Save the book to the database
         viewModel.insert(book);
         Toast.makeText(this, "Book imported: " + fileName, Toast.LENGTH_SHORT).show();

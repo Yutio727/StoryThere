@@ -186,8 +186,8 @@ public class PDFView extends View {
             int measuredWidth = (int) (maxWidth * scale);
             int measuredHeight = (int) (totalHeight * scale);
             
-            Log.d(TAG, "Measured dimensions - Width: " + measuredWidth + ", Height: " + measuredHeight + 
-                      " (scale: " + scale + ")");
+            //Log.d(TAG, "Measured dimensions - Width: " + measuredWidth + ", Height: " + measuredHeight +
+            //          " (scale: " + scale + ")");
             
             setMeasuredDimension(measuredWidth, measuredHeight);
         }

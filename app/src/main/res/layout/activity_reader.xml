@@ -7,7 +7,6 @@
     android:clipToPadding="true"
     android:fitsSystemWindows="true"
     >
-    <!--Change top padding later-->
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"

@@ -3,15 +3,18 @@ package com.example.storythere;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.RectF;
+import android.text.Layout;
+import android.text.StaticLayout;
+import android.text.TextPaint;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 import java.util.List;
 
 public class PDFView extends View {
     private static final String TAG = "PDFView";
     private List<PDFParser.ParsedPage> pages;
-    private Paint textPaint;
+    private TextPaint textPaint;
     private Paint imagePaint;
     private float scale = 1.0f;
     private float translateX = 0f;
@@ -34,12 +37,13 @@ public class PDFView extends View {
     }
 
     private void init() {
-        textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         imagePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        imagePaint.setFilterBitmap(true);
     }
 
     public void setPages(List<PDFParser.ParsedPage> pages) {
-        Log.d(TAG, "Setting pages: " + (pages != null ? pages.size() : 0) + " pages");
+//        Log.d(TAG, "Setting pages: " + (pages != null ? pages.size() : 0) + " pages");
         this.pages = pages;
         if (pages != null && !pages.isEmpty()) {
             // Apply text settings from first page
@@ -47,16 +51,14 @@ public class PDFView extends View {
             textPaint.setTextSize(settings.fontSize);
             textPaint.setLetterSpacing(settings.letterSpacing);
             textPaint.setTextAlign(settings.textAlignment);
-            Log.d(TAG, "Applied text settings: fontSize=" + settings.fontSize + 
-                      ", letterSpacing=" + settings.letterSpacing + 
-                      ", alignment=" + settings.textAlignment);
+
         }
         requestLayout();
         invalidate();
     }
 
     public void setScale(float scale) {
-        Log.d(TAG, "Setting scale: " + scale);
+//        Log.d(TAG, "Setting scale: " + scale);
         this.scale = scale;
         requestLayout();
         invalidate();
@@ -72,70 +74,66 @@ public class PDFView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         if (pages == null || pages.isEmpty()) {
-            Log.d(TAG, "No pages to draw");
+//            Log.d(TAG, "No pages to draw");
             return;
         }
 
-        Log.d(TAG, "Drawing " + pages.size() + " pages");
+//        Log.d(TAG, "Drawing " + pages.size() + " pages");
         canvas.save();
         canvas.scale(scale, scale);
 
         float currentY = getPaddingTop();
-        Log.d(TAG, "Starting Y position: " + currentY);
+        float availableWidth = getWidth() - getPaddingLeft() - getPaddingRight();
 
         for (int i = 0; i < pages.size(); i++) {
             PDFParser.ParsedPage page = pages.get(i);
-            Log.d(TAG, "Drawing page " + (i + 1) + 
-                      ", text length: " + (page.text != null ? page.text.length() : 0) + 
-                      ", images: " + (page.images != null ? page.images.size() : 0));
 
-            // Draw page content
+            // Draw text
             if (page.text != null && !page.text.isEmpty()) {
                 String[] paragraphs = page.text.split("\n");
-                Log.d(TAG, "Page " + (i + 1) + " has " + paragraphs.length + " paragraphs");
+//                Log.d(TAG, "Page " + (i + 1) + " has " + paragraphs.length + " paragraphs");
                 
                 for (String paragraph : paragraphs) {
                     if (paragraph.trim().isEmpty()) {
                         currentY += page.textSettings.fontSize * page.textSettings.paragraphSpacing;
                         continue;
                     }
-
-                    // Calculate text position based on alignment
-                    float x = getPaddingLeft();
+                    Layout.Alignment align = Layout.Alignment.ALIGN_NORMAL;
                     switch (page.textSettings.textAlignment) {
-                        case CENTER:
-                            x = page.pageWidth / 2;
-                            break;
-                        case RIGHT:
-                            x = page.pageWidth - getPaddingRight();
-                            break;
+                        case CENTER: align = Layout.Alignment.ALIGN_CENTER; break;
+                        case RIGHT: align = Layout.Alignment.ALIGN_OPPOSITE; break;
+                        default: align = Layout.Alignment.ALIGN_NORMAL;
                     }
-
-                    // Draw text
-                    canvas.drawText(paragraph, x, currentY, textPaint);
-                    currentY += page.textSettings.fontSize * page.textSettings.lineHeight;
+                    StaticLayout layout = StaticLayout.Builder.obtain(paragraph, 0, paragraph.length(), textPaint, (int) availableWidth)
+                        .setAlignment(align)
+                        .setLineSpacing(0, page.textSettings.lineHeight)
+                        .build();
+                    canvas.save();
+                    canvas.translate(getPaddingLeft(), currentY);
+                    layout.draw(canvas);
+                    canvas.restore();
+                    currentY += layout.getHeight() + page.textSettings.fontSize * page.textSettings.paragraphSpacing;
                 }
             }
 
-            // Draw images after all text
+            // Draw images
             if (page.images != null && !page.images.isEmpty()) {
-                Log.d(TAG, "Drawing " + page.images.size() + " images for page " + (i + 1));
+//                Log.d(TAG, "Drawing " + page.images.size() + " images for page " + (i + 1));
                 for (PDFParser.ImageInfo imageInfo : page.images) {
                     if (imageInfo.bitmap != null) {
-                        // Add extra line break before image
                         currentY += page.textSettings.fontSize * page.textSettings.lineHeight;
-                        
-                        // Calculate image position
-                        float imageX = imageInfo.x;
+                        float imgAspect = imageInfo.width / imageInfo.height;
+                        float scaledWidth = availableWidth;
+                        float scaledHeight = scaledWidth / imgAspect;
+                        float imageX = getPaddingLeft();
                         if (page.textSettings.textAlignment == Paint.Align.CENTER) {
-                            imageX = (page.pageWidth - imageInfo.width) / 2;
+                            imageX = getPaddingLeft() + (availableWidth - scaledWidth) / 2f;
                         } else if (page.textSettings.textAlignment == Paint.Align.RIGHT) {
-                            imageX = page.pageWidth - imageInfo.width - getPaddingRight();
+                            imageX = getWidth() - getPaddingRight() - scaledWidth;
                         }
-                        
-                        Log.d(TAG, "Drawing image at Y: " + currentY + ", X: " + imageX);
-                        canvas.drawBitmap(imageInfo.bitmap, imageX, currentY, imagePaint);
-                        currentY += imageInfo.height + page.textSettings.fontSize * page.textSettings.paragraphSpacing;
+                        RectF destRect = new RectF(imageX, currentY, imageX + scaledWidth, currentY + scaledHeight);
+                        canvas.drawBitmap(imageInfo.bitmap, null, destRect, imagePaint);
+                        currentY += scaledHeight + page.textSettings.fontSize * page.textSettings.paragraphSpacing;
                     }
                 }
             }
@@ -144,52 +142,51 @@ public class PDFView extends View {
             currentY += pageSpacing;
         }
 
-        Log.d(TAG, "Finished drawing at Y: " + currentY);
+//        Log.d(TAG, "Finished drawing at Y: " + currentY);
         canvas.restore();
     }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        int width = MeasureSpec.getSize(widthMeasureSpec);
+        float totalHeight = getPaddingTop() + getPaddingBottom();
+        float availableWidth = width - getPaddingLeft() - getPaddingRight();
         if (pages != null && !pages.isEmpty()) {
-            float totalHeight = getPaddingTop() + getPaddingBottom();
-            float maxWidth = 0;
-            
             for (PDFParser.ParsedPage page : pages) {
-                // Calculate page width including padding
-                float pageWidth = page.pageWidth + getPaddingLeft() + getPaddingRight();
-                maxWidth = Math.max(maxWidth, pageWidth);
-                
-                // Add text height
                 if (page.text != null && !page.text.isEmpty()) {
                     String[] paragraphs = page.text.split("\n");
-                    totalHeight += paragraphs.length * page.textSettings.fontSize * 
-                                 page.textSettings.lineHeight;
+                    for (String paragraph : paragraphs) {
+                        if (paragraph.trim().isEmpty()) {
+                            totalHeight += page.textSettings.fontSize * page.textSettings.paragraphSpacing;
+                            continue;
+                        }
+                        Layout.Alignment align = Layout.Alignment.ALIGN_NORMAL;
+                        switch (page.textSettings.textAlignment) {
+                            case CENTER: align = Layout.Alignment.ALIGN_CENTER; break;
+                            case RIGHT: align = Layout.Alignment.ALIGN_OPPOSITE; break;
+                            default: align = Layout.Alignment.ALIGN_NORMAL;
+                        }
+                        StaticLayout layout = StaticLayout.Builder.obtain(paragraph, 0, paragraph.length(), textPaint, (int) availableWidth)
+                            .setAlignment(align)
+                            .setLineSpacing(0, page.textSettings.lineHeight)
+                            .build();
+                        totalHeight += layout.getHeight() + page.textSettings.fontSize * page.textSettings.paragraphSpacing;
+                    }
                 }
-                
-                // Add image heights
                 if (page.images != null) {
                     for (PDFParser.ImageInfo imageInfo : page.images) {
                         if (imageInfo.bitmap != null) {
-                            totalHeight += imageInfo.height + 
-                                         page.textSettings.fontSize * 
-                                         page.textSettings.paragraphSpacing;
+                            float imgAspect = imageInfo.width / imageInfo.height;
+                            float scaledWidth = availableWidth;
+                            float scaledHeight = scaledWidth / imgAspect;
+                            totalHeight += scaledHeight + page.textSettings.fontSize * page.textSettings.paragraphSpacing;
                         }
                     }
                 }
-                
-                // Add page spacing
                 totalHeight += pageSpacing;
             }
-            
-            // Apply scale to both dimensions
-            int measuredWidth = (int) (maxWidth * scale);
-            int measuredHeight = (int) (totalHeight * scale);
-            
-            //Log.d(TAG, "Measured dimensions - Width: " + measuredWidth + ", Height: " + measuredHeight +
-            //          " (scale: " + scale + ")");
-            
-            setMeasuredDimension(measuredWidth, measuredHeight);
         }
+        int measuredHeight = (int) (totalHeight * scale);
+        setMeasuredDimension(width, measuredHeight);
     }
 } 

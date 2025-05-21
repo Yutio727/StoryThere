@@ -28,7 +28,7 @@ import java.util.List;
 
 public class PDFParser {
     private static final String TAG = "PDFParser";
-    private static final float SCALE_FACTOR = 3.0f; // Scale images up by 2x
+    private static final float SCALE_FACTOR = 1.0f; // Changed from 3.0f to 1.0f since we handle scaling in PDFView
 
     public static class TextSettings {
         public float fontSize;
@@ -151,6 +151,7 @@ public class PDFParser {
                                         byte[] imageBytes = image.getImageBytes();
                                         if (imageBytes != null && imageBytes.length > 0) {
                                             Log.d(TAG, "Found image of size " + imageBytes.length + " bytes");
+                                            
                                             // Get image dimensions and position from PDF
                                             float width = image.getWidth();
                                             float height = image.getHeight();
@@ -179,22 +180,9 @@ public class PDFParser {
                                             Bitmap originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
                                             if (originalBitmap != null) {
                                                 Log.d(TAG, "Successfully decoded image: " + originalBitmap.getWidth() + "x" + originalBitmap.getHeight());
-                                                // Scale up the bitmap
-                                                Matrix matrix = new Matrix();
-                                                matrix.postScale(SCALE_FACTOR, SCALE_FACTOR);
-                                                Bitmap scaledBitmap = Bitmap.createBitmap(
-                                                    originalBitmap, 
-                                                    0, 0, 
-                                                    originalBitmap.getWidth(), 
-                                                    originalBitmap.getHeight(), 
-                                                    matrix, 
-                                                    true
-                                                );
-                                                originalBitmap.recycle(); // Free up memory
                                                 
-                                                // Add image with its position
-                                                images.add(new ImageInfo(scaledBitmap, x * SCALE_FACTOR, y * SCALE_FACTOR, 
-                                                                        width * SCALE_FACTOR, height * SCALE_FACTOR));
+                                                // Add image with its position (no scaling here, handled in PDFView)
+                                                images.add(new ImageInfo(originalBitmap, x, y, width, height));
                                                 Log.d(TAG, "Added image at position: " + x + "," + y);
                                             } else {
                                                 Log.e(TAG, "Failed to decode image");
@@ -214,8 +202,7 @@ public class PDFParser {
                 // Only add page if it has content
                 if (!text.trim().isEmpty() || !images.isEmpty()) {
                     Log.d(TAG, "Adding page " + i + " with " + text.length() + " chars and " + images.size() + " images");
-                    pages.add(new ParsedPage(text, images, i, pageSize.getWidth() * SCALE_FACTOR, 
-                                           pageSize.getHeight() * SCALE_FACTOR, settings));
+                    pages.add(new ParsedPage(text, images, i, pageSize.getWidth(), pageSize.getHeight(), settings));
                 } else {
                     Log.d(TAG, "Skipping empty page " + i);
                 }

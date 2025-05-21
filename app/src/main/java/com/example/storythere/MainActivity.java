@@ -34,13 +34,14 @@ import com.google.android.material.tabs.TabLayout;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import com.example.storythere.TextParser;
 
 public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 1;
     private BookListViewModel viewModel;
     private BookAdapter adapter;
     private List<Book> allBooks = new ArrayList<>();
-    private String currentTab = "Reading";
+    private String currentTab;
     private boolean isSelectionMode = false;
     private TextView toolbarTitle;
     private LinearLayout selectionModeButtons;
@@ -123,6 +124,10 @@ public class MainActivity extends AppCompatActivity {
 
         // Setup TabLayout
         TabLayout tabLayout = findViewById(R.id.tabLayout);
+        // Set initial tab
+        currentTab = getString(R.string.reading);
+        filterBooksByTab(currentTab);
+        
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
@@ -195,11 +200,23 @@ public class MainActivity extends AppCompatActivity {
         }
     }
     
+    // Helper to format time as mm:ss (copied from AudioReaderActivity)
+    private String formatTime(int seconds) {
+        int minutes = seconds / 60;
+        seconds = seconds % 60;
+        return String.format("%02d:%02d", minutes, seconds);
+    }
+    
     private void importBook(Uri uri) {
         // Get file information
         String fileName = getFileName(uri);
         String fileType = getFileType(fileName);
-        
+
+        // Calculate listening time (same as AudioReaderActivity)
+        com.example.storythere.TextParser.ParsedText parsedText = com.example.storythere.TextParser.parseText(this, uri);
+        int totalDuration = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
+        String formattedTime = formatTime(totalDuration);
+
         // Create a new Book object
         Book book = new Book(
             fileName,
@@ -207,7 +224,8 @@ public class MainActivity extends AppCompatActivity {
             uri.toString(),
             fileType
         );
-        
+        book.setAnnotation(formattedTime); // Store listening time in annotation
+
         // Save the book to the database
         viewModel.insert(book);
         Toast.makeText(this, "Book imported: " + fileName, Toast.LENGTH_SHORT).show();
@@ -255,22 +273,18 @@ public class MainActivity extends AppCompatActivity {
     private void filterBooksByTab(String tab) {
         List<Book> filteredBooks = new ArrayList<>();
         for (Book book : allBooks) {
-            switch (tab) {
-                case "Reading":
-                    if (!book.isFavourite() && !book.isAlreadyRead()) {
-                        filteredBooks.add(book);
-                    }
-                    break;
-                case "Favourite":
-                    if (book.isFavourite()) {
-                        filteredBooks.add(book);
-                    }
-                    break;
-                case "Already Read":
-                    if (book.isAlreadyRead()) {
-                        filteredBooks.add(book);
-                    }
-                    break;
+            if (tab.equals(getString(R.string.reading))) {
+                if (!book.isFavourite() && !book.isAlreadyRead()) {
+                    filteredBooks.add(book);
+                }
+            } else if (tab.equals(getString(R.string.favourite))) {
+                if (book.isFavourite()) {
+                    filteredBooks.add(book);
+                }
+            } else if (tab.equals(getString(R.string.already_read))) {
+                if (book.isAlreadyRead()) {
+                    filteredBooks.add(book);
+                }
             }
         }
         adapter.setBooks(filteredBooks);

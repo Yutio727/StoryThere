@@ -4,7 +4,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/white"
-    android:fitsSystemWindows="true">
+    android:clipToPadding="true"
+    android:fitsSystemWindows="true"
+    >
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
@@ -113,7 +115,7 @@
                         android:layout_marginEnd="16dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:src="@android:drawable/ic_media_rew"
-                        android:contentDescription="Rewind 10 seconds"/>
+                        android:contentDescription="@string/rewind_10_seconds"/>
 
                     <ImageButton
                         android:id="@+id/playPauseButton"
@@ -121,7 +123,7 @@
                         android:layout_height="64dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:src="@android:drawable/ic_media_play"
-                        android:contentDescription="Play/Pause"/>
+                        android:contentDescription="@string/play_pause"/>
 
                     <ImageButton
                         android:id="@+id/forwardButton"
@@ -130,7 +132,7 @@
                         android:layout_marginStart="16dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:src="@android:drawable/ic_media_ff"
-                        android:contentDescription="Forward 10 seconds"/>
+                        android:contentDescription="@string/forward_10_seconds"/>
 
                 </LinearLayout>
             </LinearLayout>

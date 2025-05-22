@@ -25,6 +25,7 @@ import com.itextpdf.kernel.pdf.PdfArray;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class PDFParser {
     private static final String TAG = "PDFParser";
@@ -68,27 +69,17 @@ public class PDFParser {
             PdfPage page = pdfDoc.getPage(pageNumber);
             Rectangle pageSize = page.getPageSize();
             
-            String text = "";
-            try {
-                // Use LocationTextExtractionStrategy to preserve text positioning
-                LocationTextExtractionStrategy strategy = new LocationTextExtractionStrategy();
-                text = PdfTextExtractor.getTextFromPage(page, strategy);
-                
-                // If no text found, try SimpleTextExtractionStrategy
-                if (text.trim().isEmpty()) {
-                    Log.d(TAG, "No text found with LocationTextExtractionStrategy, trying SimpleTextExtractionStrategy");
-                    text = PdfTextExtractor.getTextFromPage(page, new SimpleTextExtractionStrategy());
-                }
-
-                // Clean up the text while preserving line breaks
-                text = cleanText(text);
+            // Extract text
+            String text = extractText(page);
+            if (text != null && !text.trim().isEmpty()) {
                 Log.d(TAG, "Extracted text length: " + text.length());
-            } catch (Exception e) {
-                Log.e(TAG, "Error extracting text from page " + pageNumber + ": " + e.getMessage());
+            } else {
+                Log.d(TAG, "No text found on page " + pageNumber);
             }
 
             // Extract images
             List<ImageInfo> images = new ArrayList<>();
+
             try {
                 PdfDictionary pageDict = page.getPdfObject();
                 PdfDictionary resources = pageDict.getAsDictionary(PdfName.Resources);
@@ -104,13 +95,13 @@ public class PDFParser {
                                     byte[] imageBytes = image.getImageBytes();
                                     if (imageBytes != null && imageBytes.length > 0) {
                                         Log.d(TAG, "Found image of size " + imageBytes.length + " bytes");
-                                        
+
                                         // Get image dimensions and position from PDF
                                         float width = image.getWidth();
                                         float height = image.getHeight();
                                         float x = 0; // Default position
                                         float y = pageSize.getHeight() - height; // Default position
-                                        
+
                                         // Try to get actual position from the stream
                                         PdfDictionary imageDict = stream.getAsDictionary(PdfName.BBox);
                                         if (imageDict != null) {
@@ -122,24 +113,39 @@ public class PDFParser {
                                                 height = bbox.getAsNumber(3).floatValue() - bbox.getAsNumber(1).floatValue();
                                             }
                                         }
-                                        
+
                                         // Create bitmap with original dimensions
                                         BitmapFactory.Options options = new BitmapFactory.Options();
                                         options.inSampleSize = 1; // No downsampling
                                         options.inScaled = false; // Don't scale
                                         options.inDensity = 0;
                                         options.inTargetDensity = 0; // Use original density
-                                        
-                                        Bitmap originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
-                                        if (originalBitmap != null) {
-                                            Log.d(TAG, "Successfully decoded image: " + originalBitmap.getWidth() + "x" + originalBitmap.getHeight());
-                                            
-                                            // Add image with its position (no scaling here, handled in PDFView)
-                                            images.add(new ImageInfo(originalBitmap, x, y, width, height));
-                                            Log.d(TAG, "Added image at position: " + x + "," + y);
+                                        options.inMutable = true; // Allow bitmap modification
+                                        options.inPreferredConfig = Bitmap.Config.ARGB_8888; // Use ARGB_8888 for better quality
+
+                                        // First try to decode bounds to check if the image is valid
+                                        options.inJustDecodeBounds = true;
+                                        BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
+
+                                        if (options.outWidth > 0 && options.outHeight > 0) {
+                                            // Now decode the actual bitmap
+                                            options.inJustDecodeBounds = false;
+                                            Bitmap originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
+
+                                            if (originalBitmap != null) {
+                                                Log.d(TAG, "Successfully decoded image: " + originalBitmap.getWidth() + "x" + originalBitmap.getHeight());
+
+                                                // Add image with its position (no scaling here, handled in PDFView)
+                                                images.add(new ImageInfo(originalBitmap, x, y, width, height));
+                                                Log.d(TAG, "Added image at position: " + x + "," + y);
+                                            } else {
+                                                Log.e(TAG, "Failed to decode image after bounds check");
+                                            }
                                         } else {
-                                            Log.e(TAG, "Failed to decode image");
+                                            Log.e(TAG, "Invalid image dimensions: " + options.outWidth + "x" + options.outHeight);
                                         }
+                                    } else {
+                                        Log.e(TAG, "Image bytes are null or empty");
                                     }
                                 } catch (Exception e) {
                                     Log.e(TAG, "Error processing image: " + e.getMessage());
@@ -149,20 +155,41 @@ public class PDFParser {
                     }
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Error extracting images from page " + pageNumber + ": " + e.getMessage());
+                Log.e(TAG, "Error extracting images: " + e.getMessage());
             }
-            
+
             // Only return page if it has content
-            if (!text.trim().isEmpty() || !images.isEmpty()) {
-                Log.d(TAG, "Adding page " + pageNumber + " with " + text.length() + " chars and " + images.size() + " images");
+            if ((text != null && !text.trim().isEmpty()) || !images.isEmpty()) {
+                Log.d(TAG, "Adding page " + pageNumber + " with " + 
+                    (text != null ? text.length() : 0) + " chars and " + 
+                    images.size() + " images");
                 return new ParsedPage(text, images, pageNumber, pageSize.getWidth(), pageSize.getHeight(), settings);
             } else {
                 Log.d(TAG, "Skipping empty page " + pageNumber);
                 return null;
             }
-            
         } catch (Exception e) {
             Log.e(TAG, "Error parsing page " + pageNumber + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    private String extractText(PdfPage page) {
+        try {
+            // Try LocationTextExtractionStrategy first
+            LocationTextExtractionStrategy strategy = new LocationTextExtractionStrategy();
+            String text = PdfTextExtractor.getTextFromPage(page, strategy);
+            
+            if (text == null || text.trim().isEmpty()) {
+                Log.d(TAG, "No text found with LocationTextExtractionStrategy, trying SimpleTextExtractionStrategy");
+                // Fall back to SimpleTextExtractionStrategy
+                SimpleTextExtractionStrategy simpleStrategy = new SimpleTextExtractionStrategy();
+                text = PdfTextExtractor.getTextFromPage(page, simpleStrategy);
+            }
+            
+            return cleanText(text);
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting text: " + e.getMessage());
             return null;
         }
     }

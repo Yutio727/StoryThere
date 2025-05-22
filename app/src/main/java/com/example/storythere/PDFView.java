@@ -8,6 +8,7 @@ import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 import java.util.List;
 
@@ -20,6 +21,7 @@ public class PDFView extends View {
     private float translateX = 0f;
     private float translateY = 0f;
     private float pageSpacing = 32f; // Space between pages
+    private PDFParser.TextSettings defaultSettings;
 
     public PDFView(Context context) {
         super(context);
@@ -40,25 +42,31 @@ public class PDFView extends View {
         textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         imagePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         imagePaint.setFilterBitmap(true);
+        
+        // Create default settings
+        defaultSettings = new PDFParser.TextSettings();
     }
 
     public void setPages(List<PDFParser.ParsedPage> pages) {
-//        Log.d(TAG, "Setting pages: " + (pages != null ? pages.size() : 0) + " pages");
         this.pages = pages;
         if (pages != null && !pages.isEmpty()) {
-            // Apply text settings from first page
-            PDFParser.TextSettings settings = pages.get(0).textSettings;
-            textPaint.setTextSize(settings.fontSize);
-            textPaint.setLetterSpacing(settings.letterSpacing);
-            textPaint.setTextAlign(settings.textAlignment);
-
+            // Find first non-null page to get settings
+            for (PDFParser.ParsedPage page : pages) {
+                if (page != null) {
+                    defaultSettings = page.textSettings;
+                    break;
+                }
+            }
+            // Apply text settings
+            textPaint.setTextSize(defaultSettings.fontSize);
+            textPaint.setLetterSpacing(defaultSettings.letterSpacing);
+            textPaint.setTextAlign(defaultSettings.textAlignment);
         }
         requestLayout();
         invalidate();
     }
 
     public void setScale(float scale) {
-//        Log.d(TAG, "Setting scale: " + scale);
         this.scale = scale;
         requestLayout();
         invalidate();
@@ -74,11 +82,9 @@ public class PDFView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         if (pages == null || pages.isEmpty()) {
-//            Log.d(TAG, "No pages to draw");
             return;
         }
 
-//        Log.d(TAG, "Drawing " + pages.size() + " pages");
         canvas.save();
         canvas.scale(scale, scale);
 
@@ -87,11 +93,15 @@ public class PDFView extends View {
 
         for (int i = 0; i < pages.size(); i++) {
             PDFParser.ParsedPage page = pages.get(i);
+            if (page == null) {
+                // Draw loading indicator or placeholder for null pages
+                currentY += defaultSettings.fontSize * 2; // Add some space for the placeholder
+                continue;
+            }
 
             // Draw text
             if (page.text != null && !page.text.isEmpty()) {
                 String[] paragraphs = page.text.split("\n");
-//                Log.d(TAG, "Page " + (i + 1) + " has " + paragraphs.length + " paragraphs");
                 
                 for (String paragraph : paragraphs) {
                     if (paragraph.trim().isEmpty()) {
@@ -118,7 +128,6 @@ public class PDFView extends View {
 
             // Draw images
             if (page.images != null && !page.images.isEmpty()) {
-//                Log.d(TAG, "Drawing " + page.images.size() + " images for page " + (i + 1));
                 for (PDFParser.ImageInfo imageInfo : page.images) {
                     if (imageInfo.bitmap != null) {
                         currentY += page.textSettings.fontSize * page.textSettings.lineHeight;
@@ -142,7 +151,6 @@ public class PDFView extends View {
             currentY += pageSpacing;
         }
 
-//        Log.d(TAG, "Finished drawing at Y: " + currentY);
         canvas.restore();
     }
 
@@ -151,8 +159,15 @@ public class PDFView extends View {
         int width = MeasureSpec.getSize(widthMeasureSpec);
         float totalHeight = getPaddingTop() + getPaddingBottom();
         float availableWidth = width - getPaddingLeft() - getPaddingRight();
+        
         if (pages != null && !pages.isEmpty()) {
             for (PDFParser.ParsedPage page : pages) {
+                if (page == null) {
+                    // Add space for null pages (loading placeholders)
+                    totalHeight += defaultSettings.fontSize * 2;
+                    continue;
+                }
+
                 if (page.text != null && !page.text.isEmpty()) {
                     String[] paragraphs = page.text.split("\n");
                     for (String paragraph : paragraphs) {
@@ -173,6 +188,7 @@ public class PDFView extends View {
                         totalHeight += layout.getHeight() + page.textSettings.fontSize * page.textSettings.paragraphSpacing;
                     }
                 }
+                
                 if (page.images != null) {
                     for (PDFParser.ImageInfo imageInfo : page.images) {
                         if (imageInfo.bitmap != null) {
@@ -186,6 +202,7 @@ public class PDFView extends View {
                 totalHeight += pageSpacing;
             }
         }
+        
         int measuredHeight = (int) (totalHeight * scale);
         setMeasuredDimension(width, measuredHeight);
     }

@@ -4,19 +4,25 @@ import android.content.Intent;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
+import android.view.View;
 import android.widget.HorizontalScrollView;
 import android.widget.ScrollView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class PDFViewerActivity extends AppCompatActivity implements TextSettingsDialog.TextSettingsListener {
+public class PDFViewerActivity extends AppCompatActivity implements TextSettingsDialog.TextSettingsListener, ScrollView.OnScrollChangeListener {
     private static final String TAG = "PDFViewerActivity";
     private PDFView pdfView;
     private ScrollView scrollView;
@@ -29,6 +35,12 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     private float posY = 0;
     private List<PDFParser.ParsedPage> pages;
     private PDFParser.TextSettings currentSettings;
+    private PDFParser pdfParser;
+    private ExecutorService executorService;
+    private Handler mainHandler;
+    private int totalPages = 0;
+    private int currentPage = 1;
+    private boolean isLoadingMore = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,9 +56,16 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         pdfView = findViewById(R.id.pdfView);
         scrollView = findViewById(R.id.scrollView);
         horizontalScrollView = findViewById(R.id.horizontalScrollView);
+        
+        // Set scroll listener
+        scrollView.setOnScrollChangeListener(this);
 
         // Initialize scale detector
         scaleDetector = new ScaleGestureDetector(this, new ScaleListener());
+
+        // Initialize thread pool and handler
+        executorService = Executors.newSingleThreadExecutor();
+        mainHandler = new Handler(Looper.getMainLooper());
 
         // Get PDF URI from intent
         Uri pdfUri = getIntent().getData();
@@ -60,27 +79,99 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         }
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (pdfParser != null) {
+            pdfParser.close();
+        }
+        executorService.shutdown();
+    }
+
     private void loadPDF(Uri pdfUri) {
-        // Create default text settings
-        currentSettings = new PDFParser.TextSettings();
-        currentSettings.fontSize = 54.0f;
-        currentSettings.letterSpacing = 0.0f;
-        currentSettings.textAlignment = Paint.Align.LEFT;
-        currentSettings.lineHeight = 1.2f;
-        currentSettings.paragraphSpacing = 1.5f;
+        try {
+            // Create default text settings
+            currentSettings = new PDFParser.TextSettings();
+            currentSettings.fontSize = 54.0f;
+            currentSettings.letterSpacing = 0.0f;
+            currentSettings.textAlignment = Paint.Align.LEFT;
+            currentSettings.lineHeight = 1.2f;
+            currentSettings.paragraphSpacing = 1.5f;
 
-        Log.d(TAG, "Loading PDF with settings - fontSize: " + currentSettings.fontSize + 
-                  ", letterSpacing: " + currentSettings.letterSpacing + 
-                  ", alignment: " + currentSettings.textAlignment);
+            // Initialize PDF parser
+            pdfParser = new PDFParser(this, pdfUri);
+            totalPages = pdfParser.getPageCount();
+            pages = new ArrayList<>(totalPages);
+            
+            // Initialize the list with nulls
+            for (int i = 0; i < totalPages; i++) {
+                pages.add(null);
+            }
 
-        // Parse PDF with settings
-        pages = PDFParser.parsePDF(this, pdfUri, currentSettings);
-        if (pages != null && !pages.isEmpty()) {
-            pdfView.setPages(pages);
-        } else {
-            Log.e(TAG, "No pages parsed from PDF");
+            // Load first page immediately
+            loadPage(1);
+            
+            // Start loading next pages in background
+            loadNextPages();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing PDF: " + e.getMessage());
             Toast.makeText(this, "Failed to load PDF", Toast.LENGTH_SHORT).show();
             finish();
+        }
+    }
+
+    private void loadPage(int pageNumber) {
+        if (pageNumber < 1 || pageNumber > totalPages) {
+            return;
+        }
+
+        executorService.execute(() -> {
+            PDFParser.ParsedPage page = pdfParser.parsePage(pageNumber, currentSettings);
+            if (page != null) {
+                mainHandler.post(() -> {
+                    pages.set(pageNumber - 1, page);
+                    pdfView.setPages(pages);
+                });
+            }
+        });
+    }
+
+    private void loadNextPages() {
+        if (isLoadingMore) {
+            return;
+        }
+
+        isLoadingMore = true;
+        executorService.execute(() -> {
+            int nextPage = currentPage + 1;
+            if (nextPage <= totalPages) {
+                PDFParser.ParsedPage page = pdfParser.parsePage(nextPage, currentSettings);
+                if (page != null) {
+                    mainHandler.post(() -> {
+                        pages.set(nextPage - 1, page);
+                        pdfView.setPages(pages);
+                        currentPage = nextPage;
+                        isLoadingMore = false;
+                        // Continue loading next pages
+                        loadNextPages();
+                    });
+                }
+            } else {
+                isLoadingMore = false;
+            }
+        });
+    }
+
+    @Override
+    public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+        // Check if we're near the bottom of the content
+        int scrollViewHeight = scrollView.getHeight();
+        int scrollViewChildHeight = scrollView.getChildAt(0).getHeight();
+        
+        if (scrollViewChildHeight - (scrollY + scrollViewHeight) < scrollViewHeight * 0.5) {
+            // We're near the bottom, load more pages
+            loadNextPages();
         }
     }
 
@@ -154,15 +245,10 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                   ", alignment: " + settings.textAlignment);
         
         currentSettings = settings;
-        // Reparse PDF with new settings
-        Uri pdfUri = getIntent().getData();
-        if (pdfUri != null) {
-            pages = PDFParser.parsePDF(this, pdfUri, settings);
-            if (pages != null && !pages.isEmpty()) {
-                pdfView.setPages(pages);
-                // Reset scroll position
-                scrollView.scrollTo(0, 0);
-                horizontalScrollView.scrollTo(0, 0);
+        // Reload all loaded pages with new settings
+        for (int i = 0; i < pages.size(); i++) {
+            if (pages.get(i) != null) {
+                loadPage(i + 1);
             }
         }
     }

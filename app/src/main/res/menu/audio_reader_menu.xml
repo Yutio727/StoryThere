@@ -16,6 +16,9 @@
             <item
                 android:id="@+id/action_book_info"
                 android:title="Book Info" />
+            <item
+                android:id="@+id/action_show_text"
+                android:title="Show Text" />
         </menu>
     </item>
 </menu> 

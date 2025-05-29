@@ -8,11 +8,13 @@ import android.os.LocaleList;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
@@ -35,6 +37,11 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 public class AudioReaderActivity extends AppCompatActivity {
+    private static final String TAG = "AudioReaderActivity";
+    private static final int MAX_CHUNK_SIZE = 200; // Maximum words per chunk
+    private static final int CHUNK_OVERLAP = 20; // Number of words to overlap between chunks
+    private static final int SYNC_INTERVAL = 2000; // Sync every 2 seconds
+    private static final int QUEUE_AHEAD_THRESHOLD = 50; // Queue next chunk when this many words are left
     private TextToSpeech textToSpeech;
     private String textContent;
     private boolean isPlaying = false;
@@ -43,6 +50,12 @@ public class AudioReaderActivity extends AppCompatActivity {
     private float currentSpeed = 1.0f;
     private Handler handler = new Handler();
     private Runnable updateProgressRunnable;
+    private boolean isTTSReady = false;
+    private boolean isPreloading = false;
+    private ProgressBar loadingProgressBar;
+    private TextView loadingStatusText;
+    private int currentChunkStart = 0;
+    private String[] words;
     
     private ImageButton playPauseButton;
     private ImageButton rewindButton;
@@ -52,7 +65,9 @@ public class AudioReaderActivity extends AppCompatActivity {
     private TextView totalTimeText;
     private TextView bookTitle;
     private TextView bookAuthor;
-
+    private TextView currentWordsText;
+    private boolean isShowingText = false;
+    
     // Pattern for detecting Russian characters
     private static final Pattern RUSSIAN_PATTERN = Pattern.compile("[а-яА-ЯёЁ]");
     
@@ -97,11 +112,18 @@ public class AudioReaderActivity extends AppCompatActivity {
                     .into(bookCoverImage);
             }
             
-            // Read text content
+            // Read and clean text content
             textContent = readTextFromFile(contentUri);
             
-            // Calculate total duration (rough estimate: 1 word per second)
-            totalDuration = textContent.split("\\s+").length;
+            // Calculate total duration based on actual words only
+            String[] words = textContent.split("\\s+");
+            totalDuration = 0;
+            for (String word : words) {
+                if (!word.trim().isEmpty()) {
+                    totalDuration++;
+                }
+            }
+            
             progressBar.setMax(totalDuration);
             totalTimeText.setText(formatTime(totalDuration));
             currentTimeText.setText(formatTime(0));
@@ -137,6 +159,9 @@ public class AudioReaderActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.action_book_info) {
             // TODO: Implement book info page
+            return true;
+        } else if (id == R.id.action_show_text) {
+            toggleTextDisplay();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -254,6 +279,13 @@ public class AudioReaderActivity extends AppCompatActivity {
         totalTimeText = findViewById(R.id.totalTime);
         bookTitle = findViewById(R.id.bookTitle);
         bookAuthor = findViewById(R.id.bookAuthor);
+        currentWordsText = findViewById(R.id.currentWordsText);
+        loadingProgressBar = findViewById(R.id.loadingProgressBar);
+        loadingStatusText = findViewById(R.id.loadingStatusText);
+        
+        // Initially hide loading UI
+        loadingProgressBar.setVisibility(View.GONE);
+        loadingStatusText.setVisibility(View.GONE);
     }
     
     private boolean isTextPrimarilyRussian(String text) {
@@ -314,30 +346,66 @@ public class AudioReaderActivity extends AppCompatActivity {
                 textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                     @Override
                     public void onStart(String utteranceId) {
+                        Log.d(TAG, "TTS started for utterance: " + utteranceId);
                         runOnUiThread(() -> {
                             playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
                             isPlaying = true;
+                            if (isShowingText) {
+                                updateCurrentWords();
+                            }
                         });
                     }
                     
                     @Override
                     public void onDone(String utteranceId) {
+                        Log.d(TAG, "TTS completed for utterance: " + utteranceId);
                         runOnUiThread(() -> {
-                            playPauseButton.setImageResource(android.R.drawable.ic_media_play);
-                            isPlaying = false;
-                            currentPosition = 0;
+                            String[] words = textContent.split("\\s+");
+                            
+                            if (utteranceId.startsWith("chunk_")) {
+                                // Extract the position from the chunk ID
+                                int chunkPosition = Integer.parseInt(utteranceId.substring(6));
+                                currentPosition = chunkPosition;
+                                
+                                if (currentPosition >= words.length - 1) {
+                                    // We've reached the end
+                                    playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+                                    isPlaying = false;
+                                    currentPosition = 0;
+                                }
+                            } else {
+                                // Handle main utterance completion
+                                if (currentPosition >= words.length - 1) {
+                                    playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+                                    isPlaying = false;
+                                    currentPosition = 0;
+                                }
+                            }
                             updateProgressBar();
+                            if (isShowingText) {
+                                updateCurrentWords();
+                            }
                         });
                     }
                     
                     @Override
                     public void onError(String utteranceId) {
+                        Log.e(TAG, "TTS error for utterance: " + utteranceId);
                         runOnUiThread(() -> {
                             playPauseButton.setImageResource(android.R.drawable.ic_media_play);
                             isPlaying = false;
+                            Toast.makeText(AudioReaderActivity.this, 
+                                "Error during text-to-speech playback", 
+                                Toast.LENGTH_SHORT).show();
                         });
                     }
                 });
+
+                isTTSReady = true;
+                Log.d(TAG, "TTS initialized successfully");
+            } else {
+                Log.e(TAG, "TTS initialization failed with status: " + status);
+                Toast.makeText(this, "Failed to initialize text-to-speech", Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -388,37 +456,106 @@ public class AudioReaderActivity extends AppCompatActivity {
     }
     
     private void togglePlayPause() {
+        if (!isTTSReady) {
+            startPreloading();
+            return;
+        }
+        
         if (isPlaying) {
+            Log.d(TAG, "Stopping playback");
             stopReading();
         } else {
+            Log.d(TAG, "Starting playback");
             startReading();
         }
     }
     
     private void startReading() {
-        if (textToSpeech != null) {
+        if (textToSpeech != null && isTTSReady) {
             Bundle params = new Bundle();
             params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "messageID");
             
-            // Calculate the remaining text based on current position
             String[] words = textContent.split("\\s+");
             int startWord = Math.min(currentPosition, words.length - 1);
             StringBuilder remainingText = new StringBuilder();
-            for (int i = startWord; i < words.length; i++) {
-                remainingText.append(words[i]).append(" ");
+            
+            // Take a larger chunk of text for TTS
+            int endWord = Math.min(startWord + MAX_CHUNK_SIZE, words.length);
+            for (int i = startWord; i < endWord; i++) {
+                String word = words[i].trim();
+                if (!word.isEmpty() && isValidWord(word)) {
+                    remainingText.append(word).append(" ");
+                }
             }
             
-            textToSpeech.speak(remainingText.toString(), TextToSpeech.QUEUE_FLUSH, params, "messageID");
-            isPlaying = true;
-            startProgressUpdate();
+            String textToSpeak = remainingText.toString().trim();
+            Log.d(TAG, "Starting TTS at position " + currentPosition + " with text: [" + textToSpeak + "]");
+            
+            if (!textToSpeak.isEmpty()) {
+                try {
+                    // Stop any ongoing speech first
+                    textToSpeech.stop();
+                    
+                    // Add a small delay before starting new speech
+                    handler.postDelayed(() -> {
+                        int result = textToSpeech.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, params, "messageID");
+                        if (result == TextToSpeech.ERROR) {
+                            Log.e(TAG, "Error starting TTS");
+                            Toast.makeText(this, "Error starting text-to-speech", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        isPlaying = true;
+                        startProgressUpdate();
+                        
+                        // Queue next chunk immediately
+                        if (endWord < words.length) {
+                            queueNextChunk(endWord - CHUNK_OVERLAP);
+                        }
+                    }, 100);
+                } catch (Exception e) {
+                    Log.e(TAG, "Exception while starting TTS: " + e.getMessage());
+                    Toast.makeText(this, "Error starting text-to-speech", Toast.LENGTH_SHORT).show();
+                }
+            }
+        } else {
+            Log.e(TAG, "Cannot start reading: TTS not ready");
+            Toast.makeText(this, "Text-to-speech is not ready", Toast.LENGTH_SHORT).show();
         }
     }
     
-    private void stopReading() {
-        if (textToSpeech != null) {
-            textToSpeech.stop();
-            isPlaying = false;
-            stopProgressUpdate();
+    private void queueNextChunk(int startPosition) {
+        if (!isPlaying) return;
+        
+        String[] words = textContent.split("\\s+");
+        if (startPosition >= words.length) return;
+        
+        int endWord = Math.min(startPosition + MAX_CHUNK_SIZE, words.length);
+        
+        StringBuilder chunkText = new StringBuilder();
+        for (int i = startPosition; i < endWord; i++) {
+            String word = words[i].trim();
+            if (!word.isEmpty() && isValidWord(word)) {
+                chunkText.append(word).append(" ");
+            }
+        }
+        
+        String textToSpeak = chunkText.toString().trim();
+        if (!textToSpeak.isEmpty()) {
+            Bundle params = new Bundle();
+            String utteranceId = "chunk_" + startPosition;
+            params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId);
+            
+            Log.d(TAG, "Queueing chunk at position " + startPosition + " with text: [" + textToSpeak + "]");
+            
+            int result = textToSpeech.speak(textToSpeak, TextToSpeech.QUEUE_ADD, params, utteranceId);
+            if (result == TextToSpeech.ERROR) {
+                Log.e(TAG, "Error queueing next chunk");
+            } else {
+                // Queue the next chunk after this one
+                if (endWord < words.length) {
+                    handler.postDelayed(() -> queueNextChunk(endWord - CHUNK_OVERLAP), 100);
+                }
+            }
         }
     }
     
@@ -427,9 +564,24 @@ public class AudioReaderActivity extends AppCompatActivity {
             @Override
             public void run() {
                 if (isPlaying) {
-                    currentPosition++;
+                    // Update position based on speech rate
+                    int increment = Math.max(1, (int)(currentSpeed * 2)); // Adjust increment based on speed
+                    currentPosition += increment;
                     updateProgressBar();
-                    handler.postDelayed(this, 1000);
+                    if (isShowingText) {
+                        updateCurrentWords();
+                    }
+                    
+                    // Check if we need to queue next chunk
+                    String[] words = textContent.split("\\s+");
+                    int wordsLeft = words.length - currentPosition;
+                    
+                    if (wordsLeft <= QUEUE_AHEAD_THRESHOLD && currentPosition < words.length - 1) {
+                        // Queue next chunk if we're running low on words
+                        queueNextChunk(currentPosition + 1);
+                    }
+                    
+                    handler.postDelayed(this, SYNC_INTERVAL);
                 }
             }
         };
@@ -446,6 +598,9 @@ public class AudioReaderActivity extends AppCompatActivity {
         runOnUiThread(() -> {
             progressBar.setProgress(currentPosition);
             currentTimeText.setText(formatTime(currentPosition));
+            if (isShowingText) {
+                updateCurrentWords();
+            }
         });
     }
     
@@ -461,16 +616,121 @@ public class AudioReaderActivity extends AppCompatActivity {
              BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                text.append(line).append(" ");
+                // Clean the line by removing special characters and extra spaces
+                String cleanedLine = line.trim()
+                    .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", "") // Remove control characters except newlines and tabs
+                    .replaceAll("\\s+", " ") // Replace multiple spaces with single space
+                    .replaceAll("[^\\p{L}\\p{N}\\p{P}\\s]", ""); // Keep only letters, numbers, punctuation and spaces
+                
+                if (!cleanedLine.isEmpty()) {
+                    text.append(cleanedLine).append(" ");
+                }
             }
         } catch (Exception e) {
+            Log.e(TAG, "Error reading file: " + e.getMessage());
             e.printStackTrace();
         }
-        return text.toString();
+        return text.toString().trim();
+    }
+    
+    private boolean isValidWord(String word) {
+        // Check if word contains only valid characters
+        return word.matches("[\\p{L}\\p{N}\\p{P}]+");
+    }
+    
+    private void toggleTextDisplay() {
+        isShowingText = !isShowingText;
+        currentWordsText.setVisibility(isShowingText ? View.VISIBLE : View.GONE);
+        if (isShowingText) {
+            // Force update the text display
+            updateCurrentWords();
+        }
+    }
+
+    private void updateCurrentWords() {
+        if (!isShowingText) return;
+        
+        String[] words = textContent.split("\\s+");
+        int startWord = Math.max(0, currentPosition);
+        int endWord = Math.min(words.length, currentPosition + 3); // Show 3 words ahead
+        
+        StringBuilder currentWords = new StringBuilder();
+        for (int i = startWord; i < endWord; i++) {
+            if (!words[i].trim().isEmpty() && isValidWord(words[i])) {
+                currentWords.append(words[i]).append(" ");
+            }
+        }
+        
+        String displayText = currentWords.toString().trim();
+        Log.d(TAG, "Current words at position " + currentPosition + ": [" + displayText + "]");
+        currentWordsText.setText(displayText);
+    }
+    
+    private void startPreloading() {
+        if (isPreloading || isTTSReady) return;
+        
+        isPreloading = true;
+        loadingProgressBar.setVisibility(View.VISIBLE);
+        loadingStatusText.setVisibility(View.VISIBLE);
+        playPauseButton.setEnabled(false);
+        
+        // Start preloading in background
+        new Thread(() -> {
+            String[] words = textContent.split("\\s+");
+            int totalWords = words.length;
+            int processedWords = 0;
+            
+            for (int i = 0; i < totalWords; i += MAX_CHUNK_SIZE) {
+                if (!isPreloading) break; // Stop if preloading was cancelled
+                
+                int end = Math.min(i + MAX_CHUNK_SIZE, totalWords);
+                StringBuilder chunk = new StringBuilder();
+                for (int j = i; j < end; j++) {
+                    if (!words[j].trim().isEmpty() && isValidWord(words[j])) {
+                        chunk.append(words[j]).append(" ");
+                    }
+                }
+                
+                // Update progress
+                processedWords = end;
+                int progress = (processedWords * 100) / totalWords;
+                runOnUiThread(() -> {
+                    loadingProgressBar.setProgress(progress);
+                    loadingStatusText.setText("Preparing audio: " + progress + "%");
+                });
+                
+                // Simulate processing time
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+            
+            runOnUiThread(() -> {
+                isPreloading = false;
+                isTTSReady = true;
+                loadingProgressBar.setVisibility(View.GONE);
+                loadingStatusText.setVisibility(View.GONE);
+                playPauseButton.setEnabled(true);
+                Toast.makeText(this, "Ready to play", Toast.LENGTH_SHORT).show();
+            });
+        }).start();
+    }
+    
+    private void stopReading() {
+        if (textToSpeech != null) {
+            Log.d(TAG, "Stopping TTS");
+            textToSpeech.stop();
+            isPlaying = false;
+            stopProgressUpdate();
+        }
     }
     
     @Override
     protected void onDestroy() {
+        isPreloading = false; // Stop preloading if activity is destroyed
+        Log.d(TAG, "Activity being destroyed");
         if (textToSpeech != null) {
             textToSpeech.stop();
             textToSpeech.shutdown();

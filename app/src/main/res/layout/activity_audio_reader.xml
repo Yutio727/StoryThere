@@ -60,6 +60,36 @@
                 android:textSize="18sp"
                 android:textColor="@color/black"/>
 
+            <ProgressBar
+                android:id="@+id/loadingProgressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/loadingStatusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:textSize="14sp"
+                android:textColor="@color/black"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/currentWordsText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center"
+                android:textSize="20sp"
+                android:textColor="@color/black"
+                android:visibility="gone"
+                android:padding="16dp"
+                android:background="@drawable/text_highlight_background"/>
+
             <!-- Audio Controls -->
             <LinearLayout
                 android:layout_width="match_parent"

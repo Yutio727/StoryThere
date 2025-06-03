@@ -3,11 +3,9 @@ package com.example.storythere;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.util.Log;
-
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfPage;
 import com.itextpdf.kernel.pdf.PdfReader;
@@ -18,20 +16,17 @@ import com.itextpdf.kernel.pdf.xobject.PdfImageXObject;
 import com.itextpdf.kernel.pdf.PdfStream;
 import com.itextpdf.kernel.pdf.PdfDictionary;
 import com.itextpdf.kernel.pdf.PdfName;
-import com.itextpdf.kernel.pdf.canvas.parser.listener.ITextExtractionStrategy;
 import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.PdfArray;
 
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class PDFParser {
     private static final String TAG = "PDFParser";
-    private static final float SCALE_FACTOR = 1.0f;
-    private PdfDocument pdfDoc;
-    private PdfReader reader;
+    private final PdfDocument pdfDoc;
+    private final PdfReader reader;
 
     public PDFParser(Context context, Uri pdfUri) throws Exception {
         InputStream inputStream = context.getContentResolver().openInputStream(pdfUri);
@@ -238,14 +233,6 @@ public class PDFParser {
             this.paragraphSpacing = 1.5f;  // 150% of line height
         }
 
-        public TextSettings(float fontSize, float letterSpacing, Paint.Align textAlignment, 
-                          float lineHeight, float paragraphSpacing) {
-            this.fontSize = fontSize;
-            this.letterSpacing = letterSpacing;
-            this.textAlignment = textAlignment;
-            this.lineHeight = lineHeight;
-            this.paragraphSpacing = paragraphSpacing;
-        }
     }
 
     public static class ParsedPage {

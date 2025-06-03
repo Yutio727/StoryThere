@@ -1,6 +1,5 @@
 package com.example.storythere;
 
-import android.content.Intent;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Bundle;
@@ -16,10 +15,13 @@ import android.view.WindowManager;
 import android.widget.HorizontalScrollView;
 import android.widget.ScrollView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -36,8 +38,6 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     private float scaleFactor = 1.0f;
     private float lastTouchX;
     private float lastTouchY;
-    private float posX = 0;
-    private float posY = 0;
     private List<PDFParser.ParsedPage> pages;
     private PDFParser.TextSettings currentSettings;
     private PDFParser pdfParser;
@@ -48,7 +48,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     private boolean isLoadingMore = false;
     private boolean isDestroyed = false;
     private boolean isFirstLoad = true;
-    private Handler scrollHandler = new Handler(Looper.getMainLooper());
+    private final Handler scrollHandler = new Handler(Looper.getMainLooper());
     private Runnable scrollRunnable;
     private int lastScrollY = 0;
 
@@ -67,7 +67,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         // Set up toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
 
         // Initialize views
         pdfView = findViewById(R.id.pdfView);
@@ -130,7 +130,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             }
 
             // Load first batch of pages
-            loadPageBatch(1, PAGE_LOAD_BATCH_SIZE);
+            loadPageBatch(1);
 
         } catch (Exception e) {
             Log.e(TAG, "Error initializing PDF: " + e.getMessage());
@@ -139,7 +139,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         }
     }
 
-    private void loadPageBatch(int startPage, int count) {
+    private void loadPageBatch(int startPage) {
         if (isLoadingMore || isDestroyed || startPage > totalPages) {
             return;
         }
@@ -151,7 +151,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 return;
             }
 
-            int endPage = Math.min(startPage + count - 1, totalPages);
+            int endPage = Math.min(startPage + PDFViewerActivity.PAGE_LOAD_BATCH_SIZE - 1, totalPages);
             List<PDFParser.ParsedPage> loadedPages = new ArrayList<>();
             
             for (int pageNum = startPage; pageNum <= endPage; pageNum++) {
@@ -176,7 +176,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                         // If this was the first load, start loading next batch
                         if (isFirstLoad) {
                             isFirstLoad = false;
-                            loadPageBatch(endPage + 1, PAGE_LOAD_BATCH_SIZE);
+                            loadPageBatch(endPage + 1);
                         }
                     }
                 });
@@ -199,24 +199,21 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         lastScrollY = scrollY;
         
         // Create new runnable for delayed scroll handling
-        scrollRunnable = new Runnable() {
-            @Override
-            public void run() {
-                // Check if we're near the bottom of the content
-                int scrollViewHeight = scrollView.getHeight();
-                int scrollViewChildHeight = scrollView.getChildAt(0).getHeight();
-                
-                // Calculate total scrollable distance
-                int totalScrollDistance = scrollViewChildHeight - scrollViewHeight;
-                if (totalScrollDistance <= 0) return;
-                
-                // Calculate how far we've scrolled as a percentage
-                float scrollPercentage = (float)lastScrollY / totalScrollDistance;
-                
-                // If we've scrolled more than 1%, load next batch
-                if (scrollPercentage >= SCROLL_THRESHOLD_PERCENT) {
-                    loadPageBatch(currentPage + 1, PAGE_LOAD_BATCH_SIZE);
-                }
+        scrollRunnable = () -> {
+            // Check if we're near the bottom of the content
+            int scrollViewHeight = scrollView.getHeight();
+            int scrollViewChildHeight = scrollView.getChildAt(0).getHeight();
+
+            // Calculate total scrollable distance
+            int totalScrollDistance = scrollViewChildHeight - scrollViewHeight;
+            if (totalScrollDistance <= 0) return;
+
+            // Calculate how far we've scrolled as a percentage
+            float scrollPercentage = (float)lastScrollY / totalScrollDistance;
+
+            // If we've scrolled more than 1%, load next batch
+            if (scrollPercentage >= SCROLL_THRESHOLD_PERCENT) {
+                loadPageBatch(currentPage + 1);
             }
         };
         
@@ -255,7 +252,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
 
     private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
         @Override
-        public boolean onScale(ScaleGestureDetector detector) {
+        public boolean onScale(@NonNull ScaleGestureDetector detector) {
             if (isDestroyed) return false;
             
             scaleFactor *= detector.getScaleFactor();
@@ -303,7 +300,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         // Reload all loaded pages with new settings
         for (int i = 0; i < pages.size(); i++) {
             if (pages.get(i) != null) {
-                loadPageBatch(i + 1, PAGE_LOAD_BATCH_SIZE);
+                loadPageBatch(i + 1);
             }
         }
     }

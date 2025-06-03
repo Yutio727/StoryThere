@@ -9,10 +9,10 @@ public class Book {
     @PrimaryKey(autoGenerate = true)
     private long id;
     
-    private String title;
-    private String author;
-    private String filePath;
-    private String fileType;
+    private final String title;
+    private final String author;
+    private final String filePath;
+    private final String fileType;
     private String annotation;
     private String previewImagePath;
     private Date lastOpened;
@@ -36,17 +36,13 @@ public class Book {
     public void setId(long id) { this.id = id; }
     
     public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
-    
+
     public String getAuthor() { return author; }
-    public void setAuthor(String author) { this.author = author; }
-    
+
     public String getFilePath() { return filePath; }
-    public void setFilePath(String filePath) { this.filePath = filePath; }
-    
+
     public String getFileType() { return fileType; }
-    public void setFileType(String fileType) { this.fileType = fileType; }
-    
+
     public String getAnnotation() { return annotation; }
     public void setAnnotation(String annotation) { this.annotation = annotation; }
     

@@ -19,11 +19,7 @@ public class BookRepository {
     public LiveData<List<Book>> getAllBooks() {
         return bookDao.getAllBooks();
     }
-    
-    public LiveData<Book> getBookById(long bookId) {
-        return bookDao.getBookById(bookId);
-    }
-    
+
     public LiveData<Book> getBookByPath(String filePath) {
         return bookDao.getBookByPath(filePath);
     }
@@ -39,14 +35,10 @@ public class BookRepository {
     }
     
     public void update(Book book) {
-        executorService.execute(() -> {
-            bookDao.update(book);
-        });
+        executorService.execute(() -> bookDao.update(book));
     }
     
     public void delete(Book book) {
-        executorService.execute(() -> {
-            bookDao.delete(book);
-        });
+        executorService.execute(() -> bookDao.delete(book));
     }
 } 

@@ -109,7 +109,20 @@ public class MainActivity extends AppCompatActivity {
         
         viewModel = new ViewModelProvider(this).get(BookListViewModel.class);
         viewModel.getAllBooks().observe(this, books -> {
-            allBooks = books;
+            // Check permissions for each book and remove invalid ones
+            List<Book> validBooks = new ArrayList<>();
+            for (Book book : books) {
+                try {
+                    Uri uri = Uri.parse(book.getFilePath());
+                    // Try to open the file
+                    getContentResolver().openInputStream(uri).close();
+                    validBooks.add(book);
+                } catch (Exception e) {
+                    // If file is not accessible, delete it from database
+                    viewModel.delete(book);
+                }
+            }
+            allBooks = validBooks;
             filterBooksByTab(currentTab);
         });
         

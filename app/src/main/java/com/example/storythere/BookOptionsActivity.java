@@ -28,6 +28,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import java.io.InputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 
 public class BookOptionsActivity extends AppCompatActivity {
     private RadioGroup readingModeGroup;
@@ -112,15 +113,54 @@ public class BookOptionsActivity extends AppCompatActivity {
             if (selectedButton != null) {
                 if (selectedButton.getId() == R.id.readButton) {
                     footerButton.setText("Start Reading");
-                    bookReadingTimeText.setText("10 pages");
+                    if ("pdf".equals(fileType)) {
+                        // For PDFs, show total pages
+                        try {
+                            PDFParser pdfParser = new PDFParser(this, contentUri);
+                            int totalPages = pdfParser.getPageCount();
+                            bookReadingTimeText.setText(totalPages + " pages");
+                            pdfParser.close();
+                        } catch (Exception e) {
+                            bookReadingTimeText.setText("");
+                        }
+                    } else {
+                        bookReadingTimeText.setText("10 pages");
+                    }
                 } else {
                     footerButton.setText("Start Listening");
                     // Calculate total listening time on the fly
                     if (contentUri != null) {
-                        TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
-                        int totalDuration = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
-                        String formattedTime = formatTime(totalDuration);
-                        bookReadingTimeText.setText(formattedTime);
+                        if ("pdf".equals(fileType)) {
+                            try {
+                                // Extract text from PDF
+                                PDFParser pdfParser = new PDFParser(this, contentUri);
+                                StringBuilder allText = new StringBuilder();
+                                int totalPages = pdfParser.getPageCount();
+                                
+                                // Extract text from all pages
+                                for (int i = 1; i <= totalPages; i++) {
+                                    PDFParser.ParsedPage page = pdfParser.parsePage(i, new PDFParser.TextSettings());
+                                    if (page != null && page.text != null) {
+                                        allText.append(page.text).append("\n");
+                                    }
+                                }
+                                pdfParser.close();
+                                
+                                // Calculate duration based on word count
+                                String text = allText.toString().trim();
+                                int totalDuration = text.isEmpty() ? 0 : text.split("\\s+").length;
+                                String formattedTime = formatTime(totalDuration);
+                                bookReadingTimeText.setText(formattedTime);
+                            } catch (Exception e) {
+                                Toast.makeText(this, "Error extracting text from PDF", Toast.LENGTH_SHORT).show();
+                                readingModeGroup.check(R.id.readButton);
+                            }
+                        } else {
+                            TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
+                            int totalDuration = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
+                            String formattedTime = formatTime(totalDuration);
+                            bookReadingTimeText.setText(formattedTime);
+                        }
                     } else {
                         bookReadingTimeText.setText("");
                     }
@@ -132,26 +172,72 @@ public class BookOptionsActivity extends AppCompatActivity {
         footerButton.setOnClickListener(v -> {
             int selectedId = readingModeGroup.getCheckedRadioButtonId();
             if (selectedId == R.id.readButton) {
-                // Open reader activity
-                Intent readerIntent = new Intent(this, ReaderActivity.class);
-                readerIntent.setData(contentUri);
-                readerIntent.putExtra("fileType", fileType);
-                readerIntent.putExtra("title", title);
-                startActivity(readerIntent);
-            } else {
-                // Parse text and detect language before opening audio reader
-                TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
-                // Open audio reader activity
-                Intent audioIntent = new Intent(this, AudioReaderActivity.class);
-                audioIntent.setData(contentUri);
-                audioIntent.putExtra("fileType", fileType);
-                audioIntent.putExtra("title", title);
-                audioIntent.putExtra("author", currentBook != null ? currentBook.getAuthor() : "Unknown Author");
-                audioIntent.putExtra("is_russian", parsedText.isRussian);
-                if (currentBook != null && currentBook.getPreviewImagePath() != null) {
-                    audioIntent.putExtra("previewImagePath", currentBook.getPreviewImagePath());
+                if ("pdf".equals(fileType)) {
+                    // Open PDF viewer activity
+                    Intent pdfIntent = new Intent(this, PDFViewerActivity.class);
+                    pdfIntent.setData(contentUri);
+                    startActivity(pdfIntent);
+                } else {
+                    // Open reader activity for other file types
+                    Intent readerIntent = new Intent(this, ReaderActivity.class);
+                    readerIntent.setData(contentUri);
+                    readerIntent.putExtra("fileType", fileType);
+                    readerIntent.putExtra("title", title);
+                    startActivity(readerIntent);
                 }
-                startActivity(audioIntent);
+            } else {
+                // Handle listening for both PDF and non-PDF files
+                try {
+                    Uri textUri;
+                    String textContent;
+                    boolean isRussian;
+                    
+                    if ("pdf".equals(fileType)) {
+                        // Extract text from PDF
+                        PDFParser pdfParser = new PDFParser(this, contentUri);
+                        StringBuilder allText = new StringBuilder();
+                        int totalPages = pdfParser.getPageCount();
+                        
+                        // Extract text from all pages
+                        for (int i = 1; i <= totalPages; i++) {
+                            PDFParser.ParsedPage page = pdfParser.parsePage(i, new PDFParser.TextSettings());
+                            if (page != null && page.text != null) {
+                                allText.append(page.text).append("\n");
+                            }
+                        }
+                        pdfParser.close();
+                        
+                        textContent = allText.toString();
+                        isRussian = TextParser.isTextPrimarilyRussian(textContent);
+                        
+                        // Save to temporary text file
+                        File tempFile = new File(getCacheDir(), "temp_pdf_text.txt");
+                        try (FileWriter writer = new FileWriter(tempFile)) {
+                            writer.write(textContent);
+                        }
+                        textUri = Uri.fromFile(tempFile);
+                    } else {
+                        // For non-PDF files, use the original file
+                        textUri = contentUri;
+                        TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
+                        textContent = parsedText.content;
+                        isRussian = parsedText.isRussian;
+                    }
+                    
+                    // Open audio reader with the text
+                    Intent audioIntent = new Intent(this, AudioReaderActivity.class);
+                    audioIntent.setData(textUri);
+                    audioIntent.putExtra("fileType", "txt");
+                    audioIntent.putExtra("title", title);
+                    audioIntent.putExtra("author", currentBook != null ? currentBook.getAuthor() : "Unknown Author");
+                    audioIntent.putExtra("is_russian", isRussian);
+                    if (currentBook != null && currentBook.getPreviewImagePath() != null) {
+                        audioIntent.putExtra("previewImagePath", currentBook.getPreviewImagePath());
+                    }
+                    startActivity(audioIntent);
+                } catch (Exception e) {
+                    Toast.makeText(this, "Error preparing text for listening", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
@@ -209,6 +295,15 @@ public class BookOptionsActivity extends AppCompatActivity {
                 .show();
             return true;
         });
+
+        // Enable audio button for PDFs
+        if ("pdf".equals(fileType)) {
+            RadioButton listenButton = findViewById(R.id.audioButton);
+            if (listenButton != null) {
+                listenButton.setEnabled(true);
+                listenButton.setAlpha(1.0f);
+            }
+        }
     }
 
     private void openImagePicker() {

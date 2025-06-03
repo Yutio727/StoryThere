@@ -38,7 +38,7 @@ public class TextParser {
         return new ParsedText(content, isRussian);
     }
     
-    private static boolean isTextPrimarilyRussian(String text) {
+    static boolean isTextPrimarilyRussian(String text) {
         if (text == null || text.isEmpty()) {
             return false;
         }

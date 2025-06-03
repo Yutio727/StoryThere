@@ -34,7 +34,6 @@ import com.google.android.material.tabs.TabLayout;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import com.example.storythere.TextParser;
 
 public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 1;
@@ -115,7 +114,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     Uri uri = Uri.parse(book.getFilePath());
                     // Try to open the file
-                    getContentResolver().openInputStream(uri).close();
+                    Objects.requireNonNull(getContentResolver().openInputStream(uri)).close();
                     validBooks.add(book);
                 } catch (Exception e) {
                     // If file is not accessible, delete it from database
@@ -144,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
-                currentTab = tab.getText().toString();
+                currentTab = Objects.requireNonNull(tab.getText()).toString();
                 filterBooksByTab(currentTab);
                 if (isSelectionMode) {
                     exitSelectionMode();
@@ -214,6 +213,7 @@ public class MainActivity extends AppCompatActivity {
     }
     
     // Helper to format time as mm:ss (copied from AudioReaderActivity)
+    @SuppressLint("DefaultLocale")
     private String formatTime(int seconds) {
         int minutes = seconds / 60;
         seconds = seconds % 60;
@@ -328,6 +328,7 @@ public class MainActivity extends AppCompatActivity {
         updateToolbarTitle(0);
     }
 
+    @SuppressLint("SetTextI18n")
     private void updateToolbarTitle(int selectedCount) {
         if (isSelectionMode) {
             toolbarTitle.setText(selectedCount + " selected");

@@ -84,15 +84,23 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         executorService = Executors.newFixedThreadPool(2);
         mainHandler = new Handler(Looper.getMainLooper());
 
-        // Get PDF URI from intent
-        Uri pdfUri = getIntent().getData();
-        if (pdfUri != null) {
-            Log.d(TAG, "Loading PDF from URI: " + pdfUri);
-            loadPDF(pdfUri);
+        // Get content from intent
+        Intent intent = getIntent();
+        String textContent = intent.getStringExtra("textContent");
+        if (textContent != null) {
+            Log.d(TAG, "Loading text content");
+            loadTextContent(textContent);
         } else {
-            Log.e(TAG, "No PDF URI provided");
-            Toast.makeText(this, "No PDF file provided", Toast.LENGTH_SHORT).show();
-            finish();
+            // Get PDF URI from intent
+            Uri pdfUri = intent.getData();
+            if (pdfUri != null) {
+                Log.d(TAG, "Loading PDF from URI: " + pdfUri);
+                loadPDF(pdfUri);
+            } else {
+                Log.e(TAG, "No content provided");
+                Toast.makeText(this, "No content provided", Toast.LENGTH_SHORT).show();
+                finish();
+            }
         }
     }
 
@@ -300,11 +308,65 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                   ", alignment: " + settings.textAlignment);
         
         currentSettings = settings;
-        // Reload all loaded pages with new settings
-        for (int i = 0; i < pages.size(); i++) {
-            if (pages.get(i) != null) {
-                loadPageBatch(i + 1, PAGE_LOAD_BATCH_SIZE);
+
+        // Check if we're displaying text content (no pdfParser)
+        if (pdfParser == null && pages != null && !pages.isEmpty()) {
+            // For text content, recreate the single page with new settings
+            PDFParser.ParsedPage page = pages.get(0);
+            PDFParser.ParsedPage newPage = new PDFParser.ParsedPage(
+                page.text,           // text
+                page.images,         // images
+                page.pageNumber,     // pageNumber
+                page.pageWidth,      // pageWidth
+                page.pageHeight,     // pageHeight
+                currentSettings      // new textSettings
+            );
+            pages.set(0, newPage);
+            pdfView.setPages(pages);
+        } else {
+            // For PDF content, reload all loaded pages with new settings
+            for (int i = 0; i < pages.size(); i++) {
+                if (pages.get(i) != null) {
+                    loadPageBatch(i + 1, PAGE_LOAD_BATCH_SIZE);
+                }
             }
+        }
+    }
+
+    private void loadTextContent(String textContent) {
+        try {
+            // Create default text settings
+            currentSettings = new PDFParser.TextSettings();
+            currentSettings.fontSize = 54.0f;
+            currentSettings.letterSpacing = 0.0f;
+            currentSettings.textAlignment = Paint.Align.LEFT;
+            currentSettings.lineHeight = 1.2f;
+            currentSettings.paragraphSpacing = 1.5f;
+
+            // Create a single page with the text content
+            List<PDFParser.ImageInfo> images = new ArrayList<>(); // No images for text files
+            PDFParser.ParsedPage page = new PDFParser.ParsedPage(
+                textContent,           // text
+                images,               // images
+                1,                    // pageNumber
+                612.0f,              // pageWidth (Standard US Letter width in points)
+                792.0f,              // pageHeight (Standard US Letter height in points)
+                currentSettings       // textSettings
+            );
+
+            // Initialize pages list with single page
+            pages = new ArrayList<>();
+            pages.add(page);
+            totalPages = 1;
+            currentPage = 1;
+
+            // Display the page
+            pdfView.setPages(pages);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing text content: " + e.getMessage());
+            Toast.makeText(this, "Failed to load text content", Toast.LENGTH_SHORT).show();
+            finish();
         }
     }
 } 

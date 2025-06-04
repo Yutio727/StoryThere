@@ -111,7 +111,8 @@ public class PDFView extends View {
             // Apply text settings
             textPaint.setTextSize(defaultSettings.fontSize);
             textPaint.setLetterSpacing(defaultSettings.letterSpacing);
-            textPaint.setTextAlign(defaultSettings.textAlignment);
+            // Don't set text alignment on textPaint as it's handled by StaticLayout
+            textPaint.setTextAlign(Paint.Align.LEFT);
             
             // Clear caches when pages change
             layoutCache.evictAll();

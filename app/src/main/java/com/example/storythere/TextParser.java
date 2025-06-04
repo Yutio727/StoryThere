@@ -26,16 +26,44 @@ public class TextParser {
              BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                text.append(line).append(" ");
+                text.append(line).append("\n");
             }
         } catch (Exception e) {
             e.printStackTrace();
             return new ParsedText("", false);
         }
 
-        String content = text.toString();
+        String content = cleanText(text.toString());
         boolean isRussian = isTextPrimarilyRussian(content);
         return new ParsedText(content, isRussian);
+    }
+
+    private static String cleanText(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+
+        // Only remove null bytes and replacement characters
+        text = text.replace("\u0000", "")
+                  .replace("\uFFFD", "");
+        
+        // Normalize line endings
+        text = text.replace("\r\n", "\n").replace("\r", "\n");
+        
+        // Remove multiple consecutive line breaks (keep at most 2)
+        text = text.replaceAll("\n{3,}", "\n\n");
+        
+        // Clean up each line while preserving internal spacing
+        String[] lines = text.split("\n");
+        StringBuilder cleaned = new StringBuilder();
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (!trimmed.isEmpty()) {
+                cleaned.append(trimmed).append("\n");
+            }
+        }
+        
+        return cleaned.toString().trim();
     }
 
     static boolean isTextPrimarilyRussian(String text) {

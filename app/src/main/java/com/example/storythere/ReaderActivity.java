@@ -94,22 +94,38 @@ public class ReaderActivity extends AppCompatActivity {
                 case "pdf":
                     Log.d(TAG, "Opening PDF file");
                     try {
-                        Intent intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setDataAndType(uri, "application/pdf");
-                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        Intent intent = new Intent(this, PDFViewerActivity.class);
+                        intent.setData(uri);
                         startActivity(intent);
-                        finish(); // Close the reader activity since we're using external viewer
+                        finish(); // Close the reader activity since we're using PDFViewerActivity
                     } catch (Exception e) {
                         Log.e(TAG, "Error opening PDF: " + e.getMessage(), e);
-                        Toast.makeText(this, "Error opening PDF. Please install a PDF viewer app.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, "Error opening PDF.", Toast.LENGTH_LONG).show();
                         finish();
                     }
                     break;
                     
                 case "txt":
+                    Log.d(TAG, "Reading text file");
+                    try {
+                        // Parse the text file using TextParser
+                        TextParser.ParsedText parsedText = TextParser.parseText(this, uri);
+                        
+                        // Launch PDFViewerActivity with the parsed text
+                        Intent intent = new Intent(this, PDFViewerActivity.class);
+                        intent.putExtra("textContent", parsedText.content);
+                        startActivity(intent);
+                        finish(); // Close the reader activity
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error parsing text file: " + e.getMessage(), e);
+                        Toast.makeText(this, "Error reading text file", Toast.LENGTH_LONG).show();
+                        finish();
+                    }
+                    break;
+                    
                 case "html":
                 case "md":
-                    Log.d(TAG, "Reading text file");
+                    Log.d(TAG, "Reading HTML/MD file");
                     webView.setVisibility(View.VISIBLE);
                     
                     try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
@@ -120,12 +136,9 @@ public class ReaderActivity extends AppCompatActivity {
                             
                             while ((line = reader.readLine()) != null) {
                                 stringBuilder.append(line).append("<br>");
-                                // Add logging to show text content in terminal
-                                Log.d(TAG, "Text content: " + line);
                             }
                             
                             String content = stringBuilder.toString();
-                            Log.d(TAG, "Full text content: " + content);
                             String textViewerHtml = "<html><body style='padding: 20px; font-size: 16px; line-height: 1.6;'>" + content + "</body></html>";
                             webView.loadData(textViewerHtml, "text/html", "UTF-8");
                         } else {

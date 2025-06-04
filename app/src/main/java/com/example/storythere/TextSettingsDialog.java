@@ -17,6 +17,7 @@ public class TextSettingsDialog extends DialogFragment {
     private static final String TAG = "TextSettingsDialog";
     private TextSettingsListener listener;
     private PDFParser.TextSettings currentSettings;
+    private PDFParser.TextSettings defaultSettings;
     private SeekBar fontSizeSeekBar;
     private SeekBar letterSpacingSeekBar;
     private SeekBar lineHeightSeekBar;
@@ -34,6 +35,7 @@ public class TextSettingsDialog extends DialogFragment {
     public static TextSettingsDialog newInstance(PDFParser.TextSettings settings) {
         TextSettingsDialog dialog = new TextSettingsDialog();
         dialog.currentSettings = settings;
+        dialog.defaultSettings = new PDFParser.TextSettings(); // Create default settings
         return dialog;
     }
 
@@ -173,6 +175,11 @@ public class TextSettingsDialog extends DialogFragment {
                              ", alignment: " + currentSettings.textAlignment);
                    listener.onSettingsChanged(currentSettings);
                })
+               .setNeutralButton("Default", (dialog, which) -> {
+                   resetToDefaults();
+                   // Apply the reset settings immediately
+                   listener.onSettingsChanged(currentSettings);
+               })
                .setNegativeButton("Cancel", null);
 
         return builder.create();
@@ -180,5 +187,33 @@ public class TextSettingsDialog extends DialogFragment {
 
     private void updateValueDisplay(TextView textView, float value) {
         textView.setText(String.format("%.1f", value));
+    }
+
+    private void resetToDefaults() {
+        // Reset current settings to defaults
+        currentSettings.fontSize = 54.0f;
+        currentSettings.letterSpacing = 0.0f;
+        currentSettings.lineHeight = 1.2f;
+        currentSettings.paragraphSpacing = 1.5f;
+        currentSettings.textAlignment = Paint.Align.LEFT;
+
+        // Update UI
+        fontSizeSeekBar.setProgress((int) ((currentSettings.fontSize - 32) * 2));
+        letterSpacingSeekBar.setProgress((int) (currentSettings.letterSpacing * 10));
+        lineHeightSeekBar.setProgress((int) ((currentSettings.lineHeight - 1) * 20));
+        paragraphSpacingSeekBar.setProgress((int) ((currentSettings.paragraphSpacing - 1) * 20));
+
+        // Update value displays
+        updateValueDisplay(fontSizeValue, currentSettings.fontSize);
+        updateValueDisplay(letterSpacingValue, currentSettings.letterSpacing);
+        updateValueDisplay(lineHeightValue, currentSettings.lineHeight);
+        updateValueDisplay(paragraphSpacingValue, currentSettings.paragraphSpacing);
+
+        // Update alignment
+        alignmentGroup.check(R.id.alignLeft);
+
+        Log.d(TAG, "Reset to defaults - fontSize: " + currentSettings.fontSize + 
+                  ", letterSpacing: " + currentSettings.letterSpacing + 
+                  ", alignment: " + currentSettings.textAlignment);
     }
 } 

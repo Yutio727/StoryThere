@@ -11,12 +11,10 @@ import android.widget.FrameLayout;
 
 public class ZoomLayout extends FrameLayout {
     private ScaleGestureDetector scaleDetector;
-    private Matrix matrix = new Matrix();
+    private final Matrix matrix = new Matrix();
     private float scale = 1f;
-    private float maxScale = 5f;
-    private float minScale = 0.5f;
-    private PointF last = new PointF();
-    private PointF start = new PointF();
+    private final PointF last = new PointF();
+    private final PointF start = new PointF();
 
     public ZoomLayout(Context context) {
         super(context);
@@ -73,6 +71,8 @@ public class ZoomLayout extends FrameLayout {
         @Override
         public boolean onScale(ScaleGestureDetector detector) {
             scale *= detector.getScaleFactor();
+            float maxScale = 5f;
+            float minScale = 0.5f;
             scale = Math.max(minScale, Math.min(scale, maxScale));
             matrix.setScale(scale, scale, detector.getFocusX(), detector.getFocusY());
             fixTrans();

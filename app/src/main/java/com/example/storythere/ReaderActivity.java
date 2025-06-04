@@ -21,7 +21,6 @@ public class ReaderActivity extends AppCompatActivity {
     private static final String TAG = "ReaderActivity";
     private WebView webView;
     private ProgressBar progressBar;
-    private Uri contentUri;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -44,7 +43,7 @@ public class ReaderActivity extends AppCompatActivity {
             // Get the book URI from the intent
             Intent intent = getIntent();
             if (intent != null && intent.getData() != null) {
-                contentUri = intent.getData();
+                Uri contentUri = intent.getData();
                 String fileType = intent.getStringExtra("fileType");
                 String title = intent.getStringExtra("title");
                 

@@ -64,7 +64,7 @@ public class BookOptionsActivity extends AppCompatActivity {
             contentUri = intent.getData();
             fileType = intent.getStringExtra("fileType");
             title = intent.getStringExtra("title");
-            
+
             if (title != null && getSupportActionBar() != null) {
                 getSupportActionBar().setTitle(title);
             }
@@ -92,9 +92,9 @@ public class BookOptionsActivity extends AppCompatActivity {
                         bookAuthorText.setText(book.getAuthor() != null ? book.getAuthor() : "Unknown Author");
                         if (book.getPreviewImagePath() != null) {
                             Glide.with(BookOptionsActivity.this)
-                                .load(book.getPreviewImagePath())
-                                .placeholder(R.drawable.ic_book_placeholder)
-                                .into(bookCoverImage);
+                                    .load(book.getPreviewImagePath())
+                                    .placeholder(R.drawable.ic_book_placeholder)
+                                    .into(bookCoverImage);
                         }
                         // Display time of reading/listening if available (assume annotation for now)
                         if (book.getAnnotation() != null && !book.getAnnotation().isEmpty()) {
@@ -136,7 +136,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                                 PDFParser pdfParser = new PDFParser(this, contentUri);
                                 StringBuilder allText = new StringBuilder();
                                 int totalPages = pdfParser.getPageCount();
-                                
+
                                 // Extract text from all pages
                                 for (int i = 1; i <= totalPages; i++) {
                                     PDFParser.ParsedPage page = pdfParser.parsePage(i, new PDFParser.TextSettings());
@@ -145,7 +145,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                                     }
                                 }
                                 pdfParser.close();
-                                
+
                                 // Calculate duration based on word count
                                 String text = allText.toString().trim();
                                 int totalDuration = text.isEmpty() ? 0 : text.split("\\s+").length;
@@ -191,13 +191,13 @@ public class BookOptionsActivity extends AppCompatActivity {
                     Uri textUri;
                     String textContent;
                     boolean isRussian;
-                    
+
                     if ("pdf".equals(fileType)) {
                         // Extract text from PDF
                         PDFParser pdfParser = new PDFParser(this, contentUri);
                         StringBuilder allText = new StringBuilder();
                         int totalPages = pdfParser.getPageCount();
-                        
+
                         // Extract text from all pages
                         for (int i = 1; i <= totalPages; i++) {
                             PDFParser.ParsedPage page = pdfParser.parsePage(i, new PDFParser.TextSettings());
@@ -206,10 +206,10 @@ public class BookOptionsActivity extends AppCompatActivity {
                             }
                         }
                         pdfParser.close();
-                        
+
                         textContent = allText.toString();
                         isRussian = TextParser.isTextPrimarilyRussian(textContent);
-                        
+
                         // Save to temporary text file
                         File tempFile = new File(getCacheDir(), "temp_pdf_text.txt");
                         try (FileWriter writer = new FileWriter(tempFile)) {
@@ -223,7 +223,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                         textContent = parsedText.content;
                         isRussian = parsedText.isRussian;
                     }
-                    
+
                     // Open audio reader with the text
                     Intent audioIntent = new Intent(this, AudioReaderActivity.class);
                     audioIntent.setData(textUri);
@@ -243,33 +243,33 @@ public class BookOptionsActivity extends AppCompatActivity {
 
         // Register image picker launcher
         imagePickerLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                    Uri imageUri = result.getData().getData();
-                    if (imageUri != null) {
-                        try (InputStream inputStream = getContentResolver().openInputStream(imageUri)) {
-                            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                            if (currentBook != null) {
-                                // Save bitmap to app private storage as covers/{bookId}.jpg
-                                File coversDir = new File(getFilesDir(), "covers");
-                                if (!coversDir.exists()) coversDir.mkdirs();
-                                File coverFile = new File(coversDir, currentBook.getId() + ".jpg");
-                                try (FileOutputStream out = new FileOutputStream(coverFile)) {
-                                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                        Uri imageUri = result.getData().getData();
+                        if (imageUri != null) {
+                            try (InputStream inputStream = getContentResolver().openInputStream(imageUri)) {
+                                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                                if (currentBook != null) {
+                                    // Save bitmap to app private storage as covers/{bookId}.jpg
+                                    File coversDir = new File(getFilesDir(), "covers");
+                                    if (!coversDir.exists()) coversDir.mkdirs();
+                                    File coverFile = new File(coversDir, currentBook.getId() + ".jpg");
+                                    try (FileOutputStream out = new FileOutputStream(coverFile)) {
+                                        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
+                                    }
+                                    // Update previewImagePath to internal file path
+                                    currentBook.setPreviewImagePath(coverFile.getAbsolutePath());
+                                    bookRepository.update(currentBook);
+                                    // Show the new cover
+                                    bookCoverImage.setImageBitmap(bitmap);
                                 }
-                                // Update previewImagePath to internal file path
-                                currentBook.setPreviewImagePath(coverFile.getAbsolutePath());
-                                bookRepository.update(currentBook);
-                                // Show the new cover
-                                bookCoverImage.setImageBitmap(bitmap);
+                            } catch (Exception e) {
+                                Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
                             }
-                        } catch (Exception e) {
-                            Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
                         }
                     }
                 }
-            }
         );
 
         // When displaying the cover, use the file if it exists, otherwise show the standard cover
@@ -288,11 +288,11 @@ public class BookOptionsActivity extends AppCompatActivity {
         // Set long click listener on book cover
         bookCoverImage.setOnLongClickListener(v -> {
             new AlertDialog.Builder(this)
-                .setTitle("Change cover image")
-                .setMessage("Choose new cover from your photos")
-                .setPositiveButton("Choose", (dialog, which) -> openImagePicker())
-                .setNegativeButton("Cancel", null)
-                .show();
+                    .setTitle("Change cover image")
+                    .setMessage("Choose new cover from your photos")
+                    .setPositiveButton("Choose", (dialog, which) -> openImagePicker())
+                    .setNegativeButton("Cancel", null)
+                    .show();
             return true;
         });
 

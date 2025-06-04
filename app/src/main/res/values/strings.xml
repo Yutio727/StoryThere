@@ -17,7 +17,8 @@
     <string name="choose_how_you_want_to_enjoy_this_book">Choose how you want to enjoy this book:</string>
     <string name="read">Read</string>
     <string name="listen">Listen</string>
-    <string name="start_reading">Start Reading</string>
+    <string name="start_reading">Start reading</string>
+    <string name="start_listening">Start listening</string>
     <string name="playback_speed">Playback Speed</string>
     <string name="add_to_favourite">Add to Favourite</string>
     <string name="choose_voice">Choose Voice</string>

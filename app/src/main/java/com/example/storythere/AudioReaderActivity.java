@@ -8,6 +8,7 @@ import android.os.LocaleList;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
+import android.text.Html;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -40,8 +41,9 @@ public class AudioReaderActivity extends AppCompatActivity {
     private static final String TAG = "AudioReaderActivity";
     private static final int MAX_CHUNK_SIZE = 200; // Maximum words per chunk
     private static final int CHUNK_OVERLAP = 20; // Number of words to overlap between chunks
-    private static final int SYNC_INTERVAL = 2000; // Sync every 2 seconds
-    private static final int QUEUE_AHEAD_THRESHOLD = 50; // Queue next chunk when this many words are left
+    private static final int SYNC_INTERVAL = 50; // Reduced from 100ms to 50ms for smoother updates
+    private static final int QUEUE_AHEAD_THRESHOLD = 50;
+    private static final float POSITION_UPDATE_FACTOR = 0.1f; // Reduced from 0.5f to make updates more frequent
     private TextToSpeech textToSpeech;
     private String textContent;
     private boolean isPlaying = false;
@@ -97,6 +99,10 @@ public class AudioReaderActivity extends AppCompatActivity {
             String previewImagePath = intent.getStringExtra("previewImagePath");
             
             if (title != null && getSupportActionBar() != null) {
+                // Remove file extension from title
+                if (title.contains(".")) {
+                    title = title.substring(0, title.lastIndexOf('.'));
+                }
                 getSupportActionBar().setTitle(title);
             }
             
@@ -156,9 +162,6 @@ public class AudioReaderActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.action_voice) {
             showVoiceSelectionDialog();
-            return true;
-        } else if (id == R.id.action_book_info) {
-            // TODO: Implement book info page
             return true;
         } else if (id == R.id.action_show_text) {
             toggleTextDisplay();
@@ -232,29 +235,13 @@ public class AudioReaderActivity extends AppCompatActivity {
         Set<Voice> allVoices = textToSpeech.getVoices();
         List<Voice> filteredVoices = new ArrayList<>();
         
-        // Determine which language to show based on the current text
-        String targetLanguage = isTextPrimarilyRussian(textContent) ? "ru" : "en";
-        
-        // Filter voices by language and quality, and limit to 3 voices
-        int count = 0;
+        // Add only the three specific Russian voices
         for (Voice voice : allVoices) {
-            if (voice.getLocale().getLanguage().equals(targetLanguage) && 
-                voice.getQuality() == Voice.QUALITY_HIGH) {
+            String voiceName = voice.getName();
+            if (voiceName.equals("ru-ru-x-ruc-local") || 
+                voiceName.equals("ru-ru-x-ruf-local") || 
+                voiceName.equals("ru-ru-x-rud-network")) {
                 filteredVoices.add(voice);
-                count++;
-                if (count >= 3) break; // Only take the first 3 voices
-            }
-        }
-        
-        // If we don't have enough high-quality voices, add some medium quality ones
-        if (count < 3) {
-            for (Voice voice : allVoices) {
-                if (voice.getLocale().getLanguage().equals(targetLanguage) && 
-                    voice.getQuality() != Voice.QUALITY_HIGH) {
-                    filteredVoices.add(voice);
-                    count++;
-                    if (count >= 3) break;
-                }
             }
         }
         
@@ -344,16 +331,12 @@ public class AudioReaderActivity extends AppCompatActivity {
                 
                 // Set up utterance progress listener
                 textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                    private int wordCount = 0;
+                    
                     @Override
                     public void onStart(String utteranceId) {
                         Log.d(TAG, "TTS started for utterance: " + utteranceId);
-                        runOnUiThread(() -> {
-                            playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
-                            isPlaying = true;
-                            if (isShowingText) {
-                                updateCurrentWords();
-                            }
-                        });
+                        wordCount = 0;
                     }
                     
                     @Override
@@ -370,15 +353,33 @@ public class AudioReaderActivity extends AppCompatActivity {
                                 if (currentPosition >= words.length - 1) {
                                     // We've reached the end
                                     playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+                                    // Adjust padding for the play icon
+                                    int padding = (int) (getResources().getDisplayMetrics().density * 3); // 3dp
+                                    playPauseButton.setPadding(padding, 0, 0, 0);
                                     isPlaying = false;
                                     currentPosition = 0;
+                                } else {
+                                     // For chunks, ensure the button is still showing pause if playing
+                                     if (isPlaying) {
+                                         playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
+                                         playPauseButton.setPadding(0, 0, 0, 0);
+                                     }
                                 }
                             } else {
                                 // Handle main utterance completion
                                 if (currentPosition >= words.length - 1) {
                                     playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+                                     // Adjust padding for the play icon
+                                    int padding = (int) (getResources().getDisplayMetrics().density * 3); // 3dp
+                                    playPauseButton.setPadding(padding, 0, 0, 0);
                                     isPlaying = false;
                                     currentPosition = 0;
+                                } else {
+                                    // If not the end, ensure button shows pause
+                                    if (isPlaying) {
+                                        playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
+                                        playPauseButton.setPadding(0, 0, 0, 0);
+                                    }
                                 }
                             }
                             updateProgressBar();
@@ -415,8 +416,11 @@ public class AudioReaderActivity extends AppCompatActivity {
         
         rewindButton.setOnClickListener(v -> {
             if (textToSpeech != null) {
-                textToSpeech.stop();
-                currentPosition = Math.max(0, currentPosition - 10);
+                stopReading();
+                // Skip back 5 seconds worth of words
+                float wordsPerSecond = currentSpeed * 2.0f; // Approximate words per second
+                int skipWords = (int)(5 * wordsPerSecond);
+                currentPosition = Math.max(0, currentPosition - skipWords);
                 updateProgressBar();
                 startReading();
             }
@@ -424,8 +428,12 @@ public class AudioReaderActivity extends AppCompatActivity {
         
         forwardButton.setOnClickListener(v -> {
             if (textToSpeech != null) {
-                textToSpeech.stop();
-                currentPosition = Math.min(totalDuration, currentPosition + 10);
+                stopReading();
+                // Skip forward 5 seconds worth of words
+                float wordsPerSecond = currentSpeed * 2.0f; // Approximate words per second
+                int skipWords = (int)(5 * wordsPerSecond);
+                String[] words = textContent.split("\\s+");
+                currentPosition = Math.min(words.length - 1, currentPosition + skipWords);
                 updateProgressBar();
                 startReading();
             }
@@ -464,19 +472,36 @@ public class AudioReaderActivity extends AppCompatActivity {
         if (isPlaying) {
             Log.d(TAG, "Stopping playback");
             stopReading();
+            // Immediately set button to play state
+            playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+            // Adjust padding for the play icon when stopping
+            int padding = (int) (getResources().getDisplayMetrics().density * 3); // 3dp
+            playPauseButton.setPadding(padding, 0, 0, 0);
+            isPlaying = false; // Update state immediately
         } else {
             Log.d(TAG, "Starting playback");
             startReading();
+            // Immediately set button to pause state
+            playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
+             // Adjust padding for the pause icon when starting
+            playPauseButton.setPadding(0, 0, 0, 0);
+            isPlaying = true; // Update state immediately
         }
     }
     
     private void startReading() {
         if (textToSpeech != null && isTTSReady) {
+            // Reset any existing progress updates
+            if (updateProgressRunnable != null) {
+                handler.removeCallbacks(updateProgressRunnable);
+                updateProgressRunnable = null;
+            }
+
             Bundle params = new Bundle();
             params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "messageID");
             
             String[] words = textContent.split("\\s+");
-            int startWord = Math.min(currentPosition, words.length - 1);
+            int startWord = Math.min((int)currentPosition, words.length - 1);
             StringBuilder remainingText = new StringBuilder();
             
             // Take a larger chunk of text for TTS
@@ -495,6 +520,9 @@ public class AudioReaderActivity extends AppCompatActivity {
                 try {
                     // Stop any ongoing speech first
                     textToSpeech.stop();
+                    
+                    // Reset position tracking
+                    currentPosition = startWord;
                     
                     // Add a small delay before starting new speech
                     handler.postDelayed(() -> {
@@ -561,24 +589,42 @@ public class AudioReaderActivity extends AppCompatActivity {
     
     private void startProgressUpdate() {
         updateProgressRunnable = new Runnable() {
+            private long startTime = System.currentTimeMillis();
+            private int initialPosition = (int)currentPosition;
+            private int lastUpdatePosition = initialPosition;
+            
             @Override
             public void run() {
                 if (isPlaying) {
-                    // Update position based on speech rate
-                    int increment = Math.max(1, (int)(currentSpeed * 2)); // Adjust increment based on speed
-                    currentPosition += increment;
-                    updateProgressBar();
-                    if (isShowingText) {
-                        updateCurrentWords();
+                    // Calculate position based on elapsed time and speech rate
+                    long elapsedTime = System.currentTimeMillis() - startTime;
+                    float wordsPerSecond = currentSpeed * 2.0f; // Approximate words per second
+                    float newPosition = initialPosition + (elapsedTime * wordsPerSecond / 1000.0f);
+                    
+                    // Ensure we don't exceed the total duration
+                    String[] words = textContent.split("\\s+");
+                    if (newPosition >= words.length) {
+                        newPosition = words.length - 1;
+                        stopReading();
+                        return;
+                    }
+                    
+                    // Only update if we've moved to a new position
+                    int currentPos = (int)newPosition;
+                    if (currentPos != lastUpdatePosition) {
+                        synchronized (this) {
+                            currentPosition = currentPos;
+                            lastUpdatePosition = currentPos;
+                            updateProgressBar();
+                        }
                     }
                     
                     // Check if we need to queue next chunk
-                    String[] words = textContent.split("\\s+");
-                    int wordsLeft = words.length - currentPosition;
+                    int wordsLeft = words.length - currentPos;
                     
-                    if (wordsLeft <= QUEUE_AHEAD_THRESHOLD && currentPosition < words.length - 1) {
+                    if (wordsLeft <= QUEUE_AHEAD_THRESHOLD && currentPos < words.length - 1) {
                         // Queue next chunk if we're running low on words
-                        queueNextChunk(currentPosition + 1);
+                        queueNextChunk(currentPos + 1);
                     }
                     
                     handler.postDelayed(this, SYNC_INTERVAL);
@@ -596,8 +642,8 @@ public class AudioReaderActivity extends AppCompatActivity {
     
     private void updateProgressBar() {
         runOnUiThread(() -> {
-            progressBar.setProgress(currentPosition);
-            currentTimeText.setText(formatTime(currentPosition));
+            progressBar.setProgress((int)currentPosition);
+            currentTimeText.setText(formatTime((int)currentPosition));
             if (isShowingText) {
                 updateCurrentWords();
             }
@@ -651,19 +697,25 @@ public class AudioReaderActivity extends AppCompatActivity {
         if (!isShowingText) return;
         
         String[] words = textContent.split("\\s+");
-        int startWord = Math.max(0, currentPosition);
-        int endWord = Math.min(words.length, currentPosition + 3); // Show 3 words ahead
+        int currentPos = (int)currentPosition;
+        int startWord = Math.max(0, currentPos - 2); // Show 2 words before current position
+        int endWord = Math.min(words.length, startWord + 7); // Show 7 words total (2 before + current + 4 after)
         
         StringBuilder currentWords = new StringBuilder();
         for (int i = startWord; i < endWord; i++) {
             if (!words[i].trim().isEmpty() && isValidWord(words[i])) {
-                currentWords.append(words[i]).append(" ");
+                // Highlight the current word
+                if (i == currentPos) {
+                    currentWords.append("<b>").append(words[i]).append("</b> ");
+                } else {
+                    currentWords.append(words[i]).append(" ");
+                }
             }
         }
         
         String displayText = currentWords.toString().trim();
-        Log.d(TAG, "Current words at position " + currentPosition + ": [" + displayText + "]");
-        currentWordsText.setText(displayText);
+        Log.d(TAG, "Current words at position " + currentPos + ": [" + displayText + "]");
+        currentWordsText.setText(Html.fromHtml(displayText, Html.FROM_HTML_MODE_LEGACY));
     }
     
     private void startPreloading() {
@@ -724,6 +776,18 @@ public class AudioReaderActivity extends AppCompatActivity {
             textToSpeech.stop();
             isPlaying = false;
             stopProgressUpdate();
+            // Reset position tracking
+            if (updateProgressRunnable != null) {
+                handler.removeCallbacks(updateProgressRunnable);
+                updateProgressRunnable = null;
+            }
+            // Ensure position is updated one last time
+            updateProgressBar();
+            // Set the button to play state
+            playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+            // Adjust padding for the play icon when stopping
+            int padding = (int) (getResources().getDisplayMetrics().density * 3); // 3dp
+            playPauseButton.setPadding(padding, 0, 0, 0);
         }
     }
     

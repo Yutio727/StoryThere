@@ -3,9 +3,24 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
+    android:orientation="horizontal"
     android:padding="16dp"
+    android:gravity="center_vertical"
     android:background="?attr/selectableItemBackground">
+
+    <FrameLayout
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/circle_white_background">
+
+        <ImageView
+            android:id="@+id/voiceIcon"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:scaleType="centerInside"/>
+    </FrameLayout>
 
     <TextView
         android:id="@+id/voiceName"
@@ -13,7 +28,8 @@
         android:layout_height="wrap_content"
         android:textSize="16sp"
         android:textColor="@color/text_black"
-        android:fontFamily="@font/montserrat"/>
+        android:fontFamily="@font/montserrat"
+        android:gravity="center_vertical"/>
 
     <TextView
         android:id="@+id/voiceDetails"
@@ -22,6 +38,6 @@
         android:textSize="14sp"
         android:textColor="@color/text_black"
         android:fontFamily="@font/montserrat"
-        android:layout_marginTop="4dp"/>
+        android:visibility="gone"/>
 
 </LinearLayout> 

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:clipToPadding="true"
@@ -11,11 +12,10 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/teal_200"
+        android:background="?android:attr/colorBackground"
         android:elevation="4dp"
-        android:theme="@style/ThemeOverlay.AppCompat.Light"
         app:layout_constraintTop_toTopOf="parent"
-        app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+        />
 
     <!-- Book Info Section -->
     <LinearLayout
@@ -46,7 +46,8 @@
             android:textSize="16sp"
             android:textStyle="bold"
             android:layout_marginTop="16dp"
-            android:gravity="center_horizontal" />
+            android:gravity="center_horizontal"
+            android:fontFamily="@font/montserrat"/>
 
         <TextView
             android:id="@+id/bookReadingTimeText"
@@ -55,7 +56,8 @@
             android:text="Time of reading: --"
             android:textSize="14sp"
             android:layout_marginTop="8dp"
-            android:gravity="center_horizontal" />
+            android:gravity="center_horizontal"
+            android:fontFamily="@font/montserrat"/>
     </LinearLayout>
 
     <LinearLayout
@@ -63,49 +65,71 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp"
-        app:layout_constraintTop_toBottomOf="@id/bookInfoSection"
-        app:layout_constraintBottom_toTopOf="@id/footerButton">
+        app:layout_constraintBottom_toTopOf="@id/footerButton"
+        app:layout_constraintTop_toBottomOf="@+id/bookInfoSection"
+        app:layout_constraintVertical_bias="0.0"
+        tools:layout_editor_absoluteX="0dp">
 
-        <TextView
+        <LinearLayout
+            android:id="@+id/readingModeButtons"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/choose_how_you_want_to_enjoy_this_book"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="24dp"/>
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:orientation="horizontal">
 
-        <RadioGroup
-            android:id="@+id/readingModeGroup"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <RadioButton
-                android:id="@+id/readButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReadMode"
+                style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                android:layout_width="0dp"
+                android:layout_height="60dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/progress_blue"
                 android:text="@string/read"
-                android:textSize="16sp"
-                android:padding="16dp"
-                android:checked="true"/>
+                android:textColor="@color/white"
+                app:cornerRadius="12dp"
+                app:icon="@drawable/book_icon"
+                app:iconPadding="8dp"
+                app:iconSize="20dp"
+                app:iconTint="@color/white"
+                android:fontFamily="@font/montserrat"
+                android:textAllCaps="false"
+                android:stateListAnimator="@null" />
 
-            <RadioButton
-                android:id="@+id/audioButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnListenMode"
+                style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                android:layout_width="0dp"
+                android:layout_height="60dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/background_blue"
                 android:text="@string/listen"
-                android:textSize="16sp"
-                android:padding="16dp"/>
-
-        </RadioGroup>
+                android:textColor="@color/text_black"
+                app:cornerRadius="12dp"
+                app:icon="@drawable/headhones_icon"
+                app:iconPadding="8dp"
+                app:iconSize="20dp"
+                app:iconTint="@color/text_black"
+                android:fontFamily="@font/montserrat"
+                android:textAllCaps="false"
+                android:stateListAnimator="@null" />
+        </LinearLayout>
     </LinearLayout>
 
     <Button
         android:id="@+id/footerButton"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="60dp"
         android:text="@string/start_reading"
-        android:layout_margin="16dp"
-        app:layout_constraintBottom_toBottomOf="parent"/>
+        android:layout_margin="18dp"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:backgroundTint="@color/progress_blue"
+        app:cornerRadius="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:fontFamily="@font/montserrat"
+        android:textAllCaps="false"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout> 

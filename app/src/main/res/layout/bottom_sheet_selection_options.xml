@@ -16,6 +16,7 @@
         android:padding="16dp"
         android:text="@string/delete"
         android:textSize="16sp"
+        android:fontFamily="@font/montserrat"
         app:drawableStartCompat="@android:drawable/ic_menu_delete" />
 
     <TextView
@@ -27,6 +28,7 @@
         android:padding="16dp"
         android:text="@string/add_to_favourite"
         android:textSize="16sp"
+        android:fontFamily="@font/montserrat"
         app:drawableStartCompat="@android:drawable/btn_star_big_on" />
 
 </LinearLayout> 

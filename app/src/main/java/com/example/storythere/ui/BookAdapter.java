@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.storythere.R;
 import com.example.storythere.data.Book;
+import com.example.storythere.TextParser;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,7 +49,23 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
         Book book = books.get(position);
         holder.titleTextView.setText(book.getTitle());
         holder.authorTextView.setText(book.getAuthor());
-        holder.annotationTextView.setText(book.getAnnotation());
+        
+        // Calculate word count and update annotation
+        try {
+            if ("pdf".equals(book.getFileType())) {
+                // For PDFs, show total pages
+                holder.annotationTextView.setText("len: " + book.getCurrentPage() + " pages");
+            } else {
+                // For text files, show word count
+                TextParser.ParsedText parsedText = TextParser.parseText(holder.itemView.getContext(), 
+                    android.net.Uri.parse(book.getFilePath()));
+                int wordCount = parsedText.content.trim().isEmpty() ? 0 : 
+                    parsedText.content.trim().split("\\s+").length;
+                holder.annotationTextView.setText("len: " + wordCount + " words");
+            }
+        } catch (Exception e) {
+            holder.annotationTextView.setText("");
+        }
         
         if (book.getPreviewImagePath() != null) {
             Glide.with(holder.itemView.getContext())

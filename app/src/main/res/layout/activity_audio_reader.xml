@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="?android:attr/windowBackground"
     android:clipToPadding="true"
     android:fitsSystemWindows="true"
     >
@@ -12,11 +12,9 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/teal_200"
+        android:background="?android:attr/windowBackground"
         android:elevation="4dp"
-        android:theme="@style/ThemeOverlay.AppCompat.Light"
-        app:layout_constraintTop_toTopOf="parent"
-        app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <ScrollView
         android:layout_width="match_parent"
@@ -49,7 +47,8 @@
                 android:gravity="center"
                 android:textSize="24sp"
                 android:textStyle="bold"
-                android:textColor="@color/black"/>
+                android:textColor="?android:attr/textColorPrimary"
+                android:fontFamily="@font/montserrat"/>
 
             <TextView
                 android:id="@+id/bookAuthor"
@@ -58,7 +57,8 @@
                 android:layout_marginTop="8dp"
                 android:gravity="center"
                 android:textSize="18sp"
-                android:textColor="@color/black"/>
+                android:textColor="?android:attr/textColorPrimary"
+                android:fontFamily="@font/montserrat"/>
 
             <ProgressBar
                 android:id="@+id/loadingProgressBar"
@@ -75,7 +75,8 @@
                 android:layout_marginTop="8dp"
                 android:gravity="center"
                 android:textSize="14sp"
-                android:textColor="@color/black"
+                android:textColor="?android:attr/textColorPrimary"
+                android:fontFamily="@font/montserrat"
                 android:visibility="gone"/>
 
             <TextView
@@ -85,10 +86,12 @@
                 android:layout_marginTop="16dp"
                 android:gravity="center"
                 android:textSize="20sp"
-                android:textColor="@color/black"
+                android:textColor="?android:attr/textColorPrimary"
                 android:visibility="gone"
                 android:padding="16dp"
-                android:background="@drawable/text_highlight_background"/>
+                android:background="?android:attr/colorBackground"
+                android:singleLine="true"
+                android:ellipsize="end"/>
 
             <!-- Audio Controls -->
             <LinearLayout
@@ -98,11 +101,22 @@
                 android:layout_marginTop="24dp"
                 android:padding="16dp">
 
+                <!-- Progress Bar -->
+                <SeekBar
+                    android:id="@+id/progressBar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:progressBackgroundTint="@color/text_dark"
+                    android:progressTint="@color/progress_blue"
+                    android:thumb="@drawable/seekbar_thumb" />
+
+                <!-- Time Display -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
 
                     <TextView
                         android:id="@+id/currentTime"
@@ -110,14 +124,12 @@
                         android:layout_height="wrap_content"
                         android:text="00:00"
                         android:textSize="16sp"
-                        android:textColor="@color/black"
-                        android:textStyle="bold"
-                        android:layout_marginEnd="8dp"/>
+                        android:textColor="?android:attr/textColorSecondary"
+                        android:fontFamily="@font/montserrat"/>
 
-                    <SeekBar
-                        android:id="@+id/progressBar"
+                    <View
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="0dp"
                         android:layout_weight="1"/>
 
                     <TextView
@@ -126,11 +138,11 @@
                         android:layout_height="wrap_content"
                         android:text="00:00"
                         android:textSize="16sp"
-                        android:textColor="@color/black"
-                        android:textStyle="bold"
-                        android:layout_marginStart="8dp"/>
+                        android:textColor="?android:attr/textColorSecondary"
+                        android:fontFamily="@font/montserrat"/>
                 </LinearLayout>
 
+                <!-- Playback Buttons -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -145,15 +157,17 @@
                         android:layout_marginEnd="16dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:src="@android:drawable/ic_media_rew"
+                        app:tint="?android:attr/textColorSecondary"
                         android:contentDescription="@string/rewind_10_seconds"/>
 
                     <ImageButton
                         android:id="@+id/playPauseButton"
                         android:layout_width="64dp"
                         android:layout_height="64dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:background="@drawable/circle_button_background"
+                        android:contentDescription="@string/play_pause"
                         android:src="@android:drawable/ic_media_play"
-                        android:contentDescription="@string/play_pause"/>
+                        app:tint="?android:attr/textColorPrimary"/>
 
                     <ImageButton
                         android:id="@+id/forwardButton"
@@ -162,6 +176,7 @@
                         android:layout_marginStart="16dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:src="@android:drawable/ic_media_ff"
+                        app:tint="?android:attr/textColorSecondary"
                         android:contentDescription="@string/forward_10_seconds"/>
 
                 </LinearLayout>

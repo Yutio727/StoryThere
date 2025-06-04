@@ -6,8 +6,6 @@ import android.os.Bundle;
 import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -29,9 +27,14 @@ import java.io.InputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
+import com.google.android.material.button.MaterialButton;
+import android.content.res.ColorStateList;
+import androidx.core.content.ContextCompat;
+import android.graphics.Typeface;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 
 public class BookOptionsActivity extends AppCompatActivity {
-    private RadioGroup readingModeGroup;
     private Button footerButton;
     private Uri contentUri;
     private String fileType;
@@ -44,6 +47,10 @@ public class BookOptionsActivity extends AppCompatActivity {
     private String filePath;
     private ActivityResultLauncher<Intent> imagePickerLauncher;
     private Uri newCoverUri;
+    private MaterialButton btnReadMode;
+    private MaterialButton btnListenMode;
+    private boolean isReadModeSelected = true; // Track the selected mode, default to read
+    private Animation scaleAnimation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,11 +78,13 @@ public class BookOptionsActivity extends AppCompatActivity {
         }
 
         // Initialize views
-        readingModeGroup = findViewById(R.id.readingModeGroup);
         footerButton = findViewById(R.id.footerButton);
         bookCoverImage = findViewById(R.id.bookCoverImage);
         bookAuthorText = findViewById(R.id.bookAuthorText);
         bookReadingTimeText = findViewById(R.id.bookReadingTimeText);
+        btnReadMode = findViewById(R.id.btnReadMode);
+        btnListenMode = findViewById(R.id.btnListenMode);
+        scaleAnimation = AnimationUtils.loadAnimation(this, R.anim.button_scale);
 
         // Get file path from intent
         if (intent != null && intent.getData() != null) {
@@ -96,82 +105,20 @@ public class BookOptionsActivity extends AppCompatActivity {
                                 .placeholder(R.drawable.ic_book_placeholder)
                                 .into(bookCoverImage);
                         }
-                        // Display time of reading/listening if available (assume annotation for now)
-                        if (book.getAnnotation() != null && !book.getAnnotation().isEmpty()) {
-                            bookReadingTimeText.setText(book.getAnnotation());
-                        } else {
-                            bookReadingTimeText.setText("");
-                        }
+                        // Update reading time text with initial state
+                        updateBookReadingTimeText();
                     }
                 }
             });
         }
 
-        // Set up radio group listener
-        readingModeGroup.setOnCheckedChangeListener((group, checkedId) -> {
-            RadioButton selectedButton = findViewById(checkedId);
-            if (selectedButton != null) {
-                if (selectedButton.getId() == R.id.readButton) {
-                    footerButton.setText("Start Reading");
-                    if ("pdf".equals(fileType)) {
-                        // For PDFs, show total pages
-                        try {
-                            PDFParser pdfParser = new PDFParser(this, contentUri);
-                            int totalPages = pdfParser.getPageCount();
-                            bookReadingTimeText.setText(totalPages + " pages");
-                            pdfParser.close();
-                        } catch (Exception e) {
-                            bookReadingTimeText.setText("");
-                        }
-                    } else {
-                        bookReadingTimeText.setText("10 pages");
-                    }
-                } else {
-                    footerButton.setText("Start Listening");
-                    // Calculate total listening time on the fly
-                    if (contentUri != null) {
-                        if ("pdf".equals(fileType)) {
-                            try {
-                                // Extract text from PDF
-                                PDFParser pdfParser = new PDFParser(this, contentUri);
-                                StringBuilder allText = new StringBuilder();
-                                int totalPages = pdfParser.getPageCount();
-                                
-                                // Extract text from all pages
-                                for (int i = 1; i <= totalPages; i++) {
-                                    PDFParser.ParsedPage page = pdfParser.parsePage(i, new PDFParser.TextSettings());
-                                    if (page != null && page.text != null) {
-                                        allText.append(page.text).append("\n");
-                                    }
-                                }
-                                pdfParser.close();
-                                
-                                // Calculate duration based on word count
-                                String text = allText.toString().trim();
-                                int totalDuration = text.isEmpty() ? 0 : text.split("\\s+").length;
-                                String formattedTime = formatTime(totalDuration);
-                                bookReadingTimeText.setText(formattedTime);
-                            } catch (Exception e) {
-                                Toast.makeText(this, "Error extracting text from PDF", Toast.LENGTH_SHORT).show();
-                                readingModeGroup.check(R.id.readButton);
-                            }
-                        } else {
-                            TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
-                            int totalDuration = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
-                            String formattedTime = formatTime(totalDuration);
-                            bookReadingTimeText.setText(formattedTime);
-                        }
-                    } else {
-                        bookReadingTimeText.setText("");
-                    }
-                }
-            }
-        });
+        // Set up initial button state and click listeners
+        updateButtonStates(isReadModeSelected);
+        setupButtonAnimations();
 
         // Set up footer button click listener
         footerButton.setOnClickListener(v -> {
-            int selectedId = readingModeGroup.getCheckedRadioButtonId();
-            if (selectedId == R.id.readButton) {
+            if (isReadModeSelected) {
                 if ("pdf".equals(fileType)) {
                     // Open PDF viewer activity
                     Intent pdfIntent = new Intent(this, PDFViewerActivity.class);
@@ -237,6 +184,10 @@ public class BookOptionsActivity extends AppCompatActivity {
                     startActivity(audioIntent);
                 } catch (Exception e) {
                     Toast.makeText(this, "Error preparing text for listening", Toast.LENGTH_SHORT).show();
+                    // Revert to read mode state on error
+                    isReadModeSelected = true;
+                    updateButtonStates(true);
+                    updateBookReadingTimeText();
                 }
             }
         });
@@ -248,62 +199,34 @@ public class BookOptionsActivity extends AppCompatActivity {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                     Uri imageUri = result.getData().getData();
                     if (imageUri != null) {
-                        try (InputStream inputStream = getContentResolver().openInputStream(imageUri)) {
+                        newCoverUri = imageUri;
+                        try {
+                            InputStream inputStream = getContentResolver().openInputStream(imageUri);
                             Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                            if (currentBook != null) {
-                                // Save bitmap to app private storage as covers/{bookId}.jpg
-                                File coversDir = new File(getFilesDir(), "covers");
-                                if (!coversDir.exists()) coversDir.mkdirs();
-                                File coverFile = new File(coversDir, currentBook.getId() + ".jpg");
-                                try (FileOutputStream out = new FileOutputStream(coverFile)) {
-                                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
-                                }
-                                // Update previewImagePath to internal file path
-                                currentBook.setPreviewImagePath(coverFile.getAbsolutePath());
-                                bookRepository.update(currentBook);
-                                // Show the new cover
-                                bookCoverImage.setImageBitmap(bitmap);
+                            bookCoverImage.setImageBitmap(bitmap);
+                            if (inputStream != null) {
+                                inputStream.close();
                             }
                         } catch (Exception e) {
-                            Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "Error loading image", Toast.LENGTH_SHORT).show();
                         }
+                        // Prompt user to save changes
+                        new AlertDialog.Builder(this)
+                            .setTitle("Save Changes")
+                            .setMessage("Do you want to save the new book cover?")
+                            .setPositiveButton("Save", (dialog, which) -> saveBookCover(newCoverUri))
+                            .setNegativeButton("Cancel", (dialog, which) -> newCoverUri = null)
+                            .show();
                     }
                 }
             }
         );
 
-        // When displaying the cover, use the file if it exists, otherwise show the standard cover
-        if (currentBook != null && currentBook.getPreviewImagePath() != null) {
-            File coverFile = new File(currentBook.getPreviewImagePath());
-            if (coverFile.exists()) {
-                Bitmap bitmap = BitmapFactory.decodeFile(coverFile.getAbsolutePath());
-                bookCoverImage.setImageBitmap(bitmap);
-            } else {
-                bookCoverImage.setImageResource(R.drawable.ic_book_placeholder);
-            }
-        } else {
-            bookCoverImage.setImageResource(R.drawable.ic_book_placeholder);
-        }
+        // Setup book cover click listener
+        bookCoverImage.setOnClickListener(v -> openImagePicker());
 
-        // Set long click listener on book cover
-        bookCoverImage.setOnLongClickListener(v -> {
-            new AlertDialog.Builder(this)
-                .setTitle("Change cover image")
-                .setMessage("Choose new cover from your photos")
-                .setPositiveButton("Choose", (dialog, which) -> openImagePicker())
-                .setNegativeButton("Cancel", null)
-                .show();
-            return true;
-        });
-
-        // Enable audio button for PDFs
-        if ("pdf".equals(fileType)) {
-            RadioButton listenButton = findViewById(R.id.audioButton);
-            if (listenButton != null) {
-                listenButton.setEnabled(true);
-                listenButton.setAlpha(1.0f);
-            }
-        }
+        // Initial update of book info text based on default mode
+        updateBookReadingTimeText();
     }
 
     private void openImagePicker() {
@@ -316,13 +239,6 @@ public class BookOptionsActivity extends AppCompatActivity {
         }
     }
 
-    // Helper to format time as mm:ss (copied from AudioReaderActivity)
-    private String formatTime(int seconds) {
-        int minutes = seconds / 60;
-        seconds = seconds % 60;
-        return String.format("%02d:%02d", minutes, seconds);
-    }
-
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
@@ -330,5 +246,165 @@ public class BookOptionsActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void saveBookCover(Uri imageUri) {
+        if (currentBook == null || imageUri == null) return;
+
+        // Save the image to internal storage
+        File internalFile = new File(getFilesDir(), currentBook.getFilePath().hashCode() + "_cover.jpg");
+        try (InputStream inputStream = getContentResolver().openInputStream(imageUri);
+             FileOutputStream outputStream = new FileOutputStream(internalFile)) {
+            if (inputStream != null) {
+                byte[] buffer = new byte[1024];
+                int read;
+                while ((read = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, read);
+                }
+                // Update book record with new cover path
+                currentBook.setPreviewImagePath(internalFile.getAbsolutePath());
+                bookRepository.update(currentBook);
+                Toast.makeText(this, "Cover saved", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Error saving cover", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Error saving cover: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String formatTime(int seconds) {
+        int minutes = seconds / 60;
+        seconds = seconds % 60;
+        return String.format("%02d:%02d", minutes, seconds);
+    }
+
+    // Helper method to update button states
+    private void updateButtonStates(boolean isReadMode) {
+        int blueColor = ContextCompat.getColor(this, R.color.progress_blue);
+        int lightBackground = ContextCompat.getColor(this, R.color.background_blue);
+        int darkBackground = ContextCompat.getColor(this, R.color.unselected_button_dark);
+        int blackText = ContextCompat.getColor(this, R.color.text_black);
+        int whiteText = ContextCompat.getColor(this, R.color.white);
+
+        // Check if we're in dark theme
+        boolean isDarkTheme = (getResources().getConfiguration().uiMode & 
+                             android.content.res.Configuration.UI_MODE_NIGHT_MASK) 
+                             == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+
+        if (isReadMode) {
+            btnReadMode.setEnabled(false);
+            btnListenMode.setEnabled(true);
+            btnReadMode.setBackgroundTintList(ColorStateList.valueOf(blueColor));
+            btnListenMode.setBackgroundTintList(ColorStateList.valueOf(isDarkTheme ? darkBackground : lightBackground));
+            btnReadMode.setTextColor(whiteText);
+            btnReadMode.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.BOLD));
+            btnReadMode.setIconTintResource(R.color.white);
+            btnListenMode.setTextColor(blackText);
+            btnListenMode.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.NORMAL));
+            btnListenMode.setIconTintResource(R.color.text_black);
+            footerButton.setText(R.string.start_reading);
+            footerButton.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.BOLD));
+        } else {
+            btnReadMode.setEnabled(true);
+            btnListenMode.setEnabled(false);
+            btnReadMode.setBackgroundTintList(ColorStateList.valueOf(isDarkTheme ? darkBackground : lightBackground));
+            btnListenMode.setBackgroundTintList(ColorStateList.valueOf(blueColor));
+            btnReadMode.setTextColor(blackText);
+            btnReadMode.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.NORMAL));
+            btnReadMode.setIconTintResource(R.color.text_black);
+            btnListenMode.setTextColor(whiteText);
+            btnListenMode.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.BOLD));
+            btnListenMode.setIconTintResource(R.color.white);
+            footerButton.setText(R.string.start_listening);
+            footerButton.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.BOLD));
+        }
+    }
+
+    // Helper method to update the reading time text based on selected mode
+    private void updateBookReadingTimeText() {
+        if (currentBook != null) {
+            if (isReadModeSelected) {
+                if ("pdf".equals(fileType)) {
+                    // For PDFs, show total pages
+                    try {
+                        PDFParser pdfParser = new PDFParser(this, contentUri);
+                        int totalPages = pdfParser.getPageCount();
+                        bookReadingTimeText.setText(totalPages + " pages");
+                        pdfParser.close();
+                    } catch (Exception e) {
+                        bookReadingTimeText.setText("");
+                    }
+                } else {
+                    // For non-PDF files, show word count
+                    try {
+                        TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
+                        int wordCount = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
+                        bookReadingTimeText.setText(wordCount + " words");
+                    } catch (Exception e) {
+                        bookReadingTimeText.setText("");
+                    }
+                }
+            } else {
+                // Calculate total listening time on the fly
+                if (contentUri != null) {
+                    if ("pdf".equals(fileType)) {
+                        try {
+                            // Extract text from PDF
+                            PDFParser pdfParser = new PDFParser(this, contentUri);
+                            StringBuilder allText = new StringBuilder();
+                            int totalPages = pdfParser.getPageCount();
+
+                            // Extract text from all pages
+                            for (int i = 1; i <= totalPages; i++) {
+                                PDFParser.ParsedPage page = pdfParser.parsePage(i, new PDFParser.TextSettings());
+                                if (page != null && page.text != null) {
+                                    allText.append(page.text).append("\n");
+                                }
+                            }
+                            pdfParser.close();
+
+                            // Calculate duration based on word count
+                            String text = allText.toString().trim();
+                            int totalDuration = text.isEmpty() ? 0 : text.split("\\s+").length;
+                            String formattedTime = formatTime(totalDuration);
+                            bookReadingTimeText.setText(formattedTime); // Removed " words" text
+                        } catch (Exception e) {
+                            Toast.makeText(this, "Error extracting text from PDF for listening time", Toast.LENGTH_SHORT).show();
+                            bookReadingTimeText.setText("");
+                        }
+                    } else {
+                        TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
+                        int totalDuration = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
+                        String formattedTime = formatTime(totalDuration);
+                        bookReadingTimeText.setText(formattedTime); // Removed " words" text
+                    }
+                } else {
+                    bookReadingTimeText.setText("");
+                }
+            }
+        } else {
+            bookReadingTimeText.setText("");
+        }
+    }
+
+    private void setupButtonAnimations() {
+        btnReadMode.setOnClickListener(v -> {
+            if (!isReadModeSelected) {
+                btnReadMode.startAnimation(scaleAnimation);
+                isReadModeSelected = true;
+                updateButtonStates(true);
+                updateBookReadingTimeText();
+            }
+        });
+
+        btnListenMode.setOnClickListener(v -> {
+            if (isReadModeSelected) {
+                btnListenMode.startAnimation(scaleAnimation);
+                isReadModeSelected = false;
+                updateButtonStates(false);
+                updateBookReadingTimeText();
+            }
+        });
     }
 } 

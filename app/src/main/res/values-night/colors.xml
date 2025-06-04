@@ -1,0 +1,8 @@
+<resources>
+    <color name="background_activity">#212121</color>
+    <color name="text_activity_primary">#FFFFFF</color>
+    <color name="text_activity_secondary">#CCCCCC</color>
+    <color name="progress_blue">#007BFF</color> <!-- Assuming you want progress_blue to be consistent or define it here -->
+    <color name="background_blue">#212121</color>
+    <color name="text_black">#FFFFFF</color>
+</resources> 

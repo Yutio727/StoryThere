@@ -12,5 +12,11 @@
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
+        <item name="android:colorBackground">@color/background_activity</item>
+        <item name="android:textColorPrimary">@color/text_activity_primary</item>
+        <item name="android:textColorSecondary">@color/text_activity_secondary</item>
+        <item name="colorControlNormal">@color/text_activity_primary</item> <!-- Tint for icons like back arrow -->
+        <item name="textAppearanceSmallPopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Small</item>
+        <item name="textAppearanceLargePopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Large</item>
     </style>
 </resources>

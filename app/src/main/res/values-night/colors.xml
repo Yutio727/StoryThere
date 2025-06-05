@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="background_activity">#212121</color>
+    <color name="background_activity">#333435</color>
     <color name="text_activity_primary">#FFFFFF</color>
     <color name="text_activity_secondary">#CCCCCC</color>
     <color name="progress_blue">#007BFF</color> <!-- Assuming you want progress_blue to be consistent or define it here -->
     <color name="background_blue">#212121</color>
     <color name="text_black">#FFFFFF</color>
+    <color name="unselected_button_dark">#2D2D2D</color>
+    <color name="light_blue_background">#1A1A1A</color>
 </resources>

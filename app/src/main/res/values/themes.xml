@@ -13,15 +13,17 @@
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
-        <item name="textAppearanceSmallPopupMenu">
-            @style/TextAppearance.StoryThere.PopupMenu.Small</item>Add commentMore actions
-        <item name="textAppearanceLargePopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Large
-        </item>
+        <item name="textAppearanceSmallPopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Small</item>
+        <item name="textAppearanceLargePopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Large</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="fontFamily">@font/montserrat</item>
     </style>
 
     <style name="Theme.StoryThere.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="fontFamily">@font/montserrat</item>
     </style>
 
     <style name="Theme.StoryThere.Light" parent="Theme.MaterialComponents.Light.NoActionBar">
@@ -36,10 +38,10 @@
         <item name="android:textColor">@color/black</item>
         <item name="android:textColorPrimary">@color/white</item>
         <item name="android:textColorSecondary">@color/black</item>
-        <item name="textAppearanceSmallPopupMenu">
-            @style/TextAppearance.StoryThere.PopupMenu.Small</item>Add commentMore actions
-        <item name="textAppearanceLargePopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Large
-        </item>
+        <item name="textAppearanceSmallPopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Small</item>
+        <item name="textAppearanceLargePopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Large</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="fontFamily">@font/montserrat</item>
     </style>
 
     <style name="TextAppearance.StoryThere.PopupMenu.Small" parent="TextAppearance.AppCompat.Widget.PopupMenu.Small">
@@ -48,5 +50,11 @@
 
     <style name="TextAppearance.StoryThere.PopupMenu.Large" parent="TextAppearance.AppCompat.Widget.PopupMenu.Large">
         <item name="android:fontFamily">@font/montserrat</item>
+    </style>
+
+    <style name="TextAppearance.StoryThere.Tab" parent="TextAppearance.Design.Tab">
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="fontFamily">@font/montserrat</item>
     </style>
 </resources>

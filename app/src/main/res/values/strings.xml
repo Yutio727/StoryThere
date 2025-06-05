@@ -21,6 +21,7 @@
     <string name="start_listening">Start listening</string>
     <string name="playback_speed">Playback Speed</string>
     <string name="add_to_favourite">Add to Favourite</string>
+    <string name="remove_from_favourite">Remove from Favourite</string>
     <string name="choose_voice">Choose Voice</string>
     <string name="forward_10_seconds">Forward 10 seconds</string>
     <string name="play_pause">Play/Pause</string>

@@ -16,17 +16,21 @@
         android:padding="16dp"
         android:text="@string/delete"
         android:textSize="16sp"
-        app:drawableStartCompat="@android:drawable/ic_menu_delete" />
+        android:minHeight="48dp"
+        app:drawableStartCompat="@android:drawable/ic_menu_delete"
+        app:drawableTint="@android:color/black" />
 
     <TextView
         android:id="@+id/btnAddToFavourite"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:drawablePadding="16dp"
+        android:drawablePadding="21dp"
         android:gravity="center_vertical"
-        android:padding="16dp"
+        android:padding="20dp"
+        android:paddingLeft="26dp"
         android:text="@string/add_to_favourite"
         android:textSize="16sp"
-        app:drawableStartCompat="@android:drawable/btn_star_big_on" />
+        android:minHeight="48dp"
+        app:drawableStartCompat="@drawable/ic_star_blue" />
 
 </LinearLayout> 

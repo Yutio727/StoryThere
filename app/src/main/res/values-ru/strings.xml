@@ -22,6 +22,7 @@
     <string name="start_listening">Начать слушать</string>
     <string name="playback_speed">Скорость проигрывания</string>
     <string name="add_to_favourite">Добавить в избранное</string>
+    <string name="remove_from_favourite">Убрать из избранного</string>
     <string name="choose_voice">Выбрать тип голоса</string>
     <string name="forward_10_seconds">10 секунд вперёд</string>
     <string name="play_pause">Пуск/Пауза</string>

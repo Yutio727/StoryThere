@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:clipToPadding="true"
     android:fitsSystemWindows="true"
-    >
+    android:background="@color/light_blue_background">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
@@ -18,7 +18,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
+            android:background="@color/progress_blue"
             android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
 
             <TextView
@@ -60,7 +60,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:tabMode="fixed"
-            app:tabGravity="fill">
+            app:tabGravity="fill"
+            app:tabIndicatorColor="@color/progress_blue"
+            app:tabSelectedTextColor="@color/progress_blue"
+            app:tabTextAppearance="@style/TextAppearance.StoryThere.Tab">
 
             <com.google.android.material.tabs.TabItem
                 android:layout_width="wrap_content"

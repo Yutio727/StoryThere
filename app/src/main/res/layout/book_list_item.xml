@@ -20,6 +20,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:visibility="gone"
+            android:buttonTint="@color/progress_blue"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent" />
@@ -49,6 +50,9 @@
                 android:layout_height="wrap_content"
                 android:textSize="18sp"
                 android:textStyle="bold"
+                android:textColor="@color/text_black"
+                android:fontFamily="@font/montserrat"
+                app:fontFamily="@font/montserrat"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
@@ -57,8 +61,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:textColor="@android:color/darker_gray"
+                android:textColor="@color/text_black"
                 android:textSize="14sp"
+                android:fontFamily="@font/montserrat"
+                app:fontFamily="@font/montserrat"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/bookTitle" />
 
@@ -70,6 +76,9 @@
                 android:ellipsize="end"
                 android:maxLines="3"
                 android:textSize="12sp"
+                android:textColor="@color/text_black"
+                android:fontFamily="@font/montserrat"
+                app:fontFamily="@font/montserrat"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/bookAuthor" />
 

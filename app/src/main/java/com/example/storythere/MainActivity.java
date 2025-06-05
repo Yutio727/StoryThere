@@ -341,6 +341,17 @@ public class MainActivity extends AppCompatActivity {
         TextView btnDelete = bottomSheetView.findViewById(R.id.btnDelete);
         TextView btnAddToFavourite = bottomSheetView.findViewById(R.id.btnAddToFavourite);
 
+        // Update button text and icon based on current tab
+        if (currentTab.equals(getString(R.string.favourite))) {
+            btnAddToFavourite.setText(R.string.remove_from_favourite);
+            btnAddToFavourite.setCompoundDrawablesWithIntrinsicBounds(
+                android.R.drawable.ic_menu_close_clear_cancel, 0, 0, 0);
+        } else {
+            btnAddToFavourite.setText(R.string.add_to_favourite);
+            btnAddToFavourite.setCompoundDrawablesWithIntrinsicBounds(
+                R.drawable.ic_star_blue, 0, 0, 0);
+        }
+
         btnDelete.setOnClickListener(v -> {
             List<Book> selectedBooks = adapter.getSelectedBooks();
             for (Book book : selectedBooks) {
@@ -353,13 +364,17 @@ public class MainActivity extends AppCompatActivity {
 
         btnAddToFavourite.setOnClickListener(v -> {
             List<Book> selectedBooks = adapter.getSelectedBooks();
+            boolean isRemoving = currentTab.equals(getString(R.string.favourite));
+            
             for (Book book : selectedBooks) {
-                book.setFavourite(true);
+                book.setFavourite(!isRemoving);
                 viewModel.update(book);
             }
             bottomSheetDialog.dismiss();
             exitSelectionMode();
-            Toast.makeText(this, "Books added to favourites", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, 
+                isRemoving ? "Books removed from favourites" : "Books added to favourites", 
+                Toast.LENGTH_SHORT).show();
         });
 
         bottomSheetDialog.show();

@@ -1,11 +1,16 @@
 package com.example.storythere;
 
+
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.LayerDrawable;
 import android.speech.tts.Voice;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
@@ -33,33 +38,42 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceAdapter.VoiceViewHol
     @Override
     public void onBindViewHolder(@NonNull VoiceViewHolder holder, int position) {
         Voice voice = voices.get(position);
-        holder.voiceName.setText(voice.getName());
-        
-        // Build voice details string
-        StringBuilder details = new StringBuilder();
-        String language = voice.getLocale().getLanguage();
-        String country = voice.getLocale().getCountry();
-        
-        // Add language name
-        if (language.equals("en")) {
-            details.append("English");
-        } else if (language.equals("ru")) {
-            details.append("Russian");
+        String voiceName = voice.getName();
+
+        int iconDrawableResId;
+        String displayedVoiceName;
+
+        // Set custom names and icons for Russian voices
+        if (voiceName.equals("ru-ru-x-ruc-local")) {
+            displayedVoiceName = "Яна";
+            iconDrawableResId = R.drawable.storythere_icon;
+        } else if (voiceName.equals("ru-ru-x-ruf-local")) {
+            displayedVoiceName = "Ярослав";
+            iconDrawableResId = R.drawable.dictor_yaroslav_icon;
+        } else if (voiceName.equals("ru-ru-x-rud-network")) {
+                displayedVoiceName = "Артем (требуется интернет)";
+            iconDrawableResId = R.drawable.dictor_artem_icon;
+        } else {
+            // Fallback for other voices (if any are shown)
+            displayedVoiceName = voiceName;
+            iconDrawableResId = R.drawable.ic_voice_male; // Default icon
         }
-        
-        // Add country if available
-        if (country != null && !country.isEmpty()) {
-            details.append(" (").append(country).append(")");
+        // Create layered drawable with the icon and circle frameAdd commentMore actions
+        LayerDrawable layeredDrawable = (LayerDrawable) ContextCompat.getDrawable(holder.itemView.getContext(), R.drawable.circle_framed_icon);
+        if (layeredDrawable != null) {
+            Drawable iconDrawable = ContextCompat.getDrawable(holder.itemView.getContext(), iconDrawableResId);
+            if (iconDrawable != null) {
+                layeredDrawable.setDrawableByLayerId(R.id.icon_layer, iconDrawable); // Assuming you add an id for the icon layer in circle_framed_icon.xml
+                holder.voiceIcon.setImageDrawable(layeredDrawable);
+            } else {
+                holder.voiceIcon.setImageResource(iconDrawableResId); // Fallback if layering fails
+            }
+        } else {
+            holder.voiceIcon.setImageResource(iconDrawableResId); // Fallback if layered drawable fails
         }
-        
-        // Add gender information
-        if (voice.getName().toLowerCase().contains("female")) {
-            details.append(" • Female Voice");
-        } else if (voice.getName().toLowerCase().contains("male")) {
-            details.append(" • Male Voice");
-        }
-        
-        holder.voiceDetails.setText(details.toString());
+
+        holder.voiceName.setText(displayedVoiceName);
+        holder.voiceDetails.setVisibility(View.GONE);
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
@@ -74,11 +88,13 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceAdapter.VoiceViewHol
     }
 
     static class VoiceViewHolder extends RecyclerView.ViewHolder {
+        ImageView voiceIcon;
         TextView voiceName;
         TextView voiceDetails;
 
         VoiceViewHolder(View itemView) {
             super(itemView);
+            voiceIcon = itemView.findViewById(R.id.voiceIcon);
             voiceName = itemView.findViewById(R.id.voiceName);
             voiceDetails = itemView.findViewById(R.id.voiceDetails);
         }

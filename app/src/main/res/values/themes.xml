@@ -13,6 +13,10 @@
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
+        <item name="textAppearanceSmallPopupMenu">
+            @style/TextAppearance.StoryThere.PopupMenu.Small</item>Add commentMore actions
+        <item name="textAppearanceLargePopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Large
+        </item>
     </style>
 
     <style name="Theme.StoryThere.NoActionBar">
@@ -30,7 +34,19 @@
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <item name="android:windowBackground">@color/white</item>
         <item name="android:textColor">@color/black</item>
-        <item name="android:textColorPrimary">@color/black</item>
+        <item name="android:textColorPrimary">@color/white</item>
         <item name="android:textColorSecondary">@color/black</item>
+        <item name="textAppearanceSmallPopupMenu">
+            @style/TextAppearance.StoryThere.PopupMenu.Small</item>Add commentMore actions
+        <item name="textAppearanceLargePopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Large
+        </item>
+    </style>
+
+    <style name="TextAppearance.StoryThere.PopupMenu.Small" parent="TextAppearance.AppCompat.Widget.PopupMenu.Small">
+        <item name="android:fontFamily">@font/montserrat</item>
+    </style>
+
+    <style name="TextAppearance.StoryThere.PopupMenu.Large" parent="TextAppearance.AppCompat.Widget.PopupMenu.Large">
+        <item name="android:fontFamily">@font/montserrat</item>
     </style>
 </resources>

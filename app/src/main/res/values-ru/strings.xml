@@ -19,6 +19,7 @@
     <string name="read">Читать</string>
     <string name="listen">Слушать</string>
     <string name="start_reading">Начать читать</string>
+    <string name="start_listening">Начать слушать</string>
     <string name="playback_speed">Скорость проигрывания</string>
     <string name="add_to_favourite">Добавить в избранное</string>
     <string name="choose_voice">Выбрать тип голоса</string>

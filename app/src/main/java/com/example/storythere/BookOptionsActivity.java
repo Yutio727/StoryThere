@@ -13,21 +13,30 @@ import androidx.lifecycle.Observer;
 import com.bumptech.glide.Glide;
 import com.example.storythere.data.Book;
 import com.example.storythere.data.BookRepository;
-import com.example.storythere.TextParser;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
-import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.provider.MediaStore;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import com.google.android.material.button.MaterialButton;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfReader;
+import com.itextpdf.kernel.pdf.canvas.parser.PdfTextExtractor;
+import com.itextpdf.kernel.pdf.canvas.parser.listener.SimpleTextExtractionStrategy;
 import android.content.res.ColorStateList;
 import androidx.core.content.ContextCompat;
 import android.graphics.Typeface;
@@ -117,6 +126,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         updateButtonStates(isReadModeSelected);
         setupButtonAnimations();
 
+
         // Set up footer button click listener
         footerButton.setOnClickListener(v -> {
             if (isReadModeSelected) {
@@ -136,40 +146,96 @@ public class BookOptionsActivity extends AppCompatActivity {
             } else {
                 // Handle listening for both PDF and non-PDF files
                 try {
-                    Uri textUri;
+                    Uri textUri;  // Declare here
                     String textContent;
                     boolean isRussian;
 
                     if ("pdf".equals(fileType)) {
-                        // Extract text from PDF
-                        PDFParser pdfParser = new PDFParser(this, contentUri);
+                        // Extract text from PDF in parallel
                         StringBuilder allText = new StringBuilder();
-                        int totalPages = pdfParser.getPageCount();
 
-                        // Extract text from all pages
-                        for (int i = 1; i <= totalPages; i++) {
-                            PDFParser.ParsedPage page = pdfParser.parsePage(i, new PDFParser.TextSettings());
-                            if (page != null && page.text != null) {
-                                allText.append(page.text).append("\n");
+                        try {
+                            InputStream baseInputStream = getContentResolver().openInputStream(contentUri);
+                            if (baseInputStream == null) throw new Exception("Failed to open PDF");
+
+                            PdfReader baseReader = new PdfReader(baseInputStream);
+                            PdfDocument baseDoc = new PdfDocument(baseReader);
+
+                            int totalPages = baseDoc.getNumberOfPages();
+
+                            // Close the base doc, as we’ll open new readers per page
+                            baseDoc.close();
+                            baseReader.close();
+                            baseInputStream.close();
+
+                            // Executor
+                            int numThreads = Math.min(4, totalPages);
+                            ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+                            List<Future<String>> futures = new ArrayList<>();
+
+                            for (int i = 1; i <= totalPages; i++) {
+                                final int pageIndex = i;
+                                futures.add(executor.submit(() -> {
+                                    try (InputStream inputStream = getContentResolver().openInputStream(contentUri)) {
+                                        PdfReader reader = new PdfReader(inputStream);
+                                        PdfDocument doc = new PdfDocument(reader);
+                                        String text = PdfTextExtractor.getTextFromPage(
+                                                doc.getPage(pageIndex),
+                                                new SimpleTextExtractionStrategy()
+                                        );
+                                        doc.close();
+                                        reader.close();
+                                        return text;
+                                    } catch (Exception e) {
+                                        return "";
+                                    }
+                                }));
                             }
+
+                            for (int i = 0; i < totalPages; i++) {
+                                String pageText = futures.get(i).get();
+                                synchronized (allText) {
+                                    allText.append(pageText).append("\n");
+                                }
+                            }
+
+                            executor.shutdown();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            Toast.makeText(this, "Error extracting text: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            return;
                         }
-                        pdfParser.close();
 
                         textContent = allText.toString();
                         isRussian = TextParser.isTextPrimarilyRussian(textContent);
 
-                        // Save to temporary text file
                         File tempFile = new File(getCacheDir(), "temp_pdf_text.txt");
                         try (FileWriter writer = new FileWriter(tempFile)) {
                             writer.write(textContent);
                         }
                         textUri = Uri.fromFile(tempFile);
                     } else {
-                        // For non-PDF files, use the original file
-                        textUri = contentUri;
-                        TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
-                        textContent = parsedText.content;
-                        isRussian = parsedText.isRussian;
+                        // For other file types, treat contentUri as text directly
+                        InputStream inputStream = getContentResolver().openInputStream(contentUri);
+                        if (inputStream == null) throw new Exception("Failed to open file");
+                        StringBuilder textBuilder = new StringBuilder();
+
+                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                textBuilder.append(line).append("\n");
+                            }
+                        }
+
+                        textContent = textBuilder.toString();
+                        isRussian = TextParser.isTextPrimarilyRussian(textContent);
+
+                        // Save to a temp text file for audio playback
+                        File tempFile = new File(getCacheDir(), "temp_text.txt");
+                        try (FileWriter writer = new FileWriter(tempFile)) {
+                            writer.write(textContent);
+                        }
+                        textUri = Uri.fromFile(tempFile);
                     }
 
                     // Open audio reader with the text
@@ -184,14 +250,17 @@ public class BookOptionsActivity extends AppCompatActivity {
                     }
                     startActivity(audioIntent);
                 } catch (Exception e) {
+                    e.printStackTrace();
                     Toast.makeText(this, "Error preparing text for listening", Toast.LENGTH_SHORT).show();
-                    // Revert to read mode state on errorAdd commentMore actions
+                    // Revert to read mode state on error
                     isReadModeSelected = true;
                     updateButtonStates(true);
                     updateBookReadingTimeText();
                 }
             }
         });
+
+
 
         // Register image picker launcher
         imagePickerLauncher = registerForActivityResult(
@@ -345,42 +414,9 @@ public class BookOptionsActivity extends AppCompatActivity {
                     }
                 }
             } else {
-                // Calculate total listening time on the fly
-                if (contentUri != null) {
-                    if ("pdf".equals(fileType)) {
-                        try {
-                            // Extract text from PDF
-                            PDFParser pdfParser = new PDFParser(this, contentUri);
-                            StringBuilder allText = new StringBuilder();
-                            int totalPages = pdfParser.getPageCount();
-
-                            // Extract text from all pages
-                            for (int i = 1; i <= totalPages; i++) {
-                                PDFParser.ParsedPage page = pdfParser.parsePage(i, new PDFParser.TextSettings());
-                                if (page != null && page.text != null) {
-                                    allText.append(page.text).append("\n");
-                                }
-                            }
-                            pdfParser.close();
-
-                            // Calculate duration based on word count
-                            String text = allText.toString().trim();
-                            int totalDuration = text.isEmpty() ? 0 : text.split("\\s+").length;
-                            String formattedTime = formatTime(totalDuration);
-                            bookReadingTimeText.setText(formattedTime); // Removed " words" text
-                        } catch (Exception e) {
-                            Toast.makeText(this, "Error extracting text from PDF for listening time", Toast.LENGTH_SHORT).show();
-                            bookReadingTimeText.setText("");
-                        }
-                    } else {
-                        TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
-                        int totalDuration = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
-                        String formattedTime = formatTime(totalDuration);
-                        bookReadingTimeText.setText(formattedTime); // Removed " words" text
-                    }
-                } else {
-                    bookReadingTimeText.setText("");
-                }
+                // Use the stored estimated time from the Book object's annotation
+                String estimatedTime = currentBook.getAnnotation();
+                bookReadingTimeText.setText(estimatedTime);
             }
         } else {
             bookReadingTimeText.setText("");

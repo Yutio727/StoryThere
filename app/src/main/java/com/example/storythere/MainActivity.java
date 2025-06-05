@@ -10,6 +10,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageButton;
@@ -31,9 +32,19 @@ import com.example.storythere.ui.BookListViewModel;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.tabs.TabLayout;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfPage;
+import com.itextpdf.kernel.pdf.PdfReader;
+import com.itextpdf.kernel.pdf.canvas.parser.PdfTextExtractor;
+import com.itextpdf.kernel.pdf.canvas.parser.listener.SimpleTextExtractionStrategy;
+
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 1;
@@ -225,10 +236,74 @@ public class MainActivity extends AppCompatActivity {
         String fileName = getFileName(uri);
         String fileType = getFileType(fileName);
 
-        // Calculate listening time (same as AudioReaderActivity)
-        com.example.storythere.TextParser.ParsedText parsedText = com.example.storythere.TextParser.parseText(this, uri);
-        int totalDuration = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
-        String formattedTime = formatTime(totalDuration);
+        String formattedTime;
+
+        if ("pdf".equals(fileType)) {
+            ExecutorService executor = Executors.newFixedThreadPool(4); // 4 threads for parallel parsing
+            List<Future<String>> futures = new ArrayList<>();
+
+            try {
+                // Open initial document to get page count
+                int totalPages;
+                try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
+                    assert inputStream != null;
+                    try (PdfReader reader = new PdfReader(inputStream);
+                         PdfDocument pdfDoc = new PdfDocument(reader)) {
+                        totalPages = pdfDoc.getNumberOfPages();
+                    }
+                }
+
+                // Submit tasks for each page
+                for (int i = 1; i <= totalPages; i++) {
+                    final int pageNumber = i;
+                    futures.add(executor.submit(() -> {
+                        String pageText = "";
+                        try (InputStream pageInputStream = getContentResolver().openInputStream(uri)) {
+                            assert pageInputStream != null;
+                            try (PdfReader pageReader = new PdfReader(pageInputStream);
+                                 PdfDocument pageDoc = new PdfDocument(pageReader)) {
+
+                                PdfPage page = pageDoc.getPage(pageNumber);
+                                pageText = PdfTextExtractor.getTextFromPage(page, new SimpleTextExtractionStrategy());
+                            }
+                        } catch (Exception e) {
+                            Log.e("importBook", "Error parsing page " + pageNumber + ": " + e.getMessage());
+                        }
+                        return pageText != null ? pageText.trim() : "";
+                    }));
+                }
+
+                // Gather results
+                StringBuilder allText = new StringBuilder();
+                for (Future<String> future : futures) {
+                    try {
+                        String text = future.get();
+                        if (!text.isEmpty()) {
+                            allText.append(text).append("\n");
+                        }
+                    } catch (Exception e) {
+                        Log.e("importBook", "Error retrieving page text: " + e.getMessage());
+                    }
+                }
+
+                String text = allText.toString().trim();
+                int wordCount = text.isEmpty() ? 0 : text.split("\\s+").length;
+                formattedTime = formatTime(wordCount);
+            } catch (Exception e) {
+                Log.e("importBook", "Error during PDF parsing: " + e.getMessage());
+                formattedTime = "00:00";
+            } finally {
+                executor.shutdown();
+            }
+        } else {
+            TextParser.ParsedText parsedText = TextParser.parseText(this, uri);
+            String text = parsedText.content.trim();
+            int wordCount = text.isEmpty() ? 0 : text.split("\\s+").length;
+            formattedTime = formatTime(wordCount);
+        }
+
+
+
 
         // Create a new Book object
         Book book = new Book(
@@ -237,7 +312,7 @@ public class MainActivity extends AppCompatActivity {
             uri.toString(),
             fileType
         );
-        book.setAnnotation(formattedTime); // Store listening time in annotation
+        book.setAnnotation(formattedTime); // Store estimated time in annotation
 
         // Save the book to the database
         viewModel.insert(book);

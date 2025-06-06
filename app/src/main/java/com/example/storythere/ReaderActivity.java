@@ -2,6 +2,7 @@ package com.example.storythere;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -16,6 +17,7 @@ import androidx.appcompat.widget.Toolbar;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.List;
 
 public class ReaderActivity extends AppCompatActivity {
     private static final String TAG = "ReaderActivity";
@@ -148,6 +150,20 @@ public class ReaderActivity extends AppCompatActivity {
                     break;
                     
                 case "epub":
+                    Log.d(TAG, "Opening EPUB file");
+                    try {
+                        // Launch PDFViewerActivity with the EPUB URI
+                        Intent intent = new Intent(this, PDFViewerActivity.class);
+                        intent.setData(uri);
+                        startActivity(intent);
+                        finish(); // Close the reader activity
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error opening EPUB file: " + e.getMessage(), e);
+                        Toast.makeText(this, "Error reading EPUB file", Toast.LENGTH_LONG).show();
+                        finish();
+                    }
+                    break;
+                    
                 case "fb2":
                     Log.d(TAG, "Opening eBook file");
                     webView.setVisibility(View.VISIBLE);

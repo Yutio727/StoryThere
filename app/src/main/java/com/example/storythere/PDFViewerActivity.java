@@ -1,6 +1,7 @@
 package com.example.storythere;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Bundle;
@@ -52,6 +53,8 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     private Handler scrollHandler = new Handler(Looper.getMainLooper());
     private Runnable scrollRunnable;
     private int lastScrollY = 0;
+    private EPUBParser epubParser;
+    private boolean isEPUB = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,7 +86,6 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
 
         // Initialize thread pool and handler
         executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-
         mainHandler = new Handler(Looper.getMainLooper());
 
         // Get content from intent
@@ -93,11 +95,17 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             Log.d(TAG, "Loading text content");
             loadTextContent(textContent);
         } else {
-            // Get PDF URI from intent
-            Uri pdfUri = intent.getData();
-            if (pdfUri != null) {
-                Log.d(TAG, "Loading PDF from URI: " + pdfUri);
-                loadPDF(pdfUri);
+            // Get URI from intent
+            Uri uri = intent.getData();
+            if (uri != null) {
+                String mimeType = getContentResolver().getType(uri);
+                if (mimeType != null && mimeType.equals("application/epub+zip")) {
+                    Log.d(TAG, "Loading EPUB from URI: " + uri);
+                    loadEPUB(uri);
+                } else {
+                    Log.d(TAG, "Loading PDF from URI: " + uri);
+                    loadPDF(uri);
+                }
             } else {
                 Log.e(TAG, "No content provided");
                 Toast.makeText(this, "No content provided", Toast.LENGTH_SHORT).show();
@@ -378,6 +386,78 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         } catch (Exception e) {
             Log.e(TAG, "Error initializing text content: " + e.getMessage());
             Toast.makeText(this, "Failed to load text content", Toast.LENGTH_SHORT).show();
+            finish();
+        }
+    }
+
+    private void loadEPUB(Uri epubUri) {
+        try {
+            // Create default text settings
+            currentSettings = new PDFParser.TextSettings();
+            currentSettings.fontSize = 54.0f;
+            currentSettings.letterSpacing = 0.0f;
+            currentSettings.textAlignment = Paint.Align.LEFT;
+            currentSettings.lineHeight = 1.2f;
+            currentSettings.paragraphSpacing = 1.5f;
+
+            // Initialize EPUB parser
+            epubParser = new EPUBParser(this);
+            isEPUB = true;
+            
+            if (epubParser.parse(epubUri)) {
+                List<String> textContent = epubParser.getTextContent();
+                List<Bitmap> images = epubParser.getImages();
+                
+                // Convert EPUB content to PDFView format
+                pages = new ArrayList<>();
+                for (int i = 0; i < textContent.size(); i++) {
+                    String text = textContent.get(i);
+                    List<PDFParser.ImageInfo> pageImages = new ArrayList<>();
+                    if (i < images.size()) {
+                        Bitmap bitmap = images.get(i);
+                        // Create ImageInfo with default position and dimensions
+                        // We'll place images at the top of the page with their natural size
+                        PDFParser.ImageInfo imageInfo = new PDFParser.ImageInfo(
+                            bitmap,
+                            0, // x position
+                            0, // y position
+                            bitmap.getWidth(), // width
+                            bitmap.getHeight() // height
+                        );
+                        pageImages.add(imageInfo);
+                    }
+                    
+                    // Create ParsedPage with all required arguments
+                    PDFParser.ParsedPage page = new PDFParser.ParsedPage(
+                        text,                    // text content
+                        pageImages,              // images
+                        i + 1,                   // page number
+                        595.0f,                  // page width (A4 width in points)
+                        842.0f,                  // page height (A4 height in points)
+                        currentSettings          // text settings
+                    );
+                    pages.add(page);
+                }
+                
+                totalPages = pages.size();
+                pdfView.setPages(pages);
+                
+                // Set title and author in toolbar
+                String title = epubParser.getTitle();
+                String author = epubParser.getAuthor();
+                if (title != null && !title.isEmpty()) {
+                    getSupportActionBar().setTitle(title);
+                    if (author != null && !author.isEmpty()) {
+                        getSupportActionBar().setSubtitle(author);
+                    }
+                }
+            } else {
+                Toast.makeText(this, "Failed to load EPUB", Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading EPUB: " + e.getMessage());
+            Toast.makeText(this, "Failed to load EPUB", Toast.LENGTH_SHORT).show();
             finish();
         }
     }

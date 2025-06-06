@@ -266,9 +266,9 @@ public class PDFParser {
     }
 
     public static class ParsedPage {
-        public final String text;
-        public final List<ImageInfo> images;
-        public final int pageNumber;
+        public String text;
+        public List<ImageInfo> images;
+        public int pageNumber;
         public final float pageWidth;
         public final float pageHeight;
         public final TextSettings textSettings;

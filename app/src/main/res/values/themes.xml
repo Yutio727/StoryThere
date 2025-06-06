@@ -7,8 +7,8 @@
         <item name="colorPrimaryVariant">@color/purple_700</item>
         <item name="colorOnPrimary">@color/white</item>
         <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/teal_200</item>
-        <item name="colorSecondaryVariant">@color/teal_700</item>
+        <item name="colorSecondary">@color/progress_blue</item>
+        <item name="colorSecondaryVariant">@color/progress_blue</item>
         <item name="colorOnSecondary">@color/black</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
@@ -17,6 +17,15 @@
         <item name="textAppearanceLargePopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Large</item>
         <item name="android:fontFamily">@font/montserrat</item>
         <item name="fontFamily">@font/montserrat</item>
+
+        <!-- Dialog Button Styles -->
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.App.Button.Dialog</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.App.Button.Dialog</item>
+        <item name="buttonBarNeutralButtonStyle">@style/Widget.App.Button.Dialog</item>
+
+        <!-- Dialog Title Style -->
+        <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.StoryThere.DialogTitle</item>
+
     </style>
 
     <style name="Theme.StoryThere.NoActionBar">
@@ -42,6 +51,15 @@
         <item name="textAppearanceLargePopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Large</item>
         <item name="android:fontFamily">@font/montserrat</item>
         <item name="fontFamily">@font/montserrat</item>
+
+        <!-- Dialog Button Styles -->
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.App.Button.Dialog</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.App.Button.Dialog</item>
+        <item name="buttonBarNeutralButtonStyle">@style/Widget.App.Button.Dialog</item>
+
+        <!-- Dialog Title Style -->
+        <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.StoryThere.DialogTitle</item>
+
     </style>
 
     <style name="TextAppearance.StoryThere.PopupMenu.Small" parent="TextAppearance.AppCompat.Widget.PopupMenu.Small">
@@ -57,4 +75,16 @@
         <item name="android:fontFamily">@font/montserrat</item>
         <item name="fontFamily">@font/montserrat</item>
     </style>
+
+    <style name="Widget.App.Button.Dialog" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/progress_blue</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="fontFamily">@font/montserrat</item>
+    </style>
+
+    <style name="TextAppearance.StoryThere.DialogTitle" parent="TextAppearance.AppCompat.Title">
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="fontFamily">@font/montserrat_bold</item>
+    </style>
+
 </resources>

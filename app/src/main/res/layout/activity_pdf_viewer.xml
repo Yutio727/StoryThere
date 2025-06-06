@@ -6,13 +6,14 @@
     android:orientation="vertical"
     android:clipToPadding="true"
     android:fitsSystemWindows="true"
-    >
+    android:fontFamily="@font/montserrat"
+    android:background="?android:colorBackground">
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary"
+        android:background="@color/progress_blue"
         android:elevation="4dp"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
@@ -21,19 +22,22 @@
         android:id="@+id/scrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:fillViewport="true"
+        android:background="?android:colorBackground">
 
         <HorizontalScrollView
             android:id="@+id/horizontalScrollView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fillViewport="true">
+            android:fillViewport="true"
+            android:background="?android:colorBackground">
 
             <com.example.storythere.PDFView
                 android:id="@+id/pdfView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:padding="16dp" />
+                android:padding="16dp"
+                android:background="?android:colorBackground" />
 
         </HorizontalScrollView>
 

@@ -14,6 +14,8 @@ import android.view.View;
 import java.util.List;
 import java.util.Map;
 import android.util.LruCache;
+import android.content.res.Resources;
+import androidx.core.content.res.ResourcesCompat;
 
 public class PDFView extends View {
     private static final String TAG = "PDFView";
@@ -50,6 +52,8 @@ public class PDFView extends View {
 
     private void init() {
         textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        textPaint.setTypeface(ResourcesCompat.getFont(getContext(), R.font.montserrat));
+        textPaint.setColor(getContext().getResources().getColor(android.R.color.primary_text_light_nodisable, getContext().getTheme()));
         imagePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         imagePaint.setFilterBitmap(true);
         

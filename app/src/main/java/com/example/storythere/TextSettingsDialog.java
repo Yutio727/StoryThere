@@ -4,6 +4,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Paint;
 import android.os.Bundle;
+import android.text.Html;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -168,7 +169,7 @@ public class TextSettingsDialog extends DialogFragment {
         });
 
         builder.setView(view)
-               .setTitle("Text Settings")
+               .setTitle(Html.fromHtml("<font color='@color/progress_blue' face='montserrat_bold'><b>Text Settings</b></font>"))
                .setPositiveButton("Apply", (dialog, which) -> {
                    Log.d(TAG, "Applying settings - fontSize: " + currentSettings.fontSize + 
                              ", letterSpacing: " + currentSettings.letterSpacing + 

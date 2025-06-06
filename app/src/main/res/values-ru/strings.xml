@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">StoryThere</string>
+    <string name="text_settings">Настройки Текста</string>
     <string name="you_sure_delete">Вы точно хотите удалить этот файл?</string>
     <string name="delete">Удалить</string>
     <string name="cancel">Отмена</string>

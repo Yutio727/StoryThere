@@ -43,7 +43,7 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceAdapter.VoiceViewHol
         int iconDrawableResId;
         String displayedVoiceName;
 
-        // Set custom names and icons for Russian voices
+        // Set custom names and icons for voices
         if (voiceName.equals("ru-ru-x-ruc-local")) {
             displayedVoiceName = "Яна";
             iconDrawableResId = R.drawable.storythere_icon;
@@ -51,19 +51,29 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceAdapter.VoiceViewHol
             displayedVoiceName = "Ярослав";
             iconDrawableResId = R.drawable.dictor_yaroslav_icon;
         } else if (voiceName.equals("ru-ru-x-rud-network")) {
-                displayedVoiceName = "Артем (требуется интернет)";
+            displayedVoiceName = "Артем (требуется интернет)";
             iconDrawableResId = R.drawable.dictor_artem_icon;
+        } else if (voiceName.equals("en-us-x-tpf-local")) {
+            displayedVoiceName = "Anna";
+            iconDrawableResId = R.drawable.dictor_anna_icon;
+        } else if (voiceName.equals("en-au-x-auc-local")) {
+            displayedVoiceName = "Barbara";
+            iconDrawableResId = R.drawable.dictor_barbara_icon;
+        } else if (voiceName.equals("en-gb-x-gbd-local")) {
+            displayedVoiceName = "Oliver";
+            iconDrawableResId = R.drawable.dictor_oliver_icon;
         } else {
             // Fallback for other voices (if any are shown)
             displayedVoiceName = voiceName;
             iconDrawableResId = R.drawable.ic_voice_male; // Default icon
         }
-        // Create layered drawable with the icon and circle frameAdd commentMore actions
+
+        // Create layered drawable with the icon and circle frame
         LayerDrawable layeredDrawable = (LayerDrawable) ContextCompat.getDrawable(holder.itemView.getContext(), R.drawable.circle_framed_icon);
         if (layeredDrawable != null) {
             Drawable iconDrawable = ContextCompat.getDrawable(holder.itemView.getContext(), iconDrawableResId);
             if (iconDrawable != null) {
-                layeredDrawable.setDrawableByLayerId(R.id.icon_layer, iconDrawable); // Assuming you add an id for the icon layer in circle_framed_icon.xml
+                layeredDrawable.setDrawableByLayerId(R.id.icon_layer, iconDrawable);
                 holder.voiceIcon.setImageDrawable(layeredDrawable);
             } else {
                 holder.voiceIcon.setImageResource(iconDrawableResId); // Fallback if layering fails

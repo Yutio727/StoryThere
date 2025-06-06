@@ -8,6 +8,7 @@ import android.text.Html;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -52,9 +53,18 @@ public class TextSettingsDialog extends DialogFragment {
 
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity(), R.style.Widget_StoryThere_Dialog);
         LayoutInflater inflater = requireActivity().getLayoutInflater();
         View view = inflater.inflate(R.layout.dialog_text_settings, null);
+
+        // Log theme information
+        int currentNightMode = getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+        boolean isNightMode = currentNightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        Log.d(TAG, "Current theme mode: " + (isNightMode ? "Night" : "Light"));
+        
+        // Get and log the title color
+        int titleColor = getResources().getColor(isNightMode ? R.color.dialog_title_dark : R.color.dialog_title_light, null);
+        Log.d(TAG, "Dialog title color: " + String.format("#%06X", (0xFFFFFF & titleColor)));
 
         // Initialize views
         fontSizeSeekBar = view.findViewById(R.id.fontSizeSeekBar);
@@ -169,21 +179,42 @@ public class TextSettingsDialog extends DialogFragment {
         });
 
         builder.setView(view)
-               .setTitle(Html.fromHtml("<font color='@color/progress_blue' face='montserrat_bold'><b>Text Settings</b></font>"))
-               .setPositiveButton("Apply", (dialog, which) -> {
+               .setTitle(R.string.text_settings)
+               .setPositiveButton(R.string.apply, (dialog, which) -> {
                    Log.d(TAG, "Applying settings - fontSize: " + currentSettings.fontSize + 
                              ", letterSpacing: " + currentSettings.letterSpacing + 
                              ", alignment: " + currentSettings.textAlignment);
                    listener.onSettingsChanged(currentSettings);
                })
-               .setNeutralButton("Default", (dialog, which) -> {
+               .setNeutralButton(R.string.default_settings, (dialog, which) -> {
                    resetToDefaults();
-                   // Apply the reset settings immediately
                    listener.onSettingsChanged(currentSettings);
                })
-               .setNegativeButton("Cancel", null);
+               .setNegativeButton(R.string.cancel, null);
 
-        return builder.create();
+        AlertDialog dialog = builder.create();
+        
+        // Make dialog full width and set background dim
+        dialog.setOnShowListener(dialogInterface -> {
+            int displayWidth = getResources().getDisplayMetrics().widthPixels;
+            int dialogWidth = (int) (displayWidth * 0.95);
+            dialog.getWindow().setLayout(dialogWidth, ViewGroup.LayoutParams.WRAP_CONTENT);
+            
+            // Set background dim
+            dialog.getWindow().setDimAmount(0.9f);
+            
+            // Enable elevation and shadow
+            dialog.getWindow().setElevation(16f);
+
+            // Log the actual title color being used
+            TextView titleView = dialog.findViewById(android.R.id.title);
+            if (titleView != null) {
+                int actualTitleColor = titleView.getCurrentTextColor();
+                Log.d(TAG, "Actual title color being used: " + String.format("#%06X", (0xFFFFFF & actualTitleColor)));
+            }
+        });
+
+        return dialog;
     }
 
     private void updateValueDisplay(TextView textView, float value) {

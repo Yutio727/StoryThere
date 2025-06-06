@@ -13,8 +13,15 @@
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
+        <item name="android:colorBackground">@color/white</item>
+        <item name="android:windowBackground">@color/white</item>
+        <item name="android:textColorPrimary">@color/black</item>
+        <item name="android:textColorSecondary">@color/black</item>
+        <item name="colorControlNormal">@color/black</item>
         <item name="textAppearanceSmallPopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Small</item>
         <item name="textAppearanceLargePopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Large</item>
+        <item name="popupMenuStyle">@style/Widget.StoryThere.PopupMenu</item>
+        <item name="popupMenuBackground">@color/white</item>
         <item name="android:fontFamily">@font/montserrat</item>
         <item name="fontFamily">@font/montserrat</item>
 
@@ -25,7 +32,6 @@
 
         <!-- Dialog Title Style -->
         <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.StoryThere.DialogTitle</item>
-
     </style>
 
     <style name="Theme.StoryThere.NoActionBar">
@@ -43,12 +49,15 @@
         <item name="colorSecondaryVariant">@color/teal_700</item>
         <item name="colorOnSecondary">@color/black</item>
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="android:colorBackground">@color/white</item>
         <item name="android:windowBackground">@color/white</item>
-        <item name="android:textColor">@color/black</item>
-        <item name="android:textColorPrimary">@color/white</item>
+        <item name="android:textColorPrimary">@color/black</item>
         <item name="android:textColorSecondary">@color/black</item>
+        <item name="colorControlNormal">@color/black</item>
         <item name="textAppearanceSmallPopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Small</item>
         <item name="textAppearanceLargePopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Large</item>
+        <item name="popupMenuStyle">@style/Widget.StoryThere.PopupMenu</item>
+        <item name="popupMenuBackground">@color/white</item>
         <item name="android:fontFamily">@font/montserrat</item>
         <item name="fontFamily">@font/montserrat</item>
 
@@ -59,7 +68,11 @@
 
         <!-- Dialog Title Style -->
         <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.StoryThere.DialogTitle</item>
+    </style>
 
+    <style name="Widget.StoryThere.PopupMenu" parent="Widget.AppCompat.PopupMenu">
+        <item name="android:popupBackground">@color/white</item>
+        <item name="android:textColor">@color/black</item>
     </style>
 
     <style name="TextAppearance.StoryThere.PopupMenu.Small" parent="TextAppearance.AppCompat.Widget.PopupMenu.Small">
@@ -82,9 +95,16 @@
         <item name="fontFamily">@font/montserrat</item>
     </style>
 
-    <style name="TextAppearance.StoryThere.DialogTitle" parent="TextAppearance.AppCompat.Title">
+    <style name="TextAppearance.StoryThere.DialogTitle" parent="TextAppearance.MaterialComponents.Headline6">
         <item name="android:fontFamily">@font/montserrat_bold</item>
         <item name="fontFamily">@font/montserrat_bold</item>
+        <item name="android:textColor">@color/dialog_title_light</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="Widget.StoryThere.Dialog" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="android:windowBackground">@color/dialog_background_light</item>
+        <item name="android:colorBackground">@color/dialog_background_light</item>
     </style>
 
 </resources>

@@ -19,4 +19,8 @@
     <color name="text_activity_secondary">#333333</color>
     <color name="unselected_button_dark">#2D2D2D</color>
     <color name="light_blue_background">#F0F7FF</color>
+    <color name="dialog_title_light">#252525</color>
+    <color name="dialog_title_dark">#FFFFFF</color>
+    <color name="dialog_background_light">#F7FAFC</color>
+    <color name="dialog_background_dark">#333435</color>
 </resources>

@@ -18,6 +18,7 @@ import android.widget.ScrollView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -25,8 +26,8 @@ import java.util.concurrent.Executors;
 
 public class PDFViewerActivity extends AppCompatActivity implements TextSettingsDialog.TextSettingsListener, ScrollView.OnScrollChangeListener {
     private static final String TAG = "PDFViewerActivity";
-    private static final int PAGE_LOAD_BATCH_SIZE = 2; // Load 2 pages at a time
-    private static final float SCROLL_THRESHOLD_PERCENT = 0.05f; // 1% of total scroll distance
+    private static final int PAGE_LOAD_BATCH_SIZE = 5; // Load 2 pages at a time
+    private static final float SCROLL_THRESHOLD_PERCENT = 0.1f; // distance to load
     private static final long SCROLL_DEBOUNCE_DELAY = 0; // milliseconds
     
     private PDFView pdfView;
@@ -81,7 +82,8 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         scaleDetector = new ScaleGestureDetector(this, new ScaleListener());
 
         // Initialize thread pool and handler
-        executorService = Executors.newFixedThreadPool(2);
+        executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
         mainHandler = new Handler(Looper.getMainLooper());
 
         // Get content from intent
@@ -137,6 +139,13 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 pages.add(null);
             }
 
+            // Check file size and show message if images will be skipped
+            try (InputStream inputStream = getContentResolver().openInputStream(pdfUri)) {
+                if (inputStream != null && inputStream.available() > 3 * 1024 * 1024) {
+                    Toast.makeText(this, "Images disabled for large PDF files (>3MB)", Toast.LENGTH_LONG).show();
+                }
+            }
+
             // Load first batch of pages
             loadPageBatch(1, PAGE_LOAD_BATCH_SIZE);
 
@@ -164,7 +173,10 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             
             for (int pageNum = startPage; pageNum <= endPage; pageNum++) {
                 if (isDestroyed) break;
-                
+
+                if (pages.get(pageNum - 1) != null) {
+                    continue;
+                }
                 PDFParser.ParsedPage page = pdfParser.parsePage(pageNum, currentSettings);
                 if (page != null) {
                     loadedPages.add(page);

@@ -3,11 +3,9 @@ package com.example.storythere;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.util.Log;
-
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfPage;
 import com.itextpdf.kernel.pdf.PdfReader;
@@ -18,25 +16,37 @@ import com.itextpdf.kernel.pdf.xobject.PdfImageXObject;
 import com.itextpdf.kernel.pdf.PdfStream;
 import com.itextpdf.kernel.pdf.PdfDictionary;
 import com.itextpdf.kernel.pdf.PdfName;
-import com.itextpdf.kernel.pdf.canvas.parser.listener.ITextExtractionStrategy;
 import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.PdfArray;
-
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.io.IOException;
 
 public class PDFParser {
     private static final String TAG = "PDFParser";
     private static final float SCALE_FACTOR = 1.0f;
+    private static final long MAX_FILE_SIZE_FOR_IMAGES = 3 * 1024 * 1024; // 3MB in bytes
+    private final Context context;
+    private final Uri pdfUri;
     private PdfDocument pdfDoc;
     private PdfReader reader;
+    private long fileSize;
 
-    public PDFParser(Context context, Uri pdfUri) throws Exception {
+    public PDFParser(Context context, Uri pdfUri) throws IOException {
+        this.context = context;
+        this.pdfUri = pdfUri;
+        
+        // Get file size
+        try (InputStream inputStream = context.getContentResolver().openInputStream(pdfUri)) {
+            if (inputStream != null) {
+                this.fileSize = inputStream.available();
+            }
+        }
+        
         InputStream inputStream = context.getContentResolver().openInputStream(pdfUri);
         if (inputStream == null) {
-            throw new Exception("Could not open PDF stream");
+            throw new IOException("Failed to open PDF file");
         }
         reader = new PdfReader(inputStream);
         pdfDoc = new PdfDocument(reader);
@@ -57,6 +67,10 @@ public class PDFParser {
 
     public int getPageCount() {
         return pdfDoc != null ? pdfDoc.getNumberOfPages() : 0;
+    }
+
+    private boolean shouldLoadImages() {
+        return fileSize <= MAX_FILE_SIZE_FOR_IMAGES;
     }
 
     public ParsedPage parsePage(int pageNumber, TextSettings settings) {
@@ -80,82 +94,85 @@ public class PDFParser {
             // Extract images
             List<ImageInfo> images = new ArrayList<>();
 
-            try {
-                PdfDictionary pageDict = page.getPdfObject();
-                PdfDictionary resources = pageDict.getAsDictionary(PdfName.Resources);
-                if (resources != null) {
-                    PdfDictionary xObjects = resources.getAsDictionary(PdfName.XObject);
-                    if (xObjects != null) {
-                        Log.d(TAG, "Found " + xObjects.size() + " XObjects on page " + pageNumber);
-                        for (PdfName name : xObjects.keySet()) {
-                            PdfStream stream = xObjects.getAsStream(name);
-                            if (stream != null && PdfName.Image.equals(stream.getAsName(PdfName.Subtype))) {
-                                try {
-                                    PdfImageXObject image = new PdfImageXObject(stream);
-                                    byte[] imageBytes = image.getImageBytes();
-                                    if (imageBytes != null && imageBytes.length > 0) {
-                                        Log.d(TAG, "Found image of size " + imageBytes.length + " bytes");
+            // Only load images if file size is within limit
+            if (shouldLoadImages()) {
+                try {
+                    PdfDictionary pageDict = page.getPdfObject();
+                    PdfDictionary resources = pageDict.getAsDictionary(PdfName.Resources);
+                    if (resources != null) {
+                        PdfDictionary xObjects = resources.getAsDictionary(PdfName.XObject);
+                        if (xObjects != null) {
+                            Log.d(TAG, "Found " + xObjects.size() + " XObjects on page " + pageNumber);
+                            for (PdfName name : xObjects.keySet()) {
+                                PdfStream stream = xObjects.getAsStream(name);
+                                if (stream != null && PdfName.Image.equals(stream.getAsName(PdfName.Subtype))) {
+                                    try {
+                                        PdfImageXObject image = new PdfImageXObject(stream);
+                                        byte[] imageBytes = image.getImageBytes();
+                                        if (imageBytes != null && imageBytes.length > 0) {
+                                            Log.d(TAG, "Found image of size " + imageBytes.length + " bytes");
 
-                                        // Get image dimensions and position from PDF
-                                        float width = image.getWidth();
-                                        float height = image.getHeight();
-                                        float x = 0; // Default position
-                                        float y = pageSize.getHeight() - height; // Default position
+                                            // Get image dimensions and position from PDF
+                                            float width = image.getWidth();
+                                            float height = image.getHeight();
+                                            float x = 0; // Default position
+                                            float y = pageSize.getHeight() - height; // Default position
 
-                                        // Try to get actual position from the stream
-                                        PdfDictionary imageDict = stream.getAsDictionary(PdfName.BBox);
-                                        if (imageDict != null) {
-                                            PdfArray bbox = imageDict.getAsArray(PdfName.BBox);
-                                            if (bbox != null && bbox.size() == 4) {
-                                                x = bbox.getAsNumber(0).floatValue();
-                                                y = pageSize.getHeight() - bbox.getAsNumber(3).floatValue();
-                                                width = bbox.getAsNumber(2).floatValue() - x;
-                                                height = bbox.getAsNumber(3).floatValue() - bbox.getAsNumber(1).floatValue();
+                                            // Try to get actual position from the stream
+                                            PdfDictionary imageDict = stream.getAsDictionary(PdfName.BBox);
+                                            if (imageDict != null) {
+                                                PdfArray bbox = imageDict.getAsArray(PdfName.BBox);
+                                                if (bbox != null && bbox.size() == 4) {
+                                                    x = bbox.getAsNumber(0).floatValue();
+                                                    y = pageSize.getHeight() - bbox.getAsNumber(3).floatValue();
+                                                    width = bbox.getAsNumber(2).floatValue() - x;
+                                                    height = bbox.getAsNumber(3).floatValue() - bbox.getAsNumber(1).floatValue();
+                                                }
                                             }
-                                        }
 
-                                        // Create bitmap with original dimensions
-                                        BitmapFactory.Options options = new BitmapFactory.Options();
-                                        options.inSampleSize = 1; // No downsampling
-                                        options.inScaled = false; // Don't scale
-                                        options.inDensity = 0;
-                                        options.inTargetDensity = 0; // Use original density
-                                        options.inMutable = true; // Allow bitmap modification
-                                        options.inPreferredConfig = Bitmap.Config.ARGB_8888; // Use ARGB_8888 for better quality
+                                            // Create bitmap with original dimensions
+                                            BitmapFactory.Options options = new BitmapFactory.Options();
+                                            options.inSampleSize = 1; // No downsampling
+                                            options.inScaled = false; // Don't scale
+                                            options.inDensity = 0;
+                                            options.inTargetDensity = 0; // Use original density
+                                            options.inMutable = true; // Allow bitmap modification
+                                            options.inPreferredConfig = Bitmap.Config.ARGB_8888; // Use ARGB_8888 for better quality
 
-                                        // First try to decode bounds to check if the image is valid
-                                        options.inJustDecodeBounds = true;
-                                        BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
+                                            // First try to decode bounds to check if the image is valid
+                                            options.inJustDecodeBounds = true;
+                                            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
 
-                                        if (options.outWidth > 0 && options.outHeight > 0) {
-                                            // Now decode the actual bitmap
-                                            options.inJustDecodeBounds = false;
-                                            Bitmap originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
+                                            if (options.outWidth > 0 && options.outHeight > 0) {
+                                                // Now decode the actual bitmap
+                                                options.inJustDecodeBounds = false;
+                                                Bitmap originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
 
-                                            if (originalBitmap != null) {
-                                                Log.d(TAG, "Successfully decoded image: " + originalBitmap.getWidth() + "x" + originalBitmap.getHeight());
+                                                if (originalBitmap != null) {
+                                                    Log.d(TAG, "Successfully decoded image: " + originalBitmap.getWidth() + "x" + originalBitmap.getHeight());
 
-                                                // Add image with its position (no scaling here, handled in PDFView)
-                                                images.add(new ImageInfo(originalBitmap, x, y, width, height));
-                                                Log.d(TAG, "Added image at position: " + x + "," + y);
+                                                    // Add image with its position (no scaling here, handled in PDFView)
+                                                    images.add(new ImageInfo(originalBitmap, x, y, width, height));
+                                                    Log.d(TAG, "Added image at position: " + x + "," + y);
+                                                } else {
+                                                    Log.e(TAG, "Failed to decode image after bounds check");
+                                                }
                                             } else {
-                                                Log.e(TAG, "Failed to decode image after bounds check");
+                                                Log.e(TAG, "Invalid image dimensions: " + options.outWidth + "x" + options.outHeight);
                                             }
                                         } else {
-                                            Log.e(TAG, "Invalid image dimensions: " + options.outWidth + "x" + options.outHeight);
+                                            Log.e(TAG, "Image bytes are null or empty");
                                         }
-                                    } else {
-                                        Log.e(TAG, "Image bytes are null or empty");
+                                    } catch (Exception e) {
+                                        Log.e(TAG, "Error processing image: " + e.getMessage());
                                     }
-                                } catch (Exception e) {
-                                    Log.e(TAG, "Error processing image: " + e.getMessage());
                                 }
                             }
                         }
                     }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error extracting images: " + e.getMessage());
                 }
-            } catch (Exception e) {
-                Log.e(TAG, "Error extracting images: " + e.getMessage());
             }
 
             // Only return page if it has content

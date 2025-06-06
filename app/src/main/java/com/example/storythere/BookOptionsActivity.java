@@ -163,7 +163,7 @@ public class BookOptionsActivity extends AppCompatActivity {
 
                             int totalPages = baseDoc.getNumberOfPages();
 
-                            // Close the base doc, as we’ll open new readers per page
+                            // Close the base doc, as we'll open new readers per page
                             baseDoc.close();
                             baseReader.close();
                             baseInputStream.close();
@@ -220,10 +220,24 @@ public class BookOptionsActivity extends AppCompatActivity {
                         if (inputStream == null) throw new Exception("Failed to open file");
                         StringBuilder textBuilder = new StringBuilder();
 
-                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                textBuilder.append(line).append("\n");
+                        if ("epub".equals(fileType)) {
+                            // Parse EPUB file
+                            EPUBParser epubParser = new EPUBParser(this);
+                            if (epubParser.parse(contentUri)) {
+                                List<String> epubTextContent = epubParser.getTextContent();
+                                for (String text : epubTextContent) {
+                                    textBuilder.append(text).append("\n\n");
+                                }
+                            } else {
+                                throw new Exception("Failed to parse EPUB file");
+                            }
+                        } else {
+                            // For other text files
+                            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                                String line;
+                                while ((line = reader.readLine()) != null) {
+                                    textBuilder.append(line).append("\n");
+                                }
                             }
                         }
 

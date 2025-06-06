@@ -72,14 +72,14 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.Light">
             <!-- PDF Viewer Intent Filter -->
-            <intent-filter>
+            <intent-filter android:label="StoryThere (Open as PDF)">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/pdf" />
             </intent-filter>
             
             <!-- EPUB Viewer Intent Filter -->
-            <intent-filter>
+            <intent-filter android:label="StoryThere (Open as EPUB)">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/epub+zip" />

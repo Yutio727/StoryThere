@@ -233,10 +233,10 @@ public class BookOptionsActivity extends AppCompatActivity {
                             }
                         } else {
                             // For other text files
-                            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-                                String line;
-                                while ((line = reader.readLine()) != null) {
-                                    textBuilder.append(line).append("\n");
+                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                textBuilder.append(line).append("\n");
                                 }
                             }
                         }
@@ -333,8 +333,18 @@ public class BookOptionsActivity extends AppCompatActivity {
     private void saveBookCover(Uri imageUri) {
         if (currentBook == null || imageUri == null) return;
 
-        // Save the image to internal storage
-        File internalFile = new File(getFilesDir(), currentBook.getFilePath().hashCode() + "_cover.jpg");
+        // Generate a unique filename using timestamp
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        File internalFile = new File(getFilesDir(), "cover_" + timestamp + ".jpg");
+        
+        // Delete old cover image if it exists
+        if (currentBook.getPreviewImagePath() != null) {
+            File oldCoverFile = new File(currentBook.getPreviewImagePath());
+            if (oldCoverFile.exists()) {
+                oldCoverFile.delete();
+            }
+        }
+
         try (InputStream inputStream = getContentResolver().openInputStream(imageUri);
              FileOutputStream outputStream = new FileOutputStream(internalFile)) {
             if (inputStream != null) {
@@ -343,9 +353,19 @@ public class BookOptionsActivity extends AppCompatActivity {
                 while ((read = inputStream.read(buffer)) != -1) {
                     outputStream.write(buffer, 0, read);
                 }
+                
                 // Update book record with new cover path
-                currentBook.setPreviewImagePath(internalFile.getAbsolutePath());
+                String newPath = internalFile.getAbsolutePath();
+                currentBook.setPreviewImagePath(newPath);
                 bookRepository.update(currentBook);
+                
+                // Force reload the image
+                Glide.with(this)
+                    .load(newPath)
+                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
+                    .skipMemoryCache(true)
+                    .into(bookCoverImage);
+                
                 Toast.makeText(this, "Cover saved", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(this, "Error saving cover", Toast.LENGTH_SHORT).show();

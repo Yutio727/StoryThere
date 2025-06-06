@@ -54,7 +54,11 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
             Glide.with(holder.itemView.getContext())
                 .load(book.getPreviewImagePath())
                 .placeholder(R.drawable.ic_book_placeholder)
+                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
+                .skipMemoryCache(true)
                 .into(holder.previewImageView);
+        } else {
+            holder.previewImageView.setImageResource(R.drawable.ic_book_placeholder);
         }
 
         // Handle selection mode

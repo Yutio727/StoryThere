@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/windowBackground"
+    android:background="?android:colorBackground"
     android:clipToPadding="true"
     android:fitsSystemWindows="true"
     >
@@ -12,7 +12,7 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="?android:attr/windowBackground"
+        android:background="?attr/colorPrimary"
         android:elevation="4dp"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -20,6 +20,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:fillViewport="true"
+        android:background="?android:colorBackground"
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:layout_constraintBottom_toBottomOf="parent">
 
@@ -27,7 +28,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="16dp"
+            android:background="?android:colorBackground">
 
             <ImageView
                 android:id="@+id/bookCoverImage"
@@ -101,19 +103,19 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:layout_marginTop="24dp"
-                android:padding="16dp">
+                android:padding="16dp"
+                android:background="?android:attr/colorBackground">
 
                 <!-- Progress Bar -->
                 <SeekBar
                     android:id="@+id/progressBar"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:progressBackgroundTint="@color/text_dark"
+                    android:progressBackgroundTint="?android:attr/textColorSecondary"
                     android:progressTint="@color/progress_blue"
                     android:thumb="@drawable/seekbar_thumb" />
 
                 <!-- Time Display -->
-
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

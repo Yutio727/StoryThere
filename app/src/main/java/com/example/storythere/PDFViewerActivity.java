@@ -127,6 +127,15 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         super.onDestroy();
     }
 
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // Force update of theme colors when configuration changes
+        if (pdfView != null) {
+            pdfView.invalidate();
+        }
+    }
+
     private void loadPDF(Uri pdfUri) {
         try {
             // Create default text settings

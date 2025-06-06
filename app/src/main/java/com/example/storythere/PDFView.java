@@ -51,16 +51,7 @@ public class PDFView extends View {
     }
 
     private void init() {
-        textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setTypeface(ResourcesCompat.getFont(getContext(), R.font.montserrat));
-        textPaint.setColor(getContext().getResources().getColor(android.R.color.primary_text_light_nodisable, getContext().getTheme()));
-        imagePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        imagePaint.setFilterBitmap(true);
-        
-        // Create default settings
-        defaultSettings = new PDFParser.TextSettings();
-        
-        // Initialize caches with proper sizes
+        // Initialize caches first
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
         int cacheSize = maxMemory / 8; // Use 1/8th of available memory
         
@@ -86,10 +77,57 @@ public class PDFView extends View {
                 }
             }
         };
+
+        // Initialize paints
+        textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        textPaint.setTypeface(ResourcesCompat.getFont(getContext(), R.font.montserrat));
+        imagePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        imagePaint.setFilterBitmap(true);
+        
+        // Create default settings
+        defaultSettings = new PDFParser.TextSettings();
         
         // Enable hardware acceleration
         setLayerType(LAYER_TYPE_HARDWARE, null);
         isHardwareAccelerated = true;
+
+        // Update theme colors after everything is initialized
+        updateThemeColors();
+    }
+
+    private void updateThemeColors() {
+        // Get theme colors using the correct attributes
+        int textColor = getContext().getResources().getColor(R.color.text_activity_primary, getContext().getTheme());
+        int backgroundColor = getContext().getResources().getColor(R.color.background_activity, getContext().getTheme());
+        
+        Log.d(TAG, "Updating theme colors - Text color: " + String.format("#%08X", textColor) + 
+                    ", Background color: " + String.format("#%08X", backgroundColor));
+        
+        // Update text color
+        textPaint.setColor(textColor);
+        
+        // Update background
+        setBackgroundColor(backgroundColor);
+        
+        // Clear caches to force redraw with new colors
+        if (layoutCache != null) {
+            layoutCache.evictAll();
+        }
+        invalidate();
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        Log.d(TAG, "View attached to window - updating theme colors");
+        updateThemeColors();
+    }
+
+    @Override
+    protected void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        Log.d(TAG, "Configuration changed - updating theme colors");
+        updateThemeColors();
     }
 
     private void clearBitmapCache() {
@@ -146,6 +184,8 @@ public class PDFView extends View {
                 .setAlignment(align)
                 .setLineSpacing(0, lineSpacing)
                 .setIncludePad(true)
+                .setMaxLines(Integer.MAX_VALUE)
+                .setEllipsize(null)
                 .build();
             layoutCache.put(key, layout);
         }

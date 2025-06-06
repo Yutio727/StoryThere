@@ -234,17 +234,28 @@ public class AudioReaderActivity extends AppCompatActivity {
         Set<Voice> allVoices = textToSpeech.getVoices();
         List<Voice> filteredVoices = new ArrayList<>();
         
-
+        // Check if the text is primarily Russian
+        boolean isRussian = isTextPrimarilyRussian(textContent);
+        
         for (Voice voice : allVoices) {
             String voiceName = voice.getName();
-            if (voiceName.equals("ru-ru-x-ruc-local") ||
+            if (isRussian) {
+                // For Russian text, use Russian voices
+                if (voiceName.equals("ru-ru-x-ruc-local") ||
                     voiceName.equals("ru-ru-x-ruf-local") ||
                     voiceName.equals("ru-ru-x-rud-network")) {
-                filteredVoices.add(voice);
+                    filteredVoices.add(voice);
+                }
+            } else {
+                // For English text, use the specified English voices
+                if (voiceName.equals("en-us-x-tpf-local") || // Barbara
+                    voiceName.equals("en-au-x-auc-local") || // Batty
+                    voiceName.equals("en-gb-x-gbd-local")) { // Oliver
+                    filteredVoices.add(voice);
+                }
             }
         }
 
-        
         recyclerView.setAdapter(new VoiceAdapter(filteredVoices, voice -> {
             textToSpeech.setVoice(voice);
             if (isPlaying) {
@@ -324,6 +335,23 @@ public class AudioReaderActivity extends AppCompatActivity {
                     Toast.makeText(this, selectedLocale.getLanguage() + " language is not supported on this device", Toast.LENGTH_LONG).show();
                     // Fallback to default language
                     textToSpeech.setLanguage(Locale.getDefault());
+                }
+
+                // Set default voice based on language
+                Set<Voice> voices = textToSpeech.getVoices();
+                for (Voice voice : voices) {
+                    String voiceName = voice.getName();
+                    if (isRussian) {
+                        if (voiceName.equals("ru-ru-x-ruc-local")) {
+                            textToSpeech.setVoice(voice);
+                            break;
+                        }
+                    } else {
+                        if (voiceName.equals("en-us-x-tpf-local")) { // Default to Barbara for English
+                            textToSpeech.setVoice(voice);
+                            break;
+                        }
+                    }
                 }
 
                 // Set default speech rate

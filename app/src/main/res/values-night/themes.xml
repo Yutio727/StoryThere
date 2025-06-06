@@ -12,11 +12,51 @@
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
-        <item name="android:colorBackground">@color/background_activity</item>Add commentMore actions
+        <item name="android:colorBackground">@color/background_activity</item>
+        <item name="android:windowBackground">@color/background_activity</item>
         <item name="android:textColorPrimary">@color/text_activity_primary</item>
         <item name="android:textColorSecondary">@color/text_activity_secondary</item>
-        <item name="colorControlNormal">@color/text_activity_primary</item> <!-- Tint for icons like back arrow -->
+        <item name="colorControlNormal">@color/text_activity_primary</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="fontFamily">@font/montserrat</item>
         <item name="textAppearanceSmallPopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Small</item>
         <item name="textAppearanceLargePopupMenu">@style/TextAppearance.StoryThere.PopupMenu.Large</item>
+        <item name="popupMenuStyle">@style/Widget.StoryThere.PopupMenu</item>
+        <item name="popupMenuBackground">@color/background_activity</item>
+
+        <!-- Dialog Button Styles -->
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.App.Button.Dialog</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.App.Button.Dialog</item>
+        <item name="buttonBarNeutralButtonStyle">@style/Widget.App.Button.Dialog</item>
+
+        <!-- Dialog Title Style -->
+        <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.StoryThere.DialogTitle</item>
+    </style>
+
+    <style name="Theme.StoryThere.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:fontFamily">@font/montserrat</item>
+        <item name="fontFamily">@font/montserrat</item>
+    </style>
+
+    <style name="Widget.StoryThere.PopupMenu" parent="Widget.AppCompat.PopupMenu">
+        <item name="android:popupBackground">@color/background_activity</item>
+        <item name="android:textColor">@color/text_activity_primary</item>
+    </style>
+
+    <style name="TextAppearance.StoryThere.DialogTitle" parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="fontFamily">@font/montserrat_bold</item>
+        <item name="android:textColor">@color/dialog_title_dark</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="Widget.StoryThere.Dialog" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="android:windowBackground">@color/dialog_background_dark</item>
+        <item name="android:colorBackground">@color/dialog_background_dark</item>
+        <item name="android:textColorPrimary">@color/dialog_title_dark</item>
+        <item name="android:textColor">@color/dialog_title_dark</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.StoryThere.DialogTitle</item>
     </style>
 </resources>

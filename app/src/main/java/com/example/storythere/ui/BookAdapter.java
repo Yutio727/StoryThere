@@ -48,7 +48,28 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
         Book book = books.get(position);
         holder.titleTextView.setText(book.getTitle());
         holder.authorTextView.setText(book.getAuthor());
-        holder.annotationTextView.setText(book.getAnnotation());
+        // Format annotation with time for display only
+        String annotation = book.getAnnotation();
+        if (annotation == null || annotation.trim().isEmpty()) {
+            holder.annotationTextView.setText("");
+        } else {
+            String result = annotation;
+            int estimatedMinutes = -1;
+            try {
+                int count = Integer.parseInt(annotation.trim().split(" ")[0]);
+                if (book.getFileType().equals("pdf")) {
+                    estimatedMinutes = (int) Math.ceil(count * 300.0 / 250.0);
+                } else {
+                    estimatedMinutes = (int) Math.ceil(count / 250.0);
+                }
+            } catch (Exception ignored) {}
+            if (estimatedMinutes > 0) {
+                String separator = " | ";
+                String min = holder.itemView.getContext().getString(R.string.min);
+                result = annotation + separator + estimatedMinutes + min;
+            }
+            holder.annotationTextView.setText(result);
+        }
         
         if (book.getPreviewImagePath() != null) {
             Glide.with(holder.itemView.getContext())

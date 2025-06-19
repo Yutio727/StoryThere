@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
                 if (Environment.isExternalStorageManager()) {
                     openFilePicker();
                 } else {
-                    Toast.makeText(this, "Storage permission denied", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.storage_permission_denied, Toast.LENGTH_SHORT).show();
                 }
             }
         }
@@ -245,7 +245,7 @@ public class MainActivity extends AppCompatActivity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 openFilePicker();
             } else {
-                Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.permission_denied, Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -259,91 +259,21 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void importBook(Uri uri) {
-        // Get file information
         String fileName = getFileName(uri);
         String fileType = getFileType(fileName);
 
-        String formattedTime;
-
-        if ("pdf".equals(fileType)) {
-            ExecutorService executor = Executors.newFixedThreadPool(4); // 4 threads for parallel parsing
-            List<Future<String>> futures = new ArrayList<>();
-
-            try {
-                // Open initial document to get page count
-                int totalPages;
-                try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
-                    assert inputStream != null;
-                    try (PdfReader reader = new PdfReader(inputStream);
-                         PdfDocument pdfDoc = new PdfDocument(reader)) {
-                        totalPages = pdfDoc.getNumberOfPages();
-                    }
-                }
-
-                // Submit tasks for each page
-                for (int i = 1; i <= totalPages; i++) {
-                    final int pageNumber = i;
-                    futures.add(executor.submit(() -> {
-                        String pageText = "";
-                        try (InputStream pageInputStream = getContentResolver().openInputStream(uri)) {
-                            assert pageInputStream != null;
-                            try (PdfReader pageReader = new PdfReader(pageInputStream);
-                                 PdfDocument pageDoc = new PdfDocument(pageReader)) {
-
-                                PdfPage page = pageDoc.getPage(pageNumber);
-                                pageText = PdfTextExtractor.getTextFromPage(page, new SimpleTextExtractionStrategy());
-                            }
-                        } catch (Exception e) {
-                            Log.e("importBook", "Error parsing page " + pageNumber + ": " + e.getMessage());
-                        }
-                        return pageText != null ? pageText.trim() : "";
-                    }));
-                }
-
-                // Gather results
-                StringBuilder allText = new StringBuilder();
-                for (Future<String> future : futures) {
-                    try {
-                        String text = future.get();
-                        if (!text.isEmpty()) {
-                            allText.append(text).append("\n");
-                        }
-                    } catch (Exception e) {
-                        Log.e("importBook", "Error retrieving page text: " + e.getMessage());
-                    }
-                }
-
-                String text = allText.toString().trim();
-                int wordCount = text.isEmpty() ? 0 : text.split("\\s+").length;
-                formattedTime = formatTime(wordCount);
-            } catch (Exception e) {
-                Log.e("importBook", "Error during PDF parsing: " + e.getMessage());
-                formattedTime = "00:00";
-            } finally {
-                executor.shutdown();
-            }
-        } else {
-            TextParser.ParsedText parsedText = TextParser.parseText(this, uri);
-            String text = parsedText.content.trim();
-            int wordCount = text.isEmpty() ? 0 : text.split("\\s+").length;
-            formattedTime = formatTime(wordCount);
-        }
-
-
-
-
-        // Create a new Book object
+        // Create a new Book object with minimal info
         Book book = new Book(
             fileName,
-            "Unknown Author", // You might want to extract this from metadata
+            getString(R.string.unknown_author),
             uri.toString(),
             fileType
         );
-        book.setAnnotation(formattedTime); // Store estimated time in annotation
+        // Do not set annotation or parse anything
 
         // Save the book to the database
         viewModel.insert(book);
-        Toast.makeText(this, "Book imported: " + fileName, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, getString(R.string.book_imported) + fileName, Toast.LENGTH_SHORT).show();
     }
     
     @SuppressLint("Range")
@@ -380,6 +310,28 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+    private String getAnnotationWithTime(Book book) {
+        String annotation = book.getAnnotation();
+        if (annotation == null || annotation.trim().isEmpty()) return "";
+        String result = annotation;
+        int estimatedMinutes = -1;
+        try {
+            int count = Integer.parseInt(annotation.trim().split(" ")[0]);
+            if (book.getFileType().equals("pdf")) {
+                estimatedMinutes = (int) Math.ceil(count * 300.0 / 250.0);
+            } else {
+                estimatedMinutes = (int) Math.ceil(count / 250.0);
+            }
+        } catch (Exception ignored) {}
+        if (estimatedMinutes > 0) {
+            // Use translations for separator and min
+            String separator = " | ";
+            String min = getString(R.string.min);
+            result = annotation + separator + estimatedMinutes + min;
+        }
+        return result;
+    }
+
     private void filterBooksByTab(String tab) {
         List<Book> filteredBooks = new ArrayList<>();
         for (Book book : allBooks) {
@@ -396,6 +348,11 @@ public class MainActivity extends AppCompatActivity {
                     filteredBooks.add(book);
                 }
             }
+        }
+        // Set annotation with time for display
+        for (Book book : filteredBooks) {
+            String annotationWithTime = getAnnotationWithTime(book);
+            book.setAnnotation(annotationWithTime);
         }
         adapter.setBooks(filteredBooks);
     }
@@ -428,7 +385,7 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("SetTextI18n")
     private void updateToolbarTitle(int selectedCount) {
         if (isSelectionMode) {
-            toolbarTitle.setText(selectedCount + " selected");
+            toolbarTitle.setText(selectedCount + getString(R.string.selected));
         } else {
             toolbarTitle.setText("StoryThere");
         }
@@ -461,7 +418,7 @@ public class MainActivity extends AppCompatActivity {
             }
             bottomSheetDialog.dismiss();
             exitSelectionMode();
-            Toast.makeText(this, "Books deleted", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.books_deleted, Toast.LENGTH_SHORT).show();
         });
 
         btnAddToFavourite.setOnClickListener(v -> {
@@ -475,7 +432,7 @@ public class MainActivity extends AppCompatActivity {
             bottomSheetDialog.dismiss();
             exitSelectionMode();
             Toast.makeText(this, 
-                isRemoving ? "Books removed from favourites" : "Books added to favourites", 
+                isRemoving ? getString(R.string.books_removed_from_favourites) : getString(R.string.books_added_to_favourites),
                 Toast.LENGTH_SHORT).show();
         });
 

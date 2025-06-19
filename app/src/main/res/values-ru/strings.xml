@@ -46,4 +46,25 @@
     <string name="welcome_title">Добро пожаловать в StoryThere</string>
     <string name="welcome_message">StoryThere - Это ваш мир историй в телефоне.</string>
     <string name="login_failed">Не удалось авторизироваться</string>
+    <string name="apply">Применить</string>
+    <string name="estimated_time">"Примерное время чтения: "</string>
+    <string name="estimated_time_uncalc">Примерное время чтения: --</string>
+    <string name="min">" мин"</string>
+    <string name="words">" слов"</string>
+    <string name="pages">" страниц"</string>
+    <string name="book_imported">"Книга импортирована: "</string>
+    <string name="permission_denied">Нет разрешения</string>
+    <string name="storage_permission_denied">Нет разрешения хранилища</string>
+    <string name="selected">выбрано</string>
+    <string name="books_deleted">Книги удалены</string>
+    <string name="books_removed_from_favourites">Книги удалены из избранного</string>
+    <string name="books_added_to_favourites">Книги добавлены в избранное</string>
+    <string name="unknown_author">Неизвестный автор</string>
+    <string name="author_name">Автор</string>
+    <string name="book_cover_long_press_to_change_cover_image">Обложка книги. Зажмите, чтобы изменить обложку.</string>
+    <string name="images_disabled_for_large_pdf_files"><![CDATA[Изображения недоступны в pdf файлах, размером > 3 мб]]></string>
+    <string name="no_content_provided">Файл не найден или удалён</string>
+    <string name="failed_to_load_pdf">Ошибка при загрузке PDF файла</string>
+    <string name="failed_to_load_text_content">Не удалось загрузить текст</string>
+    <string name="failed_to_load_epub">Ошибка при загрузке EPUB файла</string>
 </resources>

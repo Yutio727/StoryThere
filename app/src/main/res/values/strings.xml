@@ -47,4 +47,24 @@
     <string name="welcome_title">Welcome to StoryThere</string>
     <string name="welcome_message">StoryThere is your world of stories on your phone.</string>
     <string name="login_failed">Failed to log in</string>
+    <string name="estimated_time">"Estimated time: "</string>
+    <string name="estimated_time_uncalc">Estimated time: --</string>
+    <string name="min">" min"</string>
+    <string name="words">" words"</string>
+    <string name="pages">" pages"</string>
+    <string name="book_imported">"Book imported: "</string>
+    <string name="permission_denied">Permission denied</string>
+    <string name="storage_permission_denied">Storage permission denied</string>
+    <string name="selected">" selected"</string>
+    <string name="books_deleted">Books deleted</string>
+    <string name="books_removed_from_favourites">Books removed from favourites</string>
+    <string name="books_added_to_favourites">Books added to favourites</string>
+    <string name="unknown_author">Unknown Author</string>
+    <string name="author_name">Author Name</string>
+    <string name="book_cover_long_press_to_change_cover_image">Book cover. Long press to change cover image.</string>
+    <string name="images_disabled_for_large_pdf_files"><![CDATA[Images disabled for large PDF files (>3MB)]]></string>
+    <string name="no_content_provided">No content provided</string>
+    <string name="failed_to_load_pdf">Failed to load PDF</string>
+    <string name="failed_to_load_text_content">Failed to load text content</string>
+    <string name="failed_to_load_epub">Failed to load EPUB</string>
 </resources>

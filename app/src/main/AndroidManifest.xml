@@ -17,6 +17,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.StoryThere"
         tools:targetApi="31">
+        <activity
+            android:name=".Registration"
+            android:exported="false" />
+        <activity
+            android:name=".Login"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -32,79 +43,56 @@
             android:name=".MainActivity"
             android:exported="true"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.StoryThere.NoActionBar">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            
-            <!-- PDF Viewer Intent Filter -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="application/pdf" />
-            </intent-filter>
-
-            <!-- EPUB Viewer Intent Filter -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="application/epub+zip" />
-            </intent-filter>
-
-            <!-- Audio Player Intent Filter -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="audio/*" />
-            </intent-filter>
-        </activity>
-
+            android:theme="@style/Theme.StoryThere.NoActionBar" />
         <activity
             android:name=".ReaderActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
-
         <activity
             android:name=".PDFViewerActivity"
             android:exported="true"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.Light">
+
             <!-- PDF Viewer Intent Filter -->
-            <intent-filter>
+            <intent-filter android:label="StoryThere (Open as PDF)">
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
+
                 <data android:mimeType="application/pdf" />
             </intent-filter>
-            
+
             <!-- EPUB Viewer Intent Filter -->
-            <intent-filter>
+            <intent-filter android:label="StoryThere (Open as EPUB)">
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
+
                 <data android:mimeType="application/epub+zip" />
             </intent-filter>
         </activity>
-
         <activity
             android:name=".BookOptionsActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
-
         <activity
             android:name=".AudioReaderActivity"
             android:exported="true"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar">
+
             <!-- Audio Player Intent Filter -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
+
                 <data android:mimeType="audio/*" />
             </intent-filter>
         </activity>
-
     </application>
 
 </manifest>

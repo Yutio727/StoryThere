@@ -23,4 +23,10 @@
     <color name="dialog_title_dark">#FFFFFF</color>
     <color name="dialog_background_light">#F7FAFC</color>
     <color name="dialog_background_dark">#333435</color>
+    <color name="textfield_background">#F7FAFC</color>
+    <color name="textfield_text">#4A739C</color>
+    <color name="textfield_background_dark">#333333</color>
+    <color name="textfield_stroke">#CFDBE8</color>
+    <color name="textfield_stroke_focused">@color/progress_blue</color>
+    <color name="mtrl_textinput_default_box_stroke_color">#CFDBE8</color>
 </resources>

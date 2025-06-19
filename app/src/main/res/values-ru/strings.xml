@@ -2,7 +2,6 @@
 <resources>
     <string name="app_name">StoryThere</string>
     <string name="text_settings">Настройки Текста</string>
-    <string name="default_settings">Стандартные</string>
     <string name="you_sure_delete">Вы точно хотите удалить этот файл?</string>
     <string name="delete">Удалить</string>
     <string name="cancel">Отмена</string>
@@ -29,6 +28,24 @@
     <string name="forward_10_seconds">10 секунд вперёд</string>
     <string name="play_pause">Пуск/Пауза</string>
     <string name="rewind_10_seconds">10 секунд назад</string>
+    <string name="email">Почта</string>
+    <string name="password">Пароль</string>
+    <string name="login">Войти</string>
+    <string name="forget_password">Забыли пароль?</string>
+    <string name="registration">Регистрация</string>
+    <string name="username">Имя пользователя</string>
+    <string name="birthday">Дата Рождения</string>
+    <string name="confirm_password">Повторите пароль</string>
+    <string name="registration_title">Регистрация</string>
+    <string name="already_have_account">Уже есть аккаунт?</string>
+    <string name="login_bold">Войти</string>
+    <string name="please_fill_all_fields_correctly">Пожалуйста, заполните все поля правильно</string>
+    <string name="passwords_do_not_match">Пароли не совпадают</string>
+    <string name="registration_success">Поздравляю, вы успешно зарегестрировались</string>
+    <string name="registration_failed">Извините, не удалось зарегестрироваться</string>
+    <string name="welcome_title">Добро пожаловать в StoryThere</string>
+    <string name="welcome_message">StoryThere - Это ваш мир историй в телефоне.</string>
+    <string name="login_failed">Не удалось авторизироваться</string>
     <string name="apply">Применить</string>
     <string name="estimated_time">"Примерное время чтения: "</string>
     <string name="estimated_time_uncalc">Примерное время чтения: --</string>

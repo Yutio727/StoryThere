@@ -35,14 +35,14 @@
             android:layout_height="180dp"
             android:src="@drawable/ic_book_placeholder"
             android:scaleType="centerCrop"
-            android:contentDescription="Book cover. Long press to change cover image."
+            android:contentDescription="@string/book_cover_long_press_to_change_cover_image"
             android:layout_gravity="center_horizontal" />
 
         <TextView
             android:id="@+id/bookAuthorText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Author Name"
+            android:text="@string/author_name"
             android:textSize="16sp"
             android:textStyle="bold"
             android:layout_marginTop="16dp"
@@ -53,9 +53,19 @@
             android:id="@+id/bookReadingTimeText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Time of reading: --"
+            android:text="@string/estimated_time"
             android:textSize="14sp"
             android:layout_marginTop="8dp"
+            android:gravity="center_horizontal"
+            android:fontFamily="@font/montserrat"/>
+
+        <TextView
+            android:id="@+id/bookEstimatedTimeText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/estimated_time_uncalc"
+            android:textSize="14sp"
+            android:layout_marginTop="4dp"
             android:gravity="center_horizontal"
             android:fontFamily="@font/montserrat"/>
     </LinearLayout>

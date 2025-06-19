@@ -108,7 +108,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 }
             } else {
                 Log.e(TAG, "No content provided");
-                Toast.makeText(this, "No content provided", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.no_content_provided, Toast.LENGTH_SHORT).show();
                 finish();
             }
         }
@@ -159,7 +159,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             // Check file size and show message if images will be skipped
             try (InputStream inputStream = getContentResolver().openInputStream(pdfUri)) {
                 if (inputStream != null && inputStream.available() > 3 * 1024 * 1024) {
-                    Toast.makeText(this, "Images disabled for large PDF files (>3MB)", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, R.string.images_disabled_for_large_pdf_files, Toast.LENGTH_LONG).show();
                 }
             }
 
@@ -168,7 +168,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
 
         } catch (Exception e) {
             Log.e(TAG, "Error initializing PDF: " + e.getMessage());
-            Toast.makeText(this, "Failed to load PDF", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.failed_to_load_pdf, Toast.LENGTH_SHORT).show();
             finish();
         }
     }
@@ -394,7 +394,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
 
         } catch (Exception e) {
             Log.e(TAG, "Error initializing text content: " + e.getMessage());
-            Toast.makeText(this, "Failed to load text content", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.failed_to_load_text_content, Toast.LENGTH_SHORT).show();
             finish();
         }
     }
@@ -461,12 +461,12 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     }
                 }
             } else {
-                Toast.makeText(this, "Failed to load EPUB", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.failed_to_load_epub, Toast.LENGTH_SHORT).show();
                 finish();
             }
         } catch (Exception e) {
             Log.e(TAG, "Error loading EPUB: " + e.getMessage());
-            Toast.makeText(this, "Failed to load EPUB", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.failed_to_load_epub, Toast.LENGTH_SHORT).show();
             finish();
         }
     }

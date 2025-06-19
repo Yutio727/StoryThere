@@ -52,6 +52,7 @@ public class BookOptionsActivity extends AppCompatActivity {
     private ImageView bookCoverImage;
     private TextView bookAuthorText;
     private TextView bookReadingTimeText;
+    private TextView bookEstimatedTimeText;
     private BookRepository bookRepository;
     private Book currentBook;
     private String filePath;
@@ -92,6 +93,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         bookCoverImage = findViewById(R.id.bookCoverImage);
         bookAuthorText = findViewById(R.id.bookAuthorText);
         bookReadingTimeText = findViewById(R.id.bookReadingTimeText);
+        bookEstimatedTimeText = findViewById(R.id.bookEstimatedTimeText);
         btnReadMode = findViewById(R.id.btnReadMode);
         btnListenMode = findViewById(R.id.btnListenMode);
         scaleAnimation = AnimationUtils.loadAnimation(this, R.anim.button_scale);
@@ -423,37 +425,92 @@ public class BookOptionsActivity extends AppCompatActivity {
         }
     }
 
+    // Helper to check if annotation starts with a number (for word/page count)
+    private boolean isCountAnnotation(String annotation) {
+        if (annotation == null) return false;
+        try {
+            String first = annotation.trim().split(" ")[0];
+            Integer.parseInt(first);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     // Helper method to update the reading time text based on selected mode
     private void updateBookReadingTimeText() {
         if (currentBook != null) {
+            int estimatedMinutes = -1;
             if (isReadModeSelected) {
                 if ("pdf".equals(fileType)) {
-                    // For PDFs, show total pages
-                    try {
-                        PDFParser pdfParser = new PDFParser(this, contentUri);
-                        int totalPages = pdfParser.getPageCount();
-                        bookReadingTimeText.setText(totalPages + " pages");
-                        pdfParser.close();
-                    } catch (Exception e) {
-                        bookReadingTimeText.setText("");
+                    String annotation = currentBook.getAnnotation();
+                    if (isCountAnnotation(annotation)) {
+                        bookReadingTimeText.setText(annotation);
+                        try {
+                            int pageCount = Integer.parseInt(annotation.trim().split(" ")[0]);
+                            estimatedMinutes = (int) Math.ceil(pageCount * 300.0 / 250.0); // 300 words/page
+                        } catch (Exception ignored) {}
+                    } else {
+                        try {
+                            PDFParser pdfParser = new PDFParser(this, contentUri);
+                            int totalPages = pdfParser.getPageCount();
+                            annotation = totalPages + getString(R.string.pages);
+                            bookReadingTimeText.setText(annotation);
+                            pdfParser.close();
+                            currentBook.setAnnotation(annotation);
+                            bookRepository.update(currentBook);
+                            estimatedMinutes = (int) Math.ceil(totalPages * 300.0 / 250.0);
+                        } catch (Exception e) {
+                            bookReadingTimeText.setText("");
+                        }
                     }
                 } else {
-                    // For non-PDF files, show word count
-                    try {
-                        TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
-                        int wordCount = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
-                        bookReadingTimeText.setText(wordCount + " words");
-                    } catch (Exception e) {
-                        bookReadingTimeText.setText("");
+                    String annotation = currentBook.getAnnotation();
+                    if (isCountAnnotation(annotation)) {
+                        bookReadingTimeText.setText(annotation);
+                        try {
+                            int wordCount = Integer.parseInt(annotation.trim().split(" ")[0]);
+                            estimatedMinutes = (int) Math.ceil(wordCount / 250.0);
+                        } catch (Exception ignored) {}
+                    } else {
+                        try {
+                            TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
+                            int wordCount = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
+                            annotation = wordCount + getString(R.string.words);
+                            bookReadingTimeText.setText(annotation);
+                            currentBook.setAnnotation(annotation);
+                            bookRepository.update(currentBook);
+                            estimatedMinutes = (int) Math.ceil(wordCount / 250.0);
+                        } catch (Exception e) {
+                            bookReadingTimeText.setText("");
+                        }
                     }
                 }
             } else {
-                // Use the stored estimated time from the Book object's annotation
-                String estimatedTime = currentBook.getAnnotation();
-                bookReadingTimeText.setText(estimatedTime);
+                String annotation = currentBook.getAnnotation();
+                if (isCountAnnotation(annotation)) {
+                    bookReadingTimeText.setText(annotation);
+                    try {
+                        int count = Integer.parseInt(annotation.trim().split(" ")[0]);
+                        if ("pdf".equals(fileType)) {
+                            estimatedMinutes = (int) Math.ceil(count * 300.0 / 250.0);
+                        } else {
+                            estimatedMinutes = (int) Math.ceil(count / 250.0);
+                        }
+                    } catch (Exception ignored) {}
+                } else {
+                    bookReadingTimeText.setText("");
+                }
+            }
+            // Set estimated time text
+            if (estimatedMinutes > 0) {
+                bookEstimatedTimeText.setText(getString(R.string.estimated_time) + estimatedMinutes + getString(R.string.min));
+            } else {
+                bookEstimatedTimeText.setText(R.string.estimated_time_uncalc);
             }
         } else {
             bookReadingTimeText.setText("");
+            bookEstimatedTimeText.setText(R.string.estimated_time_uncalc);
         }
     }
 

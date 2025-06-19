@@ -3,9 +3,14 @@
     <color name="background_activity">#333435</color>
     <color name="text_activity_primary">#FFFFFF</color>
     <color name="text_activity_secondary">#CCCCCC</color>
-    <color name="progress_blue">#007BFF</color> <!-- Assuming you want progress_blue to be consistent or define it here -->
+    <color name="progress_blue">#1A73E8</color>
     <color name="background_blue">#212121</color>
     <color name="text_black">#FFFFFF</color>
     <color name="unselected_button_dark">#2D2D2D</color>
     <color name="light_blue_background">#1A1A1A</color>
+    <color name="textfield_background">#333333</color>
+    <color name="textfield_text">#FFFFFF</color>
+    <color name="textfield_stroke">#FFFFFF</color>
+    <color name="textfield_stroke_focused">@color/progress_blue</color>
+    <color name="mtrl_textinput_default_box_stroke_color">#C7C7C7</color>
 </resources>

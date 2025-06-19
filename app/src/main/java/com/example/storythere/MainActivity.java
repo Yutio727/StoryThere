@@ -1,5 +1,7 @@
 package com.example.storythere;
 
+import static android.provider.Settings.System.getString;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.ClipData;
@@ -37,6 +39,8 @@ import com.itextpdf.kernel.pdf.PdfPage;
 import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.canvas.parser.PdfTextExtractor;
 import com.itextpdf.kernel.pdf.canvas.parser.listener.SimpleTextExtractionStrategy;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -167,6 +171,29 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onTabReselected(TabLayout.Tab tab) {}
         });
+    }
+    
+    @Override
+    protected void onStart() {
+        super.onStart();
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) {
+            // User is not authenticated, clear cache if needed and go to Login
+            Log.d("MainActivity", "User session invalid. Redirecting to Login.");
+            // TODO: Clear any user cache here if you store user info
+            startActivity(new Intent(this, Login.class));
+            finish();
+        } else {
+            // Log the user's token for debug (remove in production)
+            user.getIdToken(false).addOnCompleteListener(task -> {
+                if (task.isSuccessful() && task.getResult() != null) {
+                    String token = task.getResult().getToken();
+                    Log.d("MainActivity", "User session valid. Token: " + token);
+                } else {
+                    Log.w("MainActivity", "Failed to get user token.");
+                }
+            });
+        }
     }
     
     private void checkPermissionsAndImport() {

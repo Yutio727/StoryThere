@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.application'
+    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
@@ -55,6 +56,8 @@ dependencies {
     // Image loading
     implementation libs.glide
     implementation libs.androidx.foundation.text
+    implementation libs.firebase.auth
+    implementation libs.androidx.activity
     annotationProcessor libs.compiler
     
     // Room database

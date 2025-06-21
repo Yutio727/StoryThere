@@ -108,21 +108,13 @@ public class ReaderActivity extends AppCompatActivity {
                     break;
                     
                 case "txt":
-                    Log.d(TAG, "Reading text file");
-                    try {
-                        // Parse the text file using TextParser
-                        TextParser.ParsedText parsedText = TextParser.parseText(this, uri);
-                        
-                        // Launch PDFViewerActivity with the parsed text
-                        Intent intent = new Intent(this, PDFViewerActivity.class);
-                        intent.putExtra("textContent", parsedText.content);
-                        startActivity(intent);
-                        finish(); // Close the reader activity
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error parsing text file: " + e.getMessage(), e);
-                        Toast.makeText(this, "Error reading text file", Toast.LENGTH_LONG).show();
-                        finish();
-                    }
+                    Log.d(TAG, "Redirecting TXT file to PDFViewerActivity");
+                    Intent pdfIntent = new Intent(this, PDFViewerActivity.class);
+                    pdfIntent.setData(uri);
+                    pdfIntent.putExtra("fileType", fileType);
+                    pdfIntent.putExtra("title", getIntent().getStringExtra("title"));
+                    startActivity(pdfIntent);
+                    finish();
                     break;
                     
                 case "html":

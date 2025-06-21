@@ -137,6 +137,26 @@ public class BookOptionsActivity extends AppCompatActivity {
                     Intent pdfIntent = new Intent(this, PDFViewerActivity.class);
                     pdfIntent.setData(contentUri);
                     startActivity(pdfIntent);
+                } else if ("txt".equals(fileType)) {
+                    // Cache parsed .txt content to a file and pass file path to PDFViewerActivity
+                    TextParser.ParsedText parsed = TextParser.parseText(this, contentUri);
+                    // Use a unique cache file name per book (e.g., by title hash)
+                    String safeTitle = (title != null ? title.replaceAll("[^a-zA-Z0-9]", "_") : "book");
+                    File cacheFile = new File(getCacheDir(), safeTitle + "_parsed.txt");
+                    // Write parsed content to cache file
+                    try (FileWriter writer = new FileWriter(cacheFile, false)) {
+                        writer.write(parsed.content);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Toast.makeText(this, "Failed to cache parsed text", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    Intent pdfIntent = new Intent(this, PDFViewerActivity.class);
+                    pdfIntent.setData(Uri.fromFile(cacheFile));
+                    pdfIntent.putExtra("isRussian", parsed.isRussian);
+                    pdfIntent.putExtra("fileType", fileType);
+                    pdfIntent.putExtra("title", title);
+                    startActivity(pdfIntent);
                 } else {
                     // Open reader activity for other file types
                     Intent readerIntent = new Intent(this, ReaderActivity.class);
@@ -153,18 +173,11 @@ public class BookOptionsActivity extends AppCompatActivity {
                     boolean isRussian;
 
                     if ("txt".equals(fileType)) {
-                        // For txt files, use the original file
+                        // Use optimal parsing method from TextParser
                         textUri = contentUri;
-                        InputStream inputStream = getContentResolver().openInputStream(contentUri);
-                        StringBuilder textBuilder = new StringBuilder();
-                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                textBuilder.append(line).append("\n");
-                            }
-                        }
-                        textContent = textBuilder.toString();
-                        isRussian = TextParser.isTextPrimarilyRussian(textContent);
+                        TextParser.ParsedText parsed = TextParser.parseText(this, contentUri);
+                        textContent = parsed.content;
+                        isRussian = parsed.isRussian;
                     } else {
                         // For non-txt files, check if parsed text file exists
                         File parsedFile = null;

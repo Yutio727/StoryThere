@@ -32,6 +32,11 @@
 
         <!-- Dialog Title Style -->
         <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.StoryThere.DialogTitle</item>
+
+        <!-- Bottom Navigation Colors -->
+        <item name="bottomNavBackground">@color/bottom_nav_background_light</item>
+        <item name="bottomNavSelected">@color/bottom_nav_selected_light</item>
+        <item name="bottomNavUnselected">@color/bottom_nav_unselected_light</item>
     </style>
 
     <style name="Theme.StoryThere.NoActionBar">
@@ -39,6 +44,11 @@
         <item name="windowNoTitle">true</item>
         <item name="android:fontFamily">@font/montserrat</item>
         <item name="fontFamily">@font/montserrat</item>
+
+        <!-- Bottom Navigation Colors -->
+        <item name="bottomNavBackground">@color/bottom_nav_background_light</item>
+        <item name="bottomNavSelected">@color/bottom_nav_selected_light</item>
+        <item name="bottomNavUnselected">@color/bottom_nav_unselected_light</item>
     </style>
 
     <style name="Theme.StoryThere.Light" parent="Theme.MaterialComponents.Light.NoActionBar">
@@ -68,6 +78,11 @@
 
         <!-- Dialog Title Style -->
         <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.StoryThere.DialogTitle</item>
+
+        <!-- Bottom Navigation Colors -->
+        <item name="bottomNavBackground">@color/bottom_nav_background_light</item>
+        <item name="bottomNavSelected">@color/bottom_nav_selected_light</item>
+        <item name="bottomNavUnselected">@color/bottom_nav_unselected_light</item>
     </style>
 
     <style name="Widget.StoryThere.PopupMenu" parent="Widget.AppCompat.PopupMenu">

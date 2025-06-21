@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/light_blue_background">
 
+    <!-- Toolbar -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
@@ -20,41 +20,312 @@
             android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
 
             <TextView
+                android:id="@+id/toolbar_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/profile"
                 android:textColor="@android:color/white"
-                android:textSize="20sp" />
+                android:textSize="20sp"
+                android:fontFamily="@font/montserrat_bold" />
 
         </androidx.appcompat.widget.Toolbar>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:orientation="vertical"
-        android:gravity="center"
         app:layout_constraintTop_toBottomOf="@id/appBarLayout"
         app:layout_constraintBottom_toTopOf="@id/bottom_navigation">
 
-        <TextView
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/profile"
-            android:textSize="24sp"
-            android:textColor="@color/text_activity_primary"
-            android:fontFamily="@font/montserrat_bold" />
+            android:orientation="vertical"
+            android:padding="16dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Profile page content will be here"
-            android:textSize="16sp"
-            android:textColor="@color/text_activity_secondary"
-            android:fontFamily="@font/montserrat"
-            android:layout_marginTop="16dp" />
+            <!-- User Profile Section -->
+            <LinearLayout
+                android:id="@+id/userProfileSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:background="@color/white"
+                android:elevation="2dp"
+                android:layout_marginBottom="16dp">
 
-    </LinearLayout>
+                <!-- User Icon -->
+                <ImageView
+                    android:id="@+id/userIcon"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:src="@drawable/storythere_icon"
+                    android:contentDescription="User Icon" />
+
+                <!-- User Info -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="16dp">
+
+                    <TextView
+                        android:id="@+id/userName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="User Name"
+                        android:textSize="18sp"
+                        android:textColor="@color/text_activity_primary"
+                        android:fontFamily="@font/montserrat_bold"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Email Section -->
+            <LinearLayout
+                android:id="@+id/emailSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:background="@color/white"
+                android:elevation="2dp"
+                android:layout_marginBottom="16dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_mail"
+                    android:layout_marginEnd="16dp"
+                    android:contentDescription="Email Icon" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="EMAIL"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_activity_primary"
+                    android:fontFamily="@font/montserrat_bold"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/userEmail"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="user@example.com"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_activity_secondary"
+                    android:fontFamily="@font/montserrat" />
+            </LinearLayout>
+
+            <!-- Settings Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings"
+                android:textSize="18sp"
+                android:textColor="@color/text_activity_primary"
+                android:fontFamily="@font/montserrat_bold"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Theme Setting -->
+            <LinearLayout
+                android:id="@+id/themeSetting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:elevation="2dp"
+                android:layout_marginBottom="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <View
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@drawable/empty_square"
+                    android:layout_marginEnd="16dp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/theme"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_activity_primary"
+                    android:fontFamily="@font/montserrat" />
+
+                <TextView
+                    android:id="@+id/currentTheme"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/light"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_activity_secondary"
+                    android:fontFamily="@font/montserrat" />
+            </LinearLayout>
+
+            <!-- Notifications Setting -->
+            <LinearLayout
+                android:id="@+id/notificationsSetting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:elevation="2dp"
+                android:layout_marginBottom="16dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <View
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@drawable/empty_square"
+                    android:layout_marginEnd="16dp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/notifications"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_activity_primary"
+                    android:fontFamily="@font/montserrat" />
+            </LinearLayout>
+
+            <!-- Language Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/language"
+                android:textSize="18sp"
+                android:textColor="@color/text_activity_primary"
+                android:fontFamily="@font/montserrat_bold"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Interface Language Setting -->
+            <LinearLayout
+                android:id="@+id/languageSetting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:elevation="2dp"
+                android:layout_marginBottom="16dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <View
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@drawable/empty_square"
+                    android:layout_marginEnd="16dp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/interface_language"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_activity_primary"
+                    android:fontFamily="@font/montserrat" />
+
+                <TextView
+                    android:id="@+id/currentLanguage"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/current_language"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_activity_secondary"
+                    android:fontFamily="@font/montserrat" />
+            </LinearLayout>
+
+            <!-- About Us Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/about_us"
+                android:textSize="18sp"
+                android:textColor="@color/text_activity_primary"
+                android:fontFamily="@font/montserrat_bold"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Report Issue & FAQ -->
+            <LinearLayout
+                android:id="@+id/reportIssueSetting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:elevation="2dp"
+                android:layout_marginBottom="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <View
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@drawable/empty_square"
+                    android:layout_marginEnd="16dp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/report_issue_faq"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_activity_primary"
+                    android:fontFamily="@font/montserrat" />
+            </LinearLayout>
+
+            <!-- Log Out -->
+            <LinearLayout
+                android:id="@+id/logoutSetting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:elevation="2dp"
+                android:layout_marginBottom="16dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <View
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@drawable/empty_square"
+                    android:layout_marginEnd="16dp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/logout"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_activity_primary"
+                    android:fontFamily="@font/montserrat" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
 
     <include
         android:id="@+id/bottom_navigation"

@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:background="@color/white"
+    android:background="?attr/bottomNavBackground"
     android:elevation="8dp"
     android:paddingTop="8dp"
     android:paddingBottom="8dp"
@@ -35,7 +35,7 @@
             android:layout_height="wrap_content"
             android:text="@string/home"
             android:textSize="12sp"
-            android:textColor="@color/text_activity_primary"
+            android:textColor="?attr/bottomNavUnselected"
             android:fontFamily="@font/montserrat" />
     </LinearLayout>
 
@@ -65,7 +65,7 @@
             android:layout_height="wrap_content"
             android:text="@string/search"
             android:textSize="12sp"
-            android:textColor="@color/text_activity_primary"
+            android:textColor="?attr/bottomNavUnselected"
             android:fontFamily="@font/montserrat" />
     </LinearLayout>
 
@@ -95,7 +95,7 @@
             android:layout_height="wrap_content"
             android:text="@string/my_books"
             android:textSize="12sp"
-            android:textColor="@color/text_activity_primary"
+            android:textColor="?attr/bottomNavUnselected"
             android:fontFamily="@font/montserrat" />
     </LinearLayout>
 
@@ -125,7 +125,7 @@
             android:layout_height="wrap_content"
             android:text="@string/profile"
             android:textSize="12sp"
-            android:textColor="@color/text_activity_primary"
+            android:textColor="?attr/bottomNavUnselected"
             android:fontFamily="@font/montserrat" />
     </LinearLayout>
 

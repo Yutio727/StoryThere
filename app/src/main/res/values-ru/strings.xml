@@ -74,4 +74,18 @@
     <string name="search">Поиск</string>
     <string name="my_books">Мои книги</string>
     <string name="profile">Профиль</string>
+    <string name="settings">Настройки</string>
+    <string name="theme">Тема</string>
+    <string name="light">Светлая</string>
+    <string name="night">Ночная</string>
+    <string name="notifications">Уведомления</string>
+    <string name="language">Язык</string>
+    <string name="interface_language">Язык интерфейса</string>
+    <string name="about_us">О нас</string>
+    <string name="report_issue_faq">Сообщить о проблеме &amp; FAQ</string>
+    <string name="logout">Выход</string>
+    <string name="russian">Русский</string>
+    <string name="english">Английский</string>
+    <string name="current_language">Русский</string>
+    <string name="dark">Темная</string>
 </resources>

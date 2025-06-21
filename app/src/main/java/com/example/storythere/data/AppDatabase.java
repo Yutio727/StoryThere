@@ -8,7 +8,7 @@ import androidx.room.TypeConverters;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-@Database(entities = {Book.class}, version = 2, exportSchema = false)
+@Database(entities = {Book.class}, version = 3, exportSchema = false)
 @TypeConverters({DateConverter.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
@@ -23,6 +23,14 @@ public abstract class AppDatabase extends RoomDatabase {
             database.execSQL("ALTER TABLE books ADD COLUMN isAlreadyRead INTEGER NOT NULL DEFAULT 0");
         }
     };
+
+    private static final Migration MIGRATION_2_3 = new Migration(2, 3) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            // Add parsedTextPath column
+            database.execSQL("ALTER TABLE books ADD COLUMN parsedTextPath TEXT");
+        }
+    };
     
     public static AppDatabase getDatabase(final Context context) {
         if (INSTANCE == null) {
@@ -33,7 +41,7 @@ public abstract class AppDatabase extends RoomDatabase {
                         AppDatabase.class,
                         "storythere_database"
                     )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build();
                 }
             }

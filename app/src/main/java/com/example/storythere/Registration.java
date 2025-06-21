@@ -45,6 +45,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import android.view.ViewGroup;
+import android.content.res.ColorStateList;
 
 public class Registration extends AppCompatActivity {
 
@@ -70,6 +71,11 @@ public class Registration extends AppCompatActivity {
         });
 
         getWindow().setStatusBarColor(getResources().getColor(R.color.progress_blue));
+
+        // Set ActionBar color to blue
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(getResources().getColor(R.color.progress_blue)));
+        }
 
         // Set up the "Already have account? - Login" text with bold and blue Login, and make it clickable
         TextView tvAlreadyHaveAccount = findViewById(R.id.tvAlreadyHaveAccount);
@@ -120,8 +126,10 @@ public class Registration extends AppCompatActivity {
                 usernameEdit.setTextColor(valid ? colorTextNormal : colorRed);
                 if (usernameEdit.hasFocus()) {
                     usernameLayout.setBoxStrokeColor(colorFocused);
+                    usernameLayout.setEndIconTintList(ColorStateList.valueOf(colorFocused));
                 } else {
                     usernameLayout.setBoxStrokeColor(valid ? colorUnfocused : colorRed);
+                    usernameLayout.setEndIconTintList(ColorStateList.valueOf(valid ? colorUnfocused : colorRed));
                 }
                 usernameLayout.invalidate();
             }
@@ -131,8 +139,10 @@ public class Registration extends AppCompatActivity {
             boolean valid = value.length() >= 3 && value.length() <= 20 && !value.contains("@") && !value.contains("<") && !value.contains(">") && !value.isEmpty();
             if (hasFocus) {
                 usernameLayout.setBoxStrokeColor(colorFocused);
+                usernameLayout.setEndIconTintList(ColorStateList.valueOf(colorFocused));
             } else {
                 usernameLayout.setBoxStrokeColor(valid ? colorUnfocused : colorRed);
+                usernameLayout.setEndIconTintList(ColorStateList.valueOf(valid ? colorUnfocused : colorRed));
             }
             usernameLayout.invalidate();
         });
@@ -185,8 +195,10 @@ public class Registration extends AppCompatActivity {
                 birthdayEdit.setTextColor(valid ? colorTextNormal : colorRed);
                 if (birthdayEdit.hasFocus()) {
                     birthdayLayout.setBoxStrokeColor(colorFocused);
+                    birthdayLayout.setEndIconTintList(ColorStateList.valueOf(colorFocused));
                 } else {
                     birthdayLayout.setBoxStrokeColor(valid ? colorUnfocused : colorRed);
+                    birthdayLayout.setEndIconTintList(ColorStateList.valueOf(valid ? colorUnfocused : colorRed));
                 }
                 birthdayLayout.invalidate();
                 isEditing = false;
@@ -217,8 +229,10 @@ public class Registration extends AppCompatActivity {
             }
             if (hasFocus) {
                 birthdayLayout.setBoxStrokeColor(colorFocused);
+                birthdayLayout.setEndIconTintList(ColorStateList.valueOf(colorFocused));
             } else {
                 birthdayLayout.setBoxStrokeColor(valid ? colorUnfocused : colorRed);
+                birthdayLayout.setEndIconTintList(ColorStateList.valueOf(valid ? colorUnfocused : colorRed));
             }
             birthdayLayout.invalidate();
         });
@@ -226,10 +240,20 @@ public class Registration extends AppCompatActivity {
         final TextInputLayout emailLayout = findViewById(R.id.etEmailLayout);
         final EditText emailEdit = findViewById(R.id.etEmail);
         emailEdit.setOnFocusChangeListener((v, hasFocus) -> {
-            emailLayout.setBoxStrokeColor(hasFocus ? colorFocused : colorUnfocused);
+            String value = emailEdit.getText() != null ? emailEdit.getText().toString().trim() : "";
+            boolean valid = value.length() >= 5 && value.length() <= 50 && value.contains("@") && android.util.Patterns.EMAIL_ADDRESS.matcher(value).matches();
+            
+            if (hasFocus) {
+                emailLayout.setBoxStrokeColor(colorFocused);
+                emailLayout.setEndIconTintList(ColorStateList.valueOf(colorFocused));
+            } else {
+                emailLayout.setBoxStrokeColor(valid ? colorUnfocused : colorRed);
+                emailLayout.setEndIconTintList(ColorStateList.valueOf(valid ? colorUnfocused : colorRed));
+            }
             emailLayout.invalidate();
         });
         emailLayout.setBoxStrokeColor(emailEdit.hasFocus() ? colorFocused : colorUnfocused);
+        emailLayout.setEndIconTintList(ColorStateList.valueOf(emailEdit.hasFocus() ? colorFocused : colorUnfocused));
         emailLayout.invalidate();
 
         // Email real-time validation
@@ -242,8 +266,10 @@ public class Registration extends AppCompatActivity {
                 emailEdit.setTextColor(valid ? colorTextNormal : colorRed);
                 if (emailEdit.hasFocus()) {
                     emailLayout.setBoxStrokeColor(colorFocused);
+                    emailLayout.setEndIconTintList(ColorStateList.valueOf(colorFocused));
                 } else {
                     emailLayout.setBoxStrokeColor(valid ? colorUnfocused : colorRed);
+                    emailLayout.setEndIconTintList(ColorStateList.valueOf(valid ? colorUnfocused : colorRed));
                 }
                 emailLayout.invalidate();
             }
@@ -253,8 +279,10 @@ public class Registration extends AppCompatActivity {
             boolean valid = value.length() >= 5 && value.length() <= 50 && value.contains("@") && android.util.Patterns.EMAIL_ADDRESS.matcher(value).matches();
             if (hasFocus) {
                 emailLayout.setBoxStrokeColor(colorFocused);
+                emailLayout.setEndIconTintList(ColorStateList.valueOf(colorFocused));
             } else {
                 emailLayout.setBoxStrokeColor(valid ? colorUnfocused : colorRed);
+                emailLayout.setEndIconTintList(ColorStateList.valueOf(valid ? colorUnfocused : colorRed));
             }
             emailLayout.invalidate();
         });

@@ -67,4 +67,7 @@
     <string name="failed_to_load_pdf">Ошибка при загрузке PDF файла</string>
     <string name="failed_to_load_text_content">Не удалось загрузить текст</string>
     <string name="failed_to_load_epub">Ошибка при загрузке EPUB файла</string>
+    <string name="reset_password_title">Введите адрес электронной почты</string>
+    <string name="reset_password_message">Мы отправим письмо с ссылкой на смену пароля.</string>
+    <string name="send">Отправить</string>
 </resources>

@@ -67,4 +67,7 @@
     <string name="failed_to_load_pdf">Failed to load PDF</string>
     <string name="failed_to_load_text_content">Failed to load text content</string>
     <string name="failed_to_load_epub">Failed to load EPUB</string>
+    <string name="reset_password_title">Enter your email</string>
+    <string name="reset_password_message">We will send you an email with a link to change your password.</string>
+    <string name="send">Send</string>
 </resources>

@@ -48,6 +48,11 @@ public class Login extends AppCompatActivity {
         // Set status bar color to blue
         getWindow().setStatusBarColor(getResources().getColor(R.color.progress_blue));
 
+        // Set ActionBar color to blue
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(getResources().getColor(R.color.progress_blue)));
+        }
+
         // Check if user is already authenticated
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
@@ -76,11 +81,25 @@ public class Login extends AppCompatActivity {
         final EditText passwordEdit = findViewById(R.id.etPassword);
 
         emailEdit.setOnFocusChangeListener((v, hasFocus) -> {
-            emailLayout.setBoxStrokeColor(hasFocus ? colorFocused : colorUnfocused);
+            String value = emailEdit.getText() != null ? emailEdit.getText().toString().trim() : "";
+            boolean valid = value.length() >= 5 && value.length() <= 50 && value.contains("@") && android.util.Patterns.EMAIL_ADDRESS.matcher(value).matches();
+            
+            if (hasFocus) {
+                emailLayout.setBoxStrokeColor(colorFocused);
+            } else {
+                emailLayout.setBoxStrokeColor(valid ? colorUnfocused : colorRed);
+            }
             emailLayout.invalidate();
         });
         passwordEdit.setOnFocusChangeListener((v, hasFocus) -> {
-            passwordLayout.setBoxStrokeColor(hasFocus ? colorFocused : colorUnfocused);
+            String value = passwordEdit.getText() != null ? passwordEdit.getText().toString() : "";
+            boolean valid = value.length() >= 6 && value.length() <= 32;
+            
+            if (hasFocus) {
+                passwordLayout.setBoxStrokeColor(colorFocused);
+            } else {
+                passwordLayout.setBoxStrokeColor(valid ? colorUnfocused : colorRed);
+            }
             passwordLayout.invalidate();
         });
         // Set initial state
@@ -95,6 +114,15 @@ public class Login extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(Login.this, Registration.class));
+            }
+        });
+
+        // Forgot password click logic
+        TextView tvForgetPassword = findViewById(R.id.tvForgetPassword);
+        tvForgetPassword.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(Login.this, ResetPassword.class));
             }
         });
 
@@ -218,16 +246,6 @@ public class Login extends AppCompatActivity {
                 emailLayout.invalidate();
             }
         });
-        emailEdit.setOnFocusChangeListener((v, hasFocus) -> {
-            String value = emailEdit.getText() != null ? emailEdit.getText().toString().trim() : "";
-            boolean valid = value.length() >= 5 && value.length() <= 50 && value.contains("@") && android.util.Patterns.EMAIL_ADDRESS.matcher(value).matches();
-            if (hasFocus) {
-                emailLayout.setBoxStrokeColor(colorFocused);
-            } else {
-                emailLayout.setBoxStrokeColor(valid ? colorUnfocused : colorRed);
-            }
-            emailLayout.invalidate();
-        });
         passwordEdit.addTextChangedListener(new android.text.TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -242,16 +260,6 @@ public class Login extends AppCompatActivity {
                 }
                 passwordLayout.invalidate();
             }
-        });
-        passwordEdit.setOnFocusChangeListener((v, hasFocus) -> {
-            String value = passwordEdit.getText() != null ? passwordEdit.getText().toString() : "";
-            boolean valid = value.length() >= 6 && value.length() <= 32;
-            if (hasFocus) {
-                passwordLayout.setBoxStrokeColor(colorFocused);
-            } else {
-                passwordLayout.setBoxStrokeColor(valid ? colorUnfocused : colorRed);
-            }
-            passwordLayout.invalidate();
         });
     }
 }

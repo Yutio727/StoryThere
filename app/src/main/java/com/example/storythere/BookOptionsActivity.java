@@ -3,6 +3,7 @@ package com.example.storythere;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -22,6 +23,7 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -178,6 +180,55 @@ public class BookOptionsActivity extends AppCompatActivity {
                         TextParser.ParsedText parsed = TextParser.parseText(this, contentUri);
                         textContent = parsed.content;
                         isRussian = parsed.isRussian;
+                    } else if ("epub".equals(fileType)) {
+                        // Cache parsed EPUB content for listening mode
+                        String safeTitle = (title != null ? title.replaceAll("[^a-zA-Z0-9]", "_") : "book");
+                        File cacheFile = new File(getCacheDir(), safeTitle + "_parsed.txt");
+                        Log.d("BookOptionsActivity", "Checking EPUB cache: " + cacheFile.getAbsolutePath());
+                        
+                        try {
+                            if (cacheFile.exists() && cacheFile.length() > 0) {
+                                Log.d("BookOptionsActivity", "Found existing cache file, reading from cache");
+                                // Read from cache
+                                try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(cacheFile)))) {
+                                    StringBuilder sb = new StringBuilder();
+                                    String line;
+                                    while ((line = reader.readLine()) != null) {
+                                        sb.append(line).append("\n");
+                                    }
+                                    textContent = sb.toString();
+                                    isRussian = TextParser.isTextPrimarilyRussian(textContent);
+                                    Log.d("BookOptionsActivity", "Successfully read from cache");
+                                }
+                            } else {
+                                Log.d("BookOptionsActivity", "No cache found, parsing EPUB file: " + contentUri.toString());
+                                // Parse and cache
+                                EPUBParser epubParser = new EPUBParser(this);
+                                if (epubParser.parse(contentUri)) {
+                                    Log.d("BookOptionsActivity", "EPUB parsing successful");
+                                    List<String> epubTextContent = epubParser.getTextContent();
+                                    StringBuilder sb = new StringBuilder();
+                                    for (String page : epubTextContent) {
+                                        sb.append(page).append("\n\n");
+                                    }
+                                    textContent = sb.toString();
+                                    isRussian = TextParser.isTextPrimarilyRussian(textContent);
+                                    // Write to cache
+                                    try (FileWriter writer = new FileWriter(cacheFile, false)) {
+                                        writer.write(textContent);
+                                        Log.d("BookOptionsActivity", "Successfully cached EPUB text to: " + cacheFile.getAbsolutePath());
+                                    }
+                                } else {
+                                    throw new Exception("Failed to parse EPUB for listening");
+                                }
+                            }
+                            textUri = Uri.fromFile(cacheFile);
+                            Log.d("BookOptionsActivity", "EPUB text URI prepared: " + textUri.toString());
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            Log.e("BookOptionsActivity", "Failed to process EPUB text: " + e.getMessage());
+                            return;
+                        }
                     } else {
                         // For non-txt files, check if parsed text file exists
                         File parsedFile = null;

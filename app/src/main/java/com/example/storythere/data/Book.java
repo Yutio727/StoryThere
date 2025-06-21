@@ -19,6 +19,7 @@ public class Book {
     private int currentPage;
     private boolean isFavourite;
     private boolean isAlreadyRead;
+    private String parsedTextPath;
     
     public Book(String title, String author, String filePath, String fileType) {
         this.title = title;
@@ -64,4 +65,7 @@ public class Book {
 
     public boolean isAlreadyRead() { return isAlreadyRead; }
     public void setAlreadyRead(boolean alreadyRead) { isAlreadyRead = alreadyRead; }
+
+    public String getParsedTextPath() { return parsedTextPath; }
+    public void setParsedTextPath(String parsedTextPath) { this.parsedTextPath = parsedTextPath; }
 } 

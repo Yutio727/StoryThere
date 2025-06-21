@@ -361,11 +361,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
-        // Set annotation with time for display
-        for (Book book : filteredBooks) {
-            String annotationWithTime = getAnnotationWithTime(book);
-            book.setAnnotation(annotationWithTime);
-        }
         adapter.setBooks(filteredBooks);
     }
 

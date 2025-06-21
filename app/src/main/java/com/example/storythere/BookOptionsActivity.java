@@ -137,6 +137,26 @@ public class BookOptionsActivity extends AppCompatActivity {
                     Intent pdfIntent = new Intent(this, PDFViewerActivity.class);
                     pdfIntent.setData(contentUri);
                     startActivity(pdfIntent);
+                } else if ("txt".equals(fileType)) {
+                    // Cache parsed .txt content to a file and pass file path to PDFViewerActivity
+                    TextParser.ParsedText parsed = TextParser.parseText(this, contentUri);
+                    // Use a unique cache file name per book (e.g., by title hash)
+                    String safeTitle = (title != null ? title.replaceAll("[^a-zA-Z0-9]", "_") : "book");
+                    File cacheFile = new File(getCacheDir(), safeTitle + "_parsed.txt");
+                    // Write parsed content to cache file
+                    try (FileWriter writer = new FileWriter(cacheFile, false)) {
+                        writer.write(parsed.content);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Toast.makeText(this, "Failed to cache parsed text", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    Intent pdfIntent = new Intent(this, PDFViewerActivity.class);
+                    pdfIntent.setData(Uri.fromFile(cacheFile));
+                    pdfIntent.putExtra("isRussian", parsed.isRussian);
+                    pdfIntent.putExtra("fileType", fileType);
+                    pdfIntent.putExtra("title", title);
+                    startActivity(pdfIntent);
                 } else {
                     // Open reader activity for other file types
                     Intent readerIntent = new Intent(this, ReaderActivity.class);
@@ -152,106 +172,122 @@ public class BookOptionsActivity extends AppCompatActivity {
                     String textContent;
                     boolean isRussian;
 
-                    if ("pdf".equals(fileType)) {
-                        // Extract text from PDF in parallel
-                        StringBuilder allText = new StringBuilder();
-
-                        try {
-                            InputStream baseInputStream = getContentResolver().openInputStream(contentUri);
-                            if (baseInputStream == null) throw new Exception("Failed to open PDF");
-
-                            PdfReader baseReader = new PdfReader(baseInputStream);
-                            PdfDocument baseDoc = new PdfDocument(baseReader);
-
-                            int totalPages = baseDoc.getNumberOfPages();
-
-                            // Close the base doc, as we'll open new readers per page
-                            baseDoc.close();
-                            baseReader.close();
-                            baseInputStream.close();
-
-                            // Executor
-                            int numThreads = Math.min(4, totalPages);
-                            ExecutorService executor = Executors.newFixedThreadPool(numThreads);
-                            List<Future<String>> futures = new ArrayList<>();
-
-                            for (int i = 1; i <= totalPages; i++) {
-                                final int pageIndex = i;
-                                futures.add(executor.submit(() -> {
-                                    try (InputStream inputStream = getContentResolver().openInputStream(contentUri)) {
-                                        PdfReader reader = new PdfReader(inputStream);
-                                        PdfDocument doc = new PdfDocument(reader);
-                                        String text = PdfTextExtractor.getTextFromPage(
-                                                doc.getPage(pageIndex),
-                                                new SimpleTextExtractionStrategy()
-                                        );
-                                        doc.close();
-                                        reader.close();
-                                        return text;
-                                    } catch (Exception e) {
-                                        return "";
-                                    }
-                                }));
-                            }
-
-                            for (int i = 0; i < totalPages; i++) {
-                                String pageText = futures.get(i).get();
-                                synchronized (allText) {
-                                    allText.append(pageText).append("\n");
-                                }
-                            }
-
-                            executor.shutdown();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            Toast.makeText(this, "Error extracting text: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-
-                        textContent = allText.toString();
-                        isRussian = TextParser.isTextPrimarilyRussian(textContent);
-
-                        File tempFile = new File(getCacheDir(), "temp_pdf_text.txt");
-                        try (FileWriter writer = new FileWriter(tempFile)) {
-                            writer.write(textContent);
-                        }
-                        textUri = Uri.fromFile(tempFile);
+                    if ("txt".equals(fileType)) {
+                        // Use optimal parsing method from TextParser
+                        textUri = contentUri;
+                        TextParser.ParsedText parsed = TextParser.parseText(this, contentUri);
+                        textContent = parsed.content;
+                        isRussian = parsed.isRussian;
                     } else {
-                        // For other file types, treat contentUri as text directly
-                        InputStream inputStream = getContentResolver().openInputStream(contentUri);
-                        if (inputStream == null) throw new Exception("Failed to open file");
-                        StringBuilder textBuilder = new StringBuilder();
-
-                        if ("epub".equals(fileType)) {
-                            // Parse EPUB file
-                            EPUBParser epubParser = new EPUBParser(this);
-                            if (epubParser.parse(contentUri)) {
-                                List<String> epubTextContent = epubParser.getTextContent();
-                                for (String text : epubTextContent) {
-                                    textBuilder.append(text).append("\n\n");
-                                }
-                            } else {
-                                throw new Exception("Failed to parse EPUB file");
+                        // For non-txt files, check if parsed text file exists
+                        File parsedFile = null;
+                        if (currentBook != null && currentBook.getParsedTextPath() != null) {
+                            parsedFile = new File(currentBook.getParsedTextPath());
+                            if (!parsedFile.exists()) {
+                                parsedFile = null;
                             }
+                        }
+                        if (parsedFile != null) {
+                            // Use cached parsed text file
+                            textUri = Uri.fromFile(parsedFile);
+                            InputStream inputStream = getContentResolver().openInputStream(textUri);
+                            StringBuilder textBuilder = new StringBuilder();
+                            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                                String line;
+                                while ((line = reader.readLine()) != null) {
+                                    textBuilder.append(line).append("\n");
+                                }
+                            }
+                            textContent = textBuilder.toString();
+                            isRussian = TextParser.isTextPrimarilyRussian(textContent);
                         } else {
-                            // For other text files
-                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                textBuilder.append(line).append("\n");
+                            // Parse and cache text
+                            if ("pdf".equals(fileType)) {
+                                // Extract text from PDF in parallel
+                                StringBuilder allText = new StringBuilder();
+                                try {
+                                    InputStream baseInputStream = getContentResolver().openInputStream(contentUri);
+                                    if (baseInputStream == null) throw new Exception("Failed to open PDF");
+                                    PdfReader baseReader = new PdfReader(baseInputStream);
+                                    PdfDocument baseDoc = new PdfDocument(baseReader);
+                                    int totalPages = baseDoc.getNumberOfPages();
+                                    baseDoc.close();
+                                    baseReader.close();
+                                    baseInputStream.close();
+                                    int numThreads = Math.min(4, totalPages);
+                                    ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+                                    List<Future<String>> futures = new ArrayList<>();
+                                    for (int i = 1; i <= totalPages; i++) {
+                                        final int pageIndex = i;
+                                        futures.add(executor.submit(() -> {
+                                            try (InputStream inputStream = getContentResolver().openInputStream(contentUri)) {
+                                                PdfReader reader = new PdfReader(inputStream);
+                                                PdfDocument doc = new PdfDocument(reader);
+                                                String text = PdfTextExtractor.getTextFromPage(
+                                                        doc.getPage(pageIndex),
+                                                        new SimpleTextExtractionStrategy()
+                                                );
+                                                doc.close();
+                                                reader.close();
+                                                return text;
+                                            } catch (Exception e) {
+                                                return "";
+                                            }
+                                        }));
+                                    }
+                                    for (int i = 0; i < totalPages; i++) {
+                                        String pageText = futures.get(i).get();
+                                        synchronized (allText) {
+                                            allText.append(pageText).append("\n");
+                                        }
+                                    }
+                                    executor.shutdown();
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                    Toast.makeText(this, "Error extracting text: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    return;
                                 }
+                                textContent = allText.toString();
+                            } else if ("epub".equals(fileType)) {
+                                // Parse EPUB file
+                                InputStream inputStream = getContentResolver().openInputStream(contentUri);
+                                StringBuilder textBuilder = new StringBuilder();
+                                EPUBParser epubParser = new EPUBParser(this);
+                                if (epubParser.parse(contentUri)) {
+                                    List<String> epubTextContent = epubParser.getTextContent();
+                                    for (String text : epubTextContent) {
+                                        textBuilder.append(text).append("\n\n");
+                                    }
+                                } else {
+                                    throw new Exception("Failed to parse EPUB file");
+                                }
+                                textContent = textBuilder.toString();
+                            } else {
+                                // For other file types
+                                InputStream inputStream = getContentResolver().openInputStream(contentUri);
+                                StringBuilder textBuilder = new StringBuilder();
+                                try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                                    String line;
+                                    while ((line = reader.readLine()) != null) {
+                                        textBuilder.append(line).append("\n");
+                                    }
+                                }
+                                textContent = textBuilder.toString();
+                            }
+                            isRussian = TextParser.isTextPrimarilyRussian(textContent);
+                            // Save to a txt file and update Book
+                            File cacheDir = getCacheDir();
+                            String parsedFileName = "parsed_" + (currentBook != null ? currentBook.getId() : System.currentTimeMillis()) + ".txt";
+                            File outFile = new File(cacheDir, parsedFileName);
+                            try (FileWriter writer = new FileWriter(outFile)) {
+                                writer.write(textContent);
+                            }
+                            textUri = Uri.fromFile(outFile);
+                            if (currentBook != null) {
+                                currentBook.setParsedTextPath(outFile.getAbsolutePath());
+                                bookRepository.update(currentBook);
                             }
                         }
-
-                        textContent = textBuilder.toString();
-                        isRussian = TextParser.isTextPrimarilyRussian(textContent);
-
-                        // Save to a temp text file for audio playback
-                        File tempFile = new File(getCacheDir(), "temp_text.txt");
-                        try (FileWriter writer = new FileWriter(tempFile)) {
-                            writer.write(textContent);
-                        }
-                        textUri = Uri.fromFile(tempFile);
                     }
 
                     // Open audio reader with the text

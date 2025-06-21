@@ -19,7 +19,10 @@ import android.widget.ScrollView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+
+import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -90,27 +93,41 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
 
         // Get content from intent
         Intent intent = getIntent();
-        String textContent = intent.getStringExtra("textContent");
-        if (textContent != null) {
-            Log.d(TAG, "Loading text content");
-            loadTextContent(textContent);
-        } else {
-            // Get URI from intent
-            Uri uri = intent.getData();
-            if (uri != null) {
-                String mimeType = getContentResolver().getType(uri);
-                if (mimeType != null && mimeType.equals("application/epub+zip")) {
-                    Log.d(TAG, "Loading EPUB from URI: " + uri);
-                    loadEPUB(uri);
+        Uri uri = intent.getData();
+        String fileType = intent.getStringExtra("fileType");
+        if (uri != null && "txt".equals(fileType)) {
+            // Read cached .txt content from file
+            try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
+                if (inputStream != null) {
+                    StringBuilder sb = new StringBuilder();
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line).append("\n");
+                    }
+                    Log.d(TAG, "Loading cached .txt content from file: " + uri);
+                    loadTextContent(sb.toString());
                 } else {
-                    Log.d(TAG, "Loading PDF from URI: " + uri);
-                    loadPDF(uri);
+                    throw new Exception("InputStream null for cache file");
                 }
-            } else {
-                Log.e(TAG, "No content provided");
-                Toast.makeText(this, R.string.no_content_provided, Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to read cached .txt file: " + e.getMessage(), e);
+                Toast.makeText(this, "Failed to load cached text", Toast.LENGTH_SHORT).show();
                 finish();
             }
+        } else if (uri != null) {
+            String mimeType = getContentResolver().getType(uri);
+            if (mimeType != null && mimeType.equals("application/epub+zip")) {
+                Log.d(TAG, "Loading EPUB from URI: " + uri);
+                loadEPUB(uri);
+            } else {
+                Log.d(TAG, "Loading PDF from URI: " + uri);
+                loadPDF(uri);
+            }
+        } else {
+            Log.e(TAG, "No content provided");
+            Toast.makeText(this, R.string.no_content_provided, Toast.LENGTH_SHORT).show();
+            finish();
         }
     }
 

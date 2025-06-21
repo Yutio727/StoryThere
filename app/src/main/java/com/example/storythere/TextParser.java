@@ -6,9 +6,14 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.regex.Pattern;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ExecutionException;
 
 public class TextParser {
     private static final Pattern RUSSIAN_PATTERN = Pattern.compile("[а-яА-ЯёЁ]");
+    private static final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     public static class ParsedText {
         public final String content;
@@ -20,22 +25,39 @@ public class TextParser {
         }
     }
 
-    public static ParsedText parseText(Context context, Uri uri) {
-        StringBuilder text = new StringBuilder();
-        try (InputStream inputStream = context.getContentResolver().openInputStream(uri);
-             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                text.append(line).append("\n");
+    private static final int BUFFER_SIZE = 8192; // 8KB buffer size
+    private static final int CHUNK_SIZE = 1024 * 1024; // 1MB chunk size
+
+    public static Future<ParsedText> parseTextAsync(Context context, Uri uri) {
+        return executor.submit(() -> {
+            StringBuilder text = new StringBuilder();
+            try (InputStream inputStream = context.getContentResolver().openInputStream(uri);
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream), BUFFER_SIZE)) {
+                
+                char[] buffer = new char[BUFFER_SIZE];
+                int bytesRead;
+                while ((bytesRead = reader.read(buffer)) != -1) {
+                    text.append(buffer, 0, bytesRead);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                return new ParsedText("", false);
             }
-        } catch (Exception e) {
+
+            String content = cleanText(text.toString());
+            boolean isRussian = isTextPrimarilyRussian(content);
+            return new ParsedText(content, isRussian);
+        });
+    }
+
+    @Deprecated
+    public static ParsedText parseText(Context context, Uri uri) {
+        try {
+            return parseTextAsync(context, uri).get();
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
             return new ParsedText("", false);
         }
-
-        String content = cleanText(text.toString());
-        boolean isRussian = isTextPrimarilyRussian(content);
-        return new ParsedText(content, isRussian);
     }
 
     private static String cleanText(String text) {
@@ -95,4 +117,8 @@ public class TextParser {
         // If more than 30% of characters are Russian, consider it Russian text
         return russianPercentage > 0.3;
     }
-} 
+
+    public static void shutdown() {
+        executor.shutdown();
+    }
+}

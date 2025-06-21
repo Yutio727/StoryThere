@@ -16,6 +16,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -60,6 +61,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView toolbarTitle;
     private LinearLayout selectionModeButtons;
     private FloatingActionButton fabAddBook;
+    
+    // Bottom navigation views
+    private ImageView iconHome, iconSearch, iconMyBooks, iconProfile;
+    private TextView textHome, textSearch, textMyBooks, textProfile;
     
     private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
         new ActivityResultContracts.StartActivityForResult(),
@@ -110,6 +115,9 @@ public class MainActivity extends AppCompatActivity {
         toolbarTitle = findViewById(R.id.toolbarTitle);
         selectionModeButtons = findViewById(R.id.selectionModeButtons);
         fabAddBook = findViewById(R.id.fabAddBook);
+        
+        // Initialize bottom navigation views
+        initializeBottomNavigationViews();
         
         RecyclerView recyclerView = findViewById(R.id.bookRecyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -171,6 +179,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onTabReselected(TabLayout.Tab tab) {}
         });
+        
+        // Setup bottom navigation
+        setupBottomNavigation();
+        setSelectedTab(2); // My Books is selected
     }
     
     @Override
@@ -437,5 +449,80 @@ public class MainActivity extends AppCompatActivity {
         });
 
         bottomSheetDialog.show();
+    }
+
+    private void initializeBottomNavigationViews() {
+        iconHome = findViewById(R.id.icon_home);
+        iconSearch = findViewById(R.id.icon_search);
+        iconMyBooks = findViewById(R.id.icon_my_books);
+        iconProfile = findViewById(R.id.icon_profile);
+        
+        textHome = findViewById(R.id.text_home);
+        textSearch = findViewById(R.id.text_search);
+        textMyBooks = findViewById(R.id.text_my_books);
+        textProfile = findViewById(R.id.text_profile);
+    }
+
+    private void setupBottomNavigation() {
+        findViewById(R.id.nav_home).setOnClickListener(v -> {
+            Intent intent = new Intent(this, HomeActivity.class);
+            startActivity(intent);
+            finish();
+        });
+        
+        findViewById(R.id.nav_search).setOnClickListener(v -> {
+            Intent intent = new Intent(this, SearchActivity.class);
+            startActivity(intent);
+            finish();
+        });
+        
+        findViewById(R.id.nav_my_books).setOnClickListener(v -> {
+            // Already on My Books, do nothing
+        });
+        
+        findViewById(R.id.nav_profile).setOnClickListener(v -> {
+            Intent intent = new Intent(this, ProfileActivity.class);
+            startActivity(intent);
+            finish();
+        });
+    }
+
+    private void setSelectedTab(int selectedIndex) {
+        // Reset all icons and texts
+        resetAllTabs();
+        
+        // Set selected tab
+        switch (selectedIndex) {
+            case 0: // Home
+                iconHome.setColorFilter(ContextCompat.getColor(this, android.R.color.black));
+                textHome.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+                break;
+            case 1: // Search
+                iconSearch.setColorFilter(ContextCompat.getColor(this, android.R.color.black));
+                textSearch.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+                break;
+            case 2: // My Books
+                iconMyBooks.setColorFilter(ContextCompat.getColor(this, android.R.color.black));
+                textMyBooks.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+                break;
+            case 3: // Profile
+                iconProfile.setColorFilter(ContextCompat.getColor(this, android.R.color.black));
+                textProfile.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+                break;
+        }
+    }
+    
+    private void resetAllTabs() {
+        // Reset all icons to default color
+        iconHome.setColorFilter(null);
+        iconSearch.setColorFilter(null);
+        iconMyBooks.setColorFilter(null);
+        iconProfile.setColorFilter(null);
+        
+        // Reset all texts to default color
+        textHome.setTextColor(ContextCompat.getColor(this, R.color.text_activity_primary));
+        textSearch.setTextColor(ContextCompat.getColor(this, R.color.text_activity_primary));
+        textMyBooks.setTextColor(ContextCompat.getColor(this, R.color.text_activity_primary));
+        textProfile.setTextColor(ContextCompat.getColor(this, R.color.text_activity_primary));
     }
 } 

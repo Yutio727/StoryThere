@@ -70,4 +70,8 @@
     <string name="reset_password_title">Введите адрес электронной почты</string>
     <string name="reset_password_message">Мы отправим письмо с ссылкой на смену пароля.</string>
     <string name="send">Отправить</string>
+    <string name="home">Главная</string>
+    <string name="search">Поиск</string>
+    <string name="my_books">Мои книги</string>
+    <string name="profile">Профиль</string>
 </resources>

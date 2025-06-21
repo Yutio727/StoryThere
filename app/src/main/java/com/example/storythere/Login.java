@@ -63,7 +63,7 @@ public class Login extends AppCompatActivity {
                 } else {
                     Log.w("Login", "User already authenticated, but failed to get token.");
                 }
-                startActivity(new Intent(Login.this, MainActivity.class));
+                startActivity(new Intent(Login.this, HomeActivity.class));
                 finish();
             });
             return;
@@ -185,7 +185,7 @@ public class Login extends AppCompatActivity {
                                     overlayResultText.setTextColor(getResources().getColor(R.color.progress_blue));
                                     overlayResultText.setVisibility(View.VISIBLE);
                                     handler.postDelayed(() -> {
-                                        Intent intent = new Intent(Login.this, MainActivity.class);
+                                        Intent intent = new Intent(Login.this, HomeActivity.class);
                                         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
                                         startActivity(intent);
                                         finish();

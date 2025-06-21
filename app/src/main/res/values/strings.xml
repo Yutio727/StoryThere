@@ -70,4 +70,8 @@
     <string name="reset_password_title">Enter your email</string>
     <string name="reset_password_message">We will send you an email with a link to change your password.</string>
     <string name="send">Send</string>
+    <string name="home">Home</string>
+    <string name="search">Search</string>
+    <string name="my_books">My Books</string>
+    <string name="profile">Profile</string>
 </resources>

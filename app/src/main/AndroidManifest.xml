@@ -49,6 +49,21 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
         <activity
+            android:name=".HomeActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.StoryThere.NoActionBar" />
+        <activity
+            android:name=".SearchActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.StoryThere.NoActionBar" />
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.StoryThere.NoActionBar" />
+        <activity
             android:name=".ReaderActivity"
             android:exported="false"
             android:screenOrientation="portrait"

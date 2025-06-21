@@ -48,6 +48,22 @@ public class Login extends AppCompatActivity {
         // Set status bar color to blue
         getWindow().setStatusBarColor(getResources().getColor(R.color.progress_blue));
 
+        // Check if user is already authenticated
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null) {
+            user.getIdToken(false).addOnCompleteListener(task -> {
+                if (task.isSuccessful() && task.getResult() != null) {
+                    String token = task.getResult().getToken();
+                    Log.d("Login", "User already authenticated. Token: " + token);
+                } else {
+                    Log.w("Login", "User already authenticated, but failed to get token.");
+                }
+                startActivity(new Intent(Login.this, MainActivity.class));
+                finish();
+            });
+            return;
+        }
+
         final int colorRed = getResources().getColor(android.R.color.holo_red_dark);
         final int colorFocused = getResources().getColor(R.color.progress_blue);
         final int colorUnfocused = getResources().getColor(R.color.textfield_stroke);
@@ -117,20 +133,6 @@ public class Login extends AppCompatActivity {
                 fadeIn.setDuration(300);
                 overlayView.startAnimation(fadeIn);
                 // Firebase login logic
-                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-                if (user != null) {
-                    user.getIdToken(false).addOnCompleteListener(task -> {
-                        if (task.isSuccessful() && task.getResult() != null) {
-                            String token = task.getResult().getToken();
-                            Log.d("Login", "User already authenticated. Token: " + token);
-                        } else {
-                            Log.w("Login", "User already authenticated, but failed to get token.");
-                        }
-                        startActivity(new Intent(Login.this, MainActivity.class));
-                        finish();
-                    });
-                    return;
-                }
                 FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
                         .addOnCompleteListener(Login.this, new com.google.android.gms.tasks.OnCompleteListener<com.google.firebase.auth.AuthResult>() {
                             @Override

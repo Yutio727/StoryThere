@@ -444,18 +444,51 @@ public class Registration extends AppCompatActivity {
                             public void onComplete(@NonNull Task<AuthResult> task) {
                                 overlayProgressBar.setVisibility(View.GONE);
                                 if (task.isSuccessful()) {
-                                    overlayAppIcon.setVisibility(View.GONE);
-                                    overlayResultIcon.setImageResource(R.drawable.ic_check_circle);
-                                    overlayResultIcon.setVisibility(View.VISIBLE);
-                                    overlayResultText.setText(getString(R.string.registration_success));
-                                    overlayResultText.setTextColor(getResources().getColor(R.color.progress_blue));
-                                    overlayResultText.setVisibility(View.VISIBLE);
-                                    handler.postDelayed(() -> {
-                                        Intent intent = new Intent(Registration.this, Login.class);
-                                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                                        startActivity(intent);
-                                        finish();
-                                    }, 700);
+                                    // Save user profile data
+                                    FirebaseUser user = mAuth.getCurrentUser();
+                                    if (user != null) {
+                                        com.google.firebase.auth.UserProfileChangeRequest profileUpdates = 
+                                            new com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                                                .setDisplayName(username)
+                                                .build();
+                                        
+                                        user.updateProfile(profileUpdates)
+                                            .addOnCompleteListener(profileTask -> {
+                                                if (profileTask.isSuccessful()) {
+                                                    Log.d("Registration", "User profile updated successfully");
+                                                } else {
+                                                    Log.w("Registration", "Failed to update user profile", profileTask.getException());
+                                                }
+                                                
+                                                // Continue with success flow regardless of profile update
+                                                overlayAppIcon.setVisibility(View.GONE);
+                                                overlayResultIcon.setImageResource(R.drawable.ic_check_circle);
+                                                overlayResultIcon.setVisibility(View.VISIBLE);
+                                                overlayResultText.setText(getString(R.string.registration_success));
+                                                overlayResultText.setTextColor(getResources().getColor(R.color.progress_blue));
+                                                overlayResultText.setVisibility(View.VISIBLE);
+                                                handler.postDelayed(() -> {
+                                                    Intent intent = new Intent(Registration.this, Login.class);
+                                                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                                                    startActivity(intent);
+                                                    finish();
+                                                }, 700);
+                                            });
+                                    } else {
+                                        // Fallback if user is null
+                                        overlayAppIcon.setVisibility(View.GONE);
+                                        overlayResultIcon.setImageResource(R.drawable.ic_check_circle);
+                                        overlayResultIcon.setVisibility(View.VISIBLE);
+                                        overlayResultText.setText(getString(R.string.registration_success));
+                                        overlayResultText.setTextColor(getResources().getColor(R.color.progress_blue));
+                                        overlayResultText.setVisibility(View.VISIBLE);
+                                        handler.postDelayed(() -> {
+                                            Intent intent = new Intent(Registration.this, Login.class);
+                                            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                                            startActivity(intent);
+                                            finish();
+                                        }, 700);
+                                    }
                                 } else {
                                     overlayAppIcon.setVisibility(View.GONE);
                                     overlayResultIcon.setImageResource(R.drawable.ic_cross_circle);

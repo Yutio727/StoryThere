@@ -13,4 +13,7 @@
     <color name="textfield_stroke">#FFFFFF</color>
     <color name="textfield_stroke_focused">@color/progress_blue</color>
     <color name="mtrl_textinput_default_box_stroke_color">#C7C7C7</color>
+    <color name="bottom_nav_background_dark">#333435</color>
+    <color name="bottom_nav_selected_dark">#FFFFFF</color>
+    <color name="bottom_nav_unselected_dark">#1A73E8</color>
 </resources>

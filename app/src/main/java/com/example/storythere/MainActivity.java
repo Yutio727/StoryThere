@@ -42,6 +42,7 @@ import com.itextpdf.kernel.pdf.canvas.parser.PdfTextExtractor;
 import com.itextpdf.kernel.pdf.canvas.parser.listener.SimpleTextExtractionStrategy;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import androidx.core.content.res.ResourcesCompat;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -486,38 +487,78 @@ public class MainActivity extends AppCompatActivity {
         // Reset all icons and texts
         resetAllTabs();
         
+        // Get theme-appropriate colors
+        int selectedColor = getSelectedColor();
+        int unselectedColor = getUnselectedColor();
+        
         // Set selected tab
         switch (selectedIndex) {
             case 0: // Home
-                iconHome.setColorFilter(ContextCompat.getColor(this, android.R.color.black));
-                textHome.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+                iconHome.setColorFilter(selectedColor);
+                textHome.setTextColor(selectedColor);
+                textHome.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_bold));
                 break;
             case 1: // Search
-                iconSearch.setColorFilter(ContextCompat.getColor(this, android.R.color.black));
-                textSearch.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+                iconSearch.setColorFilter(selectedColor);
+                textSearch.setTextColor(selectedColor);
+                textSearch.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_bold));
                 break;
             case 2: // My Books
-                iconMyBooks.setColorFilter(ContextCompat.getColor(this, android.R.color.black));
-                textMyBooks.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+                iconMyBooks.setColorFilter(selectedColor);
+                textMyBooks.setTextColor(selectedColor);
+                textMyBooks.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_bold));
                 break;
             case 3: // Profile
-                iconProfile.setColorFilter(ContextCompat.getColor(this, android.R.color.black));
-                textProfile.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+                iconProfile.setColorFilter(selectedColor);
+                textProfile.setTextColor(selectedColor);
+                textProfile.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_bold));
                 break;
         }
     }
     
     private void resetAllTabs() {
-        // Reset all icons to default color
-        iconHome.setColorFilter(null);
-        iconSearch.setColorFilter(null);
-        iconMyBooks.setColorFilter(null);
-        iconProfile.setColorFilter(null);
+        // Get theme-appropriate unselected color
+        int unselectedColor = getUnselectedColor();
         
-        // Reset all texts to default color
-        textHome.setTextColor(ContextCompat.getColor(this, R.color.text_activity_primary));
-        textSearch.setTextColor(ContextCompat.getColor(this, R.color.text_activity_primary));
-        textMyBooks.setTextColor(ContextCompat.getColor(this, R.color.text_activity_primary));
-        textProfile.setTextColor(ContextCompat.getColor(this, R.color.text_activity_primary));
+        // Reset all icons to unselected color
+        iconHome.setColorFilter(unselectedColor);
+        iconSearch.setColorFilter(unselectedColor);
+        iconMyBooks.setColorFilter(unselectedColor);
+        iconProfile.setColorFilter(unselectedColor);
+        
+        // Reset all texts to default color and normal weight
+        textHome.setTextColor(unselectedColor);
+        textSearch.setTextColor(unselectedColor);
+        textMyBooks.setTextColor(unselectedColor);
+        textProfile.setTextColor(unselectedColor);
+        
+        textHome.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
+        textSearch.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
+        textMyBooks.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
+        textProfile.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
+    }
+    
+    private int getSelectedColor() {
+        // Check if we're in dark mode
+        if (isDarkTheme()) {
+            return ContextCompat.getColor(this, R.color.bottom_nav_selected_dark);
+        } else {
+            return ContextCompat.getColor(this, R.color.bottom_nav_selected_light);
+        }
+    }
+    
+    private int getUnselectedColor() {
+        // Check if we're in dark mode
+        if (isDarkTheme()) {
+            return ContextCompat.getColor(this, R.color.bottom_nav_unselected_dark);
+        } else {
+            return ContextCompat.getColor(this, R.color.bottom_nav_unselected_light);
+        }
+    }
+    
+    private boolean isDarkTheme() {
+        return (getResources().getConfiguration().uiMode & 
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK) == 
+                android.content.res.Configuration.UI_MODE_NIGHT_YES;
     }
 } 

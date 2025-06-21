@@ -29,4 +29,7 @@
     <color name="textfield_stroke">#CFDBE8</color>
     <color name="textfield_stroke_focused">@color/progress_blue</color>
     <color name="mtrl_textinput_default_box_stroke_color">#CFDBE8</color>
+    <color name="bottom_nav_background_light">#F7FAFC</color>
+    <color name="bottom_nav_selected_light">#000000</color>
+    <color name="bottom_nav_unselected_light">#1A73E8</color>
 </resources>

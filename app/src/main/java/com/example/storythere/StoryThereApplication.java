@@ -3,6 +3,7 @@ package com.example.storythere;
 import android.app.Application;
 import android.content.SharedPreferences;
 import androidx.appcompat.app.AppCompatDelegate;
+import com.google.firebase.FirebaseApp;
 
 public class StoryThereApplication extends Application {
     
@@ -12,6 +13,7 @@ public class StoryThereApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        FirebaseApp.initializeApp(this);
         
         // Apply saved theme mode when app starts
         SharedPreferences sharedPreferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE);

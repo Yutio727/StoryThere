@@ -88,4 +88,10 @@
     <string name="english">Английский</string>
     <string name="current_language">Русский</string>
     <string name="dark">Темная</string>
+    <string name="book_cover">Обложка книги</string>
+    <string name="find_your_awesome_book">Найти лучшую книгу</string>
+    <string name="we_recommend">Мы рекомендуем</string>
+    <string name="exclusives">Эксклюзивы</string>
+    <string name="downloading">Загрузка книги...</string>
+    <string name="download_failed">Не удалось загрузить</string>
 </resources>

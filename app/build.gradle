@@ -56,8 +56,10 @@ dependencies {
     // Image loading
     implementation libs.glide
     implementation libs.androidx.foundation.text
-    implementation libs.firebase.auth
-    implementation libs.androidx.activity
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.firebase:firebase-firestore'
+    implementation 'com.google.firebase:firebase-storage'
     annotationProcessor libs.compiler
     
     // Room database

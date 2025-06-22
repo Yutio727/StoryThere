@@ -117,7 +117,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             }
         } else if (uri != null) {
             String mimeType = getContentResolver().getType(uri);
-            if (mimeType != null && mimeType.equals("application/epub+zip")) {
+            if ((mimeType != null && mimeType.equals("application/epub+zip")) || (mimeType == null && "epub".equalsIgnoreCase(fileType))) {
                 Log.d(TAG, "Loading EPUB from URI: " + uri);
                 loadEPUB(uri);
             } else {

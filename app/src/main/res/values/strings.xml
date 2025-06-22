@@ -88,4 +88,10 @@
     <string name="english">English</string>
     <string name="current_language">English</string>
     <string name="dark">Dark</string>
+    <string name="book_cover">Book cover</string>
+    <string name="find_your_awesome_book">Find your awesome book</string>
+    <string name="we_recommend">We recommend</string>
+    <string name="exclusives">Exclusives</string>
+    <string name="downloading">Downloading book...</string>
+    <string name="download_failed">Download failed</string>
 </resources>

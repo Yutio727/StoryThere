@@ -41,14 +41,15 @@ public class AudioReaderActivity extends AppCompatActivity {
     private static final String TAG = "AudioReaderActivity";
     private static final int MAX_CHUNK_SIZE = 200; // Maximum words per chunk
     private static final int CHUNK_OVERLAP = 20; // Number of words to overlap between chunks
-    private static final int SYNC_INTERVAL = 50; // Sync every 2 seconds
+    private static final int SYNC_INTERVAL = 50; // Sync every 50ms
     private static final int QUEUE_AHEAD_THRESHOLD = 50; // Queue next chunk when this many words are left
     private static final float POSITION_UPDATE_FACTOR = 0.1f; // Reduced from 0.5f to make updates more frequent
+    private static final float WORDS_PER_MINUTE = 150.0f; // Average reading speed in words per minute
     private TextToSpeech textToSpeech;
     private String textContent;
     private boolean isPlaying = false;
     private int currentPosition = 0;
-    private int totalDuration = 0;
+    private int totalWords = 0;
     private float currentSpeed = 1.0f;
     private Handler handler = new Handler();
     private Runnable updateProgressRunnable;
@@ -58,6 +59,12 @@ public class AudioReaderActivity extends AppCompatActivity {
     private TextView loadingStatusText;
     private int currentChunkStart = 0;
     private String[] words;
+    
+    // Time tracking variables
+    private long playbackStartTime = 0;
+    private long totalPlaybackTime = 0; // Total time spent playing in milliseconds
+    private long lastPauseTime = 0;
+    private boolean isPaused = false;
     
     private ImageButton playPauseButton;
     private ImageButton rewindButton;
@@ -122,15 +129,18 @@ public class AudioReaderActivity extends AppCompatActivity {
             
             // Calculate total duration based on actual words only
             String[] words = textContent.split("\\s+");
-            totalDuration = 0;
+            totalWords = 0;
             for (String word : words) {
                 if (!word.trim().isEmpty()) {
-                    totalDuration++;
+                    totalWords++;
                 }
             }
             
-            progressBar.setMax(totalDuration);
-            totalTimeText.setText(formatTime(totalDuration));
+            // Calculate estimated total time in seconds based on words per minute
+            int estimatedTotalSeconds = (int) Math.ceil((totalWords * 60.0f) / WORDS_PER_MINUTE);
+            
+            progressBar.setMax(totalWords);
+            totalTimeText.setText(formatTime(estimatedTotalSeconds));
             currentTimeText.setText(formatTime(0));
             
             // Initialize TTS with the correct language
@@ -381,11 +391,13 @@ public class AudioReaderActivity extends AppCompatActivity {
                                 if (currentPosition >= words.length - 1) {
                                     // We've reached the end
                                     playPauseButton.setImageResource(android.R.drawable.ic_media_play);
-                                    // Adjust padding for the play iconAdd commentMore actions
+                                    // Adjust padding for the play icon
                                     int padding = (int) (getResources().getDisplayMetrics().density * 3); // 3dp
                                     playPauseButton.setPadding(padding, 0, 0, 0);
                                     isPlaying = false;
                                     currentPosition = 0;
+                                    // Reset time tracking when reaching the end
+                                    totalPlaybackTime = 0;
                                 } else {
                                     // For chunks, ensure the button is still showing pause if playing
                                     if (isPlaying) {
@@ -401,6 +413,8 @@ public class AudioReaderActivity extends AppCompatActivity {
                                     playPauseButton.setPadding(padding, 0, 0, 0);
                                     isPlaying = false;
                                     currentPosition = 0;
+                                    // Reset time tracking when reaching the end
+                                    totalPlaybackTime = 0;
                                 } else {
                                     // If not the end, ensure button shows pause
                                     if (isPlaying) {
@@ -422,6 +436,9 @@ public class AudioReaderActivity extends AppCompatActivity {
                         runOnUiThread(() -> {
                             playPauseButton.setImageResource(android.R.drawable.ic_media_play);
                             isPlaying = false;
+                            // Reset time tracking on error
+                            totalPlaybackTime = 0;
+                            isPaused = false;
                             Toast.makeText(AudioReaderActivity.this, 
                                 "Error during text-to-speech playback", 
                                 Toast.LENGTH_SHORT).show();
@@ -444,10 +461,12 @@ public class AudioReaderActivity extends AppCompatActivity {
         rewindButton.setOnClickListener(v -> {
             if (textToSpeech != null) {
                 stopReading();
-                // Skip back 5 seconds worth of words
-                float wordsPerSecond = currentSpeed * 2.0f; // Approximate words per second
-                int skipWords = (int)(5 * wordsPerSecond);
+                // Skip back 10 seconds worth of words
+                float wordsPerSecond = (WORDS_PER_MINUTE * currentSpeed) / 60.0f;
+                int skipWords = (int)(10 * wordsPerSecond);
                 currentPosition = Math.max(0, currentPosition - skipWords);
+                // Reset time tracking
+                totalPlaybackTime = 0;
                 updateProgressBar();
                 startReading();
             }
@@ -456,11 +475,13 @@ public class AudioReaderActivity extends AppCompatActivity {
         forwardButton.setOnClickListener(v -> {
             if (textToSpeech != null) {
                 stopReading();
-                // Skip forward 5 seconds worth of wordsAdd commentMore actions
-                float wordsPerSecond = currentSpeed * 2.0f; // Approximate words per second
-                int skipWords = (int)(5 * wordsPerSecond);
+                // Skip forward 10 seconds worth of words
+                float wordsPerSecond = (WORDS_PER_MINUTE * currentSpeed) / 60.0f;
+                int skipWords = (int)(10 * wordsPerSecond);
                 String[] words = textContent.split("\\s+");
                 currentPosition = Math.min(words.length - 1, currentPosition + skipWords);
+                // Reset time tracking
+                totalPlaybackTime = 0;
                 updateProgressBar();
                 startReading();
             }
@@ -473,6 +494,11 @@ public class AudioReaderActivity extends AppCompatActivity {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
                     currentPosition = progress;
+                    // Reset time tracking when user seeks
+                    totalPlaybackTime = 0;
+                    if (isPlaying) {
+                        playbackStartTime = System.currentTimeMillis();
+                    }
                     updateProgressBar();
                 }
             }
@@ -497,18 +523,36 @@ public class AudioReaderActivity extends AppCompatActivity {
         }
         
         if (isPlaying) {
-            Log.d(TAG, "Stopping playback");
-            stopReading();
-            // Immediately set button to play stateAdd commentMore actions
+            Log.d(TAG, "Pausing playback");
+            // Pause TTS
+            if (textToSpeech != null) {
+                textToSpeech.stop();
+            }
+            
+            // Update total playback time
+            if (!isPaused) {
+                long currentTime = System.currentTimeMillis();
+                totalPlaybackTime += (currentTime - playbackStartTime);
+                lastPauseTime = currentTime;
+                isPaused = true;
+            }
+            
+            // Immediately set button to play state
             playPauseButton.setImageResource(android.R.drawable.ic_media_play);
             // Adjust padding for the play icon when stopping
             int padding = (int) (getResources().getDisplayMetrics().density * 3); // 3dp
             playPauseButton.setPadding(padding, 0, 0, 0);
             isPlaying = false; // Update state immediately
         } else {
-            Log.d(TAG, "Starting playback");
+            Log.d(TAG, "Starting/resuming playback");
+            // Resume or start reading
+            if (isPaused) {
+                // Resume from pause
+                playbackStartTime = System.currentTimeMillis();
+                isPaused = false;
+            }
             startReading();
-            // Immediately set button to pause stateAdd commentMore actions
+            // Immediately set button to pause state
             playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
             // Adjust padding for the pause icon when starting
             playPauseButton.setPadding(0, 0, 0, 0);
@@ -518,11 +562,18 @@ public class AudioReaderActivity extends AppCompatActivity {
     
     private void startReading() {
         if (textToSpeech != null && isTTSReady) {
-            // Reset any existing progress updatesAdd commentMore actions
+            // Reset any existing progress updates
             if (updateProgressRunnable != null) {
                 handler.removeCallbacks(updateProgressRunnable);
                 updateProgressRunnable = null;
             }
+            
+            // Initialize time tracking
+            if (!isPlaying) {
+                playbackStartTime = System.currentTimeMillis();
+                isPaused = false;
+            }
+            
             Bundle params = new Bundle();
             params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "messageID");
             
@@ -615,19 +666,18 @@ public class AudioReaderActivity extends AppCompatActivity {
     
     private void startProgressUpdate() {
         updateProgressRunnable = new Runnable() {
-            private long startTime = System.currentTimeMillis();
-            private int initialPosition = (int)currentPosition;
-            private int lastUpdatePosition = initialPosition;
             @Override
             public void run() {
-                if (isPlaying) {
-                    // Calculate position based on elapsed time and speech rateAdd commentMore actions
-                    long elapsedTime = System.currentTimeMillis() - startTime;
-                    float wordsPerSecond = currentSpeed * 2.0f; // Approximate words per second
-                    float newPosition = initialPosition + (elapsedTime * wordsPerSecond / 1000.0f);
+                if (isPlaying && !isPaused) {
+                    // Calculate current time based on actual elapsed playback time
+                    long currentTime = System.currentTimeMillis();
+                    long elapsedPlaybackTime = totalPlaybackTime + (currentTime - playbackStartTime);
+                    
+                    // Calculate current position based on elapsed time and estimated reading speed
+                    float wordsPerSecond = (WORDS_PER_MINUTE * currentSpeed) / 60.0f;
+                    float newPosition = (elapsedPlaybackTime * wordsPerSecond) / 1000.0f;
 
-
-                    // Ensure we don't exceed the total durationAdd commentMore actions
+                    // Ensure we don't exceed the total words
                     String[] words = textContent.split("\\s+");
                     if (newPosition >= words.length) {
                         newPosition = words.length - 1;
@@ -635,17 +685,14 @@ public class AudioReaderActivity extends AppCompatActivity {
                         return;
                     }
 
-
-                    // Only update if we've moved to a new positionAdd commentMore actions
+                    // Only update if we've moved to a new position
                     int currentPos = (int)newPosition;
-                    if (currentPos != lastUpdatePosition) {
+                    if (currentPos != currentPosition) {
                         synchronized (this) {
                             currentPosition = currentPos;
-                            lastUpdatePosition = currentPos;
                             updateProgressBar();
                         }
                     }
-
                     
                     // Check if we need to queue next chunk
                     int wordsLeft = words.length - currentPos;
@@ -671,7 +718,13 @@ public class AudioReaderActivity extends AppCompatActivity {
     private void updateProgressBar() {
         runOnUiThread(() -> {
             progressBar.setProgress((int)currentPosition);
-            currentTimeText.setText(formatTime((int)currentPosition));
+            
+            // Calculate current time based on actual elapsed playback time
+            long currentTime = System.currentTimeMillis();
+            long elapsedPlaybackTime = totalPlaybackTime + (currentTime - playbackStartTime);
+            int currentSeconds = (int) (elapsedPlaybackTime / 1000);
+            
+            currentTimeText.setText(formatTime(currentSeconds));
             if (isShowingText) {
                 updateCurrentWords();
             }
@@ -732,7 +785,7 @@ public class AudioReaderActivity extends AppCompatActivity {
         StringBuilder currentWords = new StringBuilder();
         for (int i = startWord; i < endWord; i++) {
             if (!words[i].trim().isEmpty() && isValidWord(words[i])) {
-                // Highlight the current wordAdd commentMore actions
+                // Highlight the current word
                 if (i == currentPos) {
                     currentWords.append("<b>").append(words[i]).append("</b> ");
                 } else {
@@ -802,9 +855,17 @@ public class AudioReaderActivity extends AppCompatActivity {
         if (textToSpeech != null) {
             Log.d(TAG, "Stopping TTS");
             textToSpeech.stop();
+            
+            // Update total playback time
+            if (isPlaying && !isPaused) {
+                long currentTime = System.currentTimeMillis();
+                totalPlaybackTime += (currentTime - playbackStartTime);
+            }
+            
             isPlaying = false;
+            isPaused = false;
             stopProgressUpdate();
-            // Reset position trackingAdd commentMore actions
+            // Reset position tracking
             if (updateProgressRunnable != null) {
                 handler.removeCallbacks(updateProgressRunnable);
                 updateProgressRunnable = null;
@@ -828,6 +889,9 @@ public class AudioReaderActivity extends AppCompatActivity {
             textToSpeech.shutdown();
         }
         stopProgressUpdate();
+        // Reset time tracking
+        totalPlaybackTime = 0;
+        isPaused = false;
         super.onDestroy();
     }
 } 

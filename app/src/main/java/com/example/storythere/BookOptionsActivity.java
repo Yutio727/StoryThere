@@ -138,6 +138,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     // Open PDF viewer activity
                     Intent pdfIntent = new Intent(this, PDFViewerActivity.class);
                     pdfIntent.setData(contentUri);
+                    pdfIntent.putExtra("fileType", fileType);
                     startActivity(pdfIntent);
                 } else if ("txt".equals(fileType)) {
                     // Cache parsed .txt content to a file and pass file path to PDFViewerActivity
@@ -159,6 +160,13 @@ public class BookOptionsActivity extends AppCompatActivity {
                     pdfIntent.putExtra("fileType", fileType);
                     pdfIntent.putExtra("title", title);
                     startActivity(pdfIntent);
+                } else if ("epub".equals(fileType)) {
+                    // Open EPUB in PDFViewerActivity
+                    Intent epubIntent = new Intent(this, PDFViewerActivity.class);
+                    epubIntent.setData(contentUri);
+                    epubIntent.putExtra("fileType", fileType);
+                    epubIntent.putExtra("title", title);
+                    startActivity(epubIntent);
                 } else {
                     // Open reader activity for other file types
                     Intent readerIntent = new Intent(this, ReaderActivity.class);

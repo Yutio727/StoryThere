@@ -17,6 +17,7 @@ foundationText = "1.0.0-alpha07"
 googleGmsGoogleServices = "4.4.2"
 firebaseAuth = "23.2.1"
 activity = "1.10.1"
+firebaseStorage = "21.0.2"
 
 
 [libraries]
@@ -42,6 +43,7 @@ room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRunti
 androidx-foundation-text = { group = "androidx.compose.foundation", name = "foundation-text", version.ref = "foundationText" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
+firebase-storage = { group = "com.google.firebase", name = "firebase-storage", version.ref = "firebaseStorage" }
 
 
 [plugins]

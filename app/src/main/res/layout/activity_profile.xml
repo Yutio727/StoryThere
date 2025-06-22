@@ -3,8 +3,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:clipToPadding="true"
-    android:fitsSystemWindows="true"
     android:background="@color/light_blue_background">
 
     <!-- Toolbar -->
@@ -33,6 +31,15 @@
         </androidx.appcompat.widget.Toolbar>
     </com.google.android.material.appbar.AppBarLayout>
 
+    <View
+        android:id="@+id/themeChangeOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="100dp" />
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -53,17 +60,28 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:background="@color/white"
                 android:elevation="2dp"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="12dp">
 
-                <!-- User Icon -->
-                <ImageView
-                    android:id="@+id/userIcon"
+                <!-- User Icon Frame -->
+                <FrameLayout
+                    android:id="@+id/userIconFrame"
                     android:layout_width="60dp"
-                    android:layout_height="60dp"
-                    android:src="@drawable/storythere_icon"
-                    android:contentDescription="User Icon" />
+                    android:layout_height="60dp">
+                    <View
+                        android:id="@+id/userIconFrameBg"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@android:color/white" />
+
+                    <ImageView
+                        android:id="@+id/userIcon"
+                        android:layout_width="62dp"
+                        android:layout_height="60dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="User Icon"
+                        android:src="@drawable/storythere_icon" />
+                </FrameLayout>
 
                 <!-- User Info -->
                 <LinearLayout
@@ -83,6 +101,15 @@
                         android:fontFamily="@font/montserrat_bold"
                         android:textStyle="bold" />
 
+                    <TextView
+                        android:id="@+id/joinDate"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Signed in: 01.01.2024"
+                        android:textSize="13sp"
+                        android:textColor="@color/text_activity_secondary"
+                        android:fontFamily="@font/montserrat" />
+
                 </LinearLayout>
             </LinearLayout>
 
@@ -94,16 +121,27 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:background="@color/white"
                 android:elevation="2dp"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="12dp">
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_mail"
-                    android:layout_marginEnd="16dp"
-                    android:contentDescription="Email Icon" />
+                <FrameLayout
+                    android:id="@+id/emailIconSquare"
+                    android:layout_width="43dp"
+                    android:layout_height="43dp"
+                    android:layout_marginEnd="16dp">
+                    <View
+                        android:id="@+id/emailIconBg"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@color/light_blue_background" />
+                    <ImageView
+                        android:id="@+id/emailIcon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_mail"
+                        android:contentDescription="Email Icon" />
+                </FrameLayout>
 
                 <TextView
                     android:layout_width="0dp"
@@ -134,7 +172,7 @@
                 android:textColor="@color/text_activity_primary"
                 android:fontFamily="@font/montserrat_bold"
                 android:textStyle="bold"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginBottom="8dp" />
 
             <!-- Theme Setting -->
             <LinearLayout
@@ -145,16 +183,29 @@
                 android:gravity="center_vertical"
                 android:padding="16dp"
                 android:elevation="2dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginBottom="4dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackground">
 
-                <View
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:background="@drawable/empty_square"
-                    android:layout_marginEnd="16dp" />
+                <FrameLayout
+                    android:id="@+id/themeIconSquare"
+                    android:layout_width="43dp"
+                    android:layout_height="43dp"
+                    android:layout_marginEnd="16dp">
+                    <View
+                        android:id="@+id/themeIconBg"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@color/light_blue_background" />
+                    <ImageView
+                        android:id="@+id/themeIcon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_theme_change"
+                        android:contentDescription="Theme Icon" />
+                </FrameLayout>
 
                 <TextView
                     android:layout_width="0dp"
@@ -184,16 +235,29 @@
                 android:gravity="center_vertical"
                 android:padding="16dp"
                 android:elevation="2dp"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="4dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackground">
 
-                <View
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:background="@drawable/empty_square"
-                    android:layout_marginEnd="16dp" />
+                <FrameLayout
+                    android:id="@+id/notificationsIconSquare"
+                    android:layout_width="43dp"
+                    android:layout_height="43dp"
+                    android:layout_marginEnd="16dp">
+                    <View
+                        android:id="@+id/notificationsIconBg"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@color/light_blue_background" />
+                    <ImageView
+                        android:id="@+id/notificationsIcon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_notifications_ringbell"
+                        android:contentDescription="Notifications Icon" />
+                </FrameLayout>
 
                 <TextView
                     android:layout_width="0dp"
@@ -203,6 +267,14 @@
                     android:textSize="16sp"
                     android:textColor="@color/text_activity_primary"
                     android:fontFamily="@font/montserrat" />
+
+                <ImageView
+                    android:id="@+id/notificationsSwitchBar"
+                    android:layout_width="57dp"
+                    android:layout_height="44dp"
+                    android:layout_marginStart="12dp"
+                    android:src="@drawable/ic_switchbar_unselected"
+                    android:contentDescription="Switch notifications on/off" />
             </LinearLayout>
 
             <!-- Language Section -->
@@ -214,7 +286,7 @@
                 android:textColor="@color/text_activity_primary"
                 android:fontFamily="@font/montserrat_bold"
                 android:textStyle="bold"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginBottom="8dp" />
 
             <!-- Interface Language Setting -->
             <LinearLayout
@@ -225,16 +297,29 @@
                 android:gravity="center_vertical"
                 android:padding="16dp"
                 android:elevation="2dp"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="4dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackground">
 
-                <View
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:background="@drawable/empty_square"
-                    android:layout_marginEnd="16dp" />
+                <FrameLayout
+                    android:id="@+id/languageIconSquare"
+                    android:layout_width="43dp"
+                    android:layout_height="43dp"
+                    android:layout_marginEnd="16dp">
+                    <View
+                        android:id="@+id/languageIconBg"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@color/light_blue_background" />
+                    <ImageView
+                        android:id="@+id/languageIcon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_language_change"
+                        android:contentDescription="Language Icon" />
+                </FrameLayout>
 
                 <TextView
                     android:layout_width="0dp"
@@ -264,7 +349,7 @@
                 android:textColor="@color/text_activity_primary"
                 android:fontFamily="@font/montserrat_bold"
                 android:textStyle="bold"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginBottom="8dp" />
 
             <!-- Report Issue & FAQ -->
             <LinearLayout
@@ -275,16 +360,29 @@
                 android:gravity="center_vertical"
                 android:padding="16dp"
                 android:elevation="2dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginBottom="4dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackground">
 
-                <View
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:background="@drawable/empty_square"
-                    android:layout_marginEnd="16dp" />
+                <FrameLayout
+                    android:id="@+id/faqIconSquare"
+                    android:layout_width="43dp"
+                    android:layout_height="43dp"
+                    android:layout_marginEnd="16dp">
+                    <View
+                        android:id="@+id/faqIconBg"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@color/light_blue_background" />
+                    <ImageView
+                        android:id="@+id/faqIcon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_faq"
+                        android:contentDescription="FAQ Icon" />
+                </FrameLayout>
 
                 <TextView
                     android:layout_width="0dp"
@@ -305,16 +403,29 @@
                 android:gravity="center_vertical"
                 android:padding="16dp"
                 android:elevation="2dp"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="12dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackground">
 
-                <View
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:background="@drawable/empty_square"
-                    android:layout_marginEnd="16dp" />
+                <FrameLayout
+                    android:id="@+id/exitIconSquare"
+                    android:layout_width="43dp"
+                    android:layout_height="43dp"
+                    android:layout_marginEnd="16dp">
+                    <View
+                        android:id="@+id/exitIconBg"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@color/light_blue_background" />
+                    <ImageView
+                        android:id="@+id/exitIcon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_exit_errow"
+                        android:contentDescription="Exit Icon" />
+                </FrameLayout>
 
                 <TextView
                     android:layout_width="0dp"

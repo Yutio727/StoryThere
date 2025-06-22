@@ -57,6 +57,7 @@ public class ProfileActivity extends AppCompatActivity {
     
     private static final String PREFS_NAME = "ProfilePrefs";
     private static final String PREF_NOTIFICATIONS_ENABLED = "notifications_enabled";
+    private static final String PREF_LANGUAGE = "selected_language";
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,6 +90,11 @@ public class ProfileActivity extends AppCompatActivity {
     }
     
     private void applySavedTheme() {
+        // Apply saved language before theme
+        String savedLang = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(PREF_LANGUAGE, null);
+        if (savedLang != null) {
+            setLocale(savedLang);
+        }
         int savedThemeMode = StoryThereApplication.getSavedThemeMode(getApplication());
         AppCompatDelegate.setDefaultNightMode(savedThemeMode);
     }
@@ -285,6 +291,8 @@ public class ProfileActivity extends AppCompatActivity {
         // Prepare old and new texts
         String currentLang = getCurrentLanguage();
         String nextLang = "en".equals(currentLang) ? "ru" : "en";
+        // Save selected language
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString(PREF_LANGUAGE, nextLang).apply();
         Resources res = getResources();
         Locale oldLocale = res.getConfiguration().locale;
         Locale newLocale = new Locale(nextLang);

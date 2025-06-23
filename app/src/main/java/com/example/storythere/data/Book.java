@@ -20,6 +20,7 @@ public class Book {
     private boolean isFavourite;
     private boolean isAlreadyRead;
     private String parsedTextPath;
+    private String image; // for server-side field
     
     public Book(String title, String author, String filePath, String fileType) {
         this.title = title;
@@ -30,6 +31,10 @@ public class Book {
         this.currentPage = 0;
         this.isFavourite = false;
         this.isAlreadyRead = false;
+    }
+    
+    public Book() {
+        // Required for Firestore deserialization
     }
     
     // Getters and Setters
@@ -68,4 +73,8 @@ public class Book {
 
     public String getParsedTextPath() { return parsedTextPath; }
     public void setParsedTextPath(String parsedTextPath) { this.parsedTextPath = parsedTextPath; }
+
+    // For server books, use previewImagePath as the image
+    public String getImage() { return image != null ? image : previewImagePath; }
+    public void setImage(String image) { this.image = image; }
 } 

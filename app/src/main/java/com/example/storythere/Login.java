@@ -24,6 +24,10 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import android.widget.ProgressBar;
 import com.google.firebase.auth.FirebaseUser;
+import com.example.storythere.data.UserRepository;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import androidx.annotation.NonNull;
 
 public class Login extends AppCompatActivity {
 
@@ -34,6 +38,7 @@ public class Login extends AppCompatActivity {
     private ImageView overlayResultIcon;
     private TextView overlayResultText;
     private Handler handler = new Handler();
+    private UserRepository userRepository;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +48,9 @@ public class Login extends AppCompatActivity {
         // Removed insets padding code
         // Set status bar color to blue
         getWindow().setStatusBarColor(getResources().getColor(R.color.progress_blue));
+
+        // Initialize UserRepository
+        userRepository = new UserRepository();
 
         // Set ActionBar color to blue
         if (getSupportActionBar() != null) {
@@ -165,54 +173,34 @@ public class Login extends AppCompatActivity {
                                 if (task.isSuccessful()) {
                                     FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
                                     if (user != null) {
-                                        user.getIdToken(false).addOnCompleteListener(tokenTask -> {
-                                            if (tokenTask.isSuccessful() && tokenTask.getResult() != null) {
-                                                String token = tokenTask.getResult().getToken();
-                                                Log.d("Login", "Login successful. Token: " + token);
-                                            } else {
-                                                Log.w("Login", "Login successful, but failed to get token.");
+                                        // Update lastLoginAt in Firestore
+                                        userRepository.updateLastLogin(user.getUid(), new OnCompleteListener<Void>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<Void> updateTask) {
+                                                if (updateTask.isSuccessful()) {
+                                                    Log.d("Login", "Last login timestamp updated successfully");
+                                                } else {
+                                                    Log.w("Login", "Failed to update last login timestamp", updateTask.getException());
+                                                }
+                                                
+                                                // Continue with success flow
+                                                user.getIdToken(false).addOnCompleteListener(tokenTask -> {
+                                                    if (tokenTask.isSuccessful() && tokenTask.getResult() != null) {
+                                                        String token = tokenTask.getResult().getToken();
+                                                        Log.d("Login", "Login successful. Token: " + token);
+                                                    } else {
+                                                        Log.w("Login", "Login successful, but failed to get token.");
+                                                    }
+                                                });
+                                                
+                                                showSuccessAndNavigate();
                                             }
                                         });
+                                    } else {
+                                        showSuccessAndNavigate();
                                     }
-                                    overlayAppIcon.setVisibility(View.GONE);
-                                    overlayResultIcon.setImageResource(R.drawable.ic_check_circle);
-                                    overlayResultIcon.setVisibility(View.VISIBLE);
-                                    overlayResultText.setText(getString(R.string.welcome_title) + "\n" + getString(R.string.welcome_message));
-                                    overlayResultText.setTextColor(getResources().getColor(R.color.progress_blue));
-                                    overlayResultText.setVisibility(View.VISIBLE);
-                                    handler.postDelayed(() -> {
-                                        Intent intent = new Intent(Login.this, HomeActivity.class);
-                                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                                        startActivity(intent);
-                                        finish();
-                                    }, 700);
                                 } else {
-                                    overlayAppIcon.setVisibility(View.GONE);
-                                    overlayResultIcon.setImageResource(R.drawable.ic_cross_circle);
-                                    overlayResultIcon.setVisibility(View.VISIBLE);
-                                    String errorMsg = getString(R.string.login_failed);
-                                    if (task.getException() != null) {
-                                        errorMsg += ":\n" + task.getException().getMessage();
-                                    }
-                                    overlayResultText.setText(errorMsg);
-                                    overlayResultText.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
-                                    overlayResultText.setVisibility(View.VISIBLE);
-                                    handler.postDelayed(() -> {
-                                        // Fade out overlay
-                                        Animation fadeOut = new AlphaAnimation(1, 0);
-                                        fadeOut.setDuration(300);
-                                        fadeOut.setAnimationListener(new Animation.AnimationListener() {
-                                            @Override
-                                            public void onAnimationStart(Animation animation) {}
-                                            @Override
-                                            public void onAnimationEnd(Animation animation) {
-                                                overlayView.setVisibility(View.GONE);
-                                            }
-                                            @Override
-                                            public void onAnimationRepeat(Animation animation) {}
-                                        });
-                                        overlayView.startAnimation(fadeOut);
-                                    }, 3000);
+                                    showErrorAndStay(task.getException());
                                 }
                             }
                         });
@@ -257,5 +245,49 @@ public class Login extends AppCompatActivity {
                 passwordLayout.invalidate();
             }
         });
+    }
+
+    private void showSuccessAndNavigate() {
+        overlayAppIcon.setVisibility(View.GONE);
+        overlayResultIcon.setImageResource(R.drawable.ic_check_circle);
+        overlayResultIcon.setVisibility(View.VISIBLE);
+        overlayResultText.setText(getString(R.string.welcome_title) + "\n" + getString(R.string.welcome_message));
+        overlayResultText.setTextColor(getResources().getColor(R.color.progress_blue));
+        overlayResultText.setVisibility(View.VISIBLE);
+        handler.postDelayed(() -> {
+            Intent intent = new Intent(Login.this, HomeActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            finish();
+        }, 700);
+    }
+
+    private void showErrorAndStay(Exception exception) {
+        overlayAppIcon.setVisibility(View.GONE);
+        overlayResultIcon.setImageResource(R.drawable.ic_cross_circle);
+        overlayResultIcon.setVisibility(View.VISIBLE);
+        String errorMsg = getString(R.string.login_failed);
+        if (exception != null) {
+            errorMsg += ":\n" + exception.getMessage();
+        }
+        overlayResultText.setText(errorMsg);
+        overlayResultText.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
+        overlayResultText.setVisibility(View.VISIBLE);
+        handler.postDelayed(() -> {
+            // Fade out overlay
+            Animation fadeOut = new AlphaAnimation(1, 0);
+            fadeOut.setDuration(300);
+            fadeOut.setAnimationListener(new Animation.AnimationListener() {
+                @Override
+                public void onAnimationStart(Animation animation) {}
+                @Override
+                public void onAnimationEnd(Animation animation) {
+                    overlayView.setVisibility(View.GONE);
+                }
+                @Override
+                public void onAnimationRepeat(Animation animation) {}
+            });
+            overlayView.startAnimation(fadeOut);
+        }, 3000);
     }
 }

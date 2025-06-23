@@ -46,10 +46,14 @@ import android.widget.ImageView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import android.view.ViewGroup;
 import android.content.res.ColorStateList;
+import com.google.firebase.Timestamp;
+import com.example.storythere.data.User;
+import com.example.storythere.data.UserRepository;
 
 public class Registration extends AppCompatActivity {
 
     private FirebaseAuth mAuth = FirebaseAuth.getInstance();
+    private UserRepository userRepository;
     private FrameLayout overlayView;
     private ConstraintLayout overlayContent;
     private ImageView overlayAppIcon;
@@ -65,6 +69,9 @@ public class Registration extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_registration);
         getWindow().setStatusBarColor(getResources().getColor(R.color.progress_blue));
+
+        // Initialize UserRepository
+        userRepository = new UserRepository();
 
         // Set ActionBar color to blue
         if (getSupportActionBar() != null) {
@@ -441,75 +448,53 @@ public class Registration extends AppCompatActivity {
                                     // Save user profile data
                                     FirebaseUser user = mAuth.getCurrentUser();
                                     if (user != null) {
-                                        com.google.firebase.auth.UserProfileChangeRequest profileUpdates = 
-                                            new com.google.firebase.auth.UserProfileChangeRequest.Builder()
-                                                .setDisplayName(username)
-                                                .build();
-                                        
-                                        user.updateProfile(profileUpdates)
-                                            .addOnCompleteListener(profileTask -> {
+                                        // Create user profile data
+                                        User userProfile = new User(
+                                            user.getUid(),
+                                            email,
+                                            username, // displayName from registration
+                                            "", // photoURL - empty for now, will be implemented later
+                                            birthday, // dateOfBirth from registration
+                                            "standard", // default role
+                                            Timestamp.now(), // createdAt
+                                            Timestamp.now() // lastLoginAt
+                                        );
+
+                                        // Save to Firestore
+                                        userRepository.createUser(userProfile, new OnCompleteListener<Void>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<Void> profileTask) {
                                                 if (profileTask.isSuccessful()) {
-                                                    Log.d("Registration", "User profile updated successfully");
+                                                    Log.d("Registration", "User profile saved to Firestore successfully");
                                                 } else {
-                                                    Log.w("Registration", "Failed to update user profile", profileTask.getException());
+                                                    Log.w("Registration", "Failed to save user profile to Firestore", profileTask.getException());
                                                 }
                                                 
-                                                // Continue with success flow regardless of profile update
-                                                overlayAppIcon.setVisibility(View.GONE);
-                                                overlayResultIcon.setImageResource(R.drawable.ic_check_circle);
-                                                overlayResultIcon.setVisibility(View.VISIBLE);
-                                                overlayResultText.setText(getString(R.string.registration_success));
-                                                overlayResultText.setTextColor(getResources().getColor(R.color.progress_blue));
-                                                overlayResultText.setVisibility(View.VISIBLE);
-                                                handler.postDelayed(() -> {
-                                                    Intent intent = new Intent(Registration.this, Login.class);
-                                                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                                                    startActivity(intent);
-                                                    finish();
-                                                }, 700);
-                                            });
+                                                // Update Firebase Auth display name
+                                                com.google.firebase.auth.UserProfileChangeRequest profileUpdates = 
+                                                    new com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                                                        .setDisplayName(username)
+                                                        .build();
+                                                
+                                                user.updateProfile(profileUpdates)
+                                                    .addOnCompleteListener(authProfileTask -> {
+                                                        if (authProfileTask.isSuccessful()) {
+                                                            Log.d("Registration", "Firebase Auth profile updated successfully");
+                                                        } else {
+                                                            Log.w("Registration", "Failed to update Firebase Auth profile", authProfileTask.getException());
+                                                        }
+                                                        
+                                                        // Continue with success flow regardless of profile update
+                                                        showSuccessAndNavigate();
+                                                    });
+                                            }
+                                        });
                                     } else {
                                         // Fallback if user is null
-                                        overlayAppIcon.setVisibility(View.GONE);
-                                        overlayResultIcon.setImageResource(R.drawable.ic_check_circle);
-                                        overlayResultIcon.setVisibility(View.VISIBLE);
-                                        overlayResultText.setText(getString(R.string.registration_success));
-                                        overlayResultText.setTextColor(getResources().getColor(R.color.progress_blue));
-                                        overlayResultText.setVisibility(View.VISIBLE);
-                                        handler.postDelayed(() -> {
-                                            Intent intent = new Intent(Registration.this, Login.class);
-                                            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                                            startActivity(intent);
-                                            finish();
-                                        }, 700);
+                                        showSuccessAndNavigate();
                                     }
                                 } else {
-                                    overlayAppIcon.setVisibility(View.GONE);
-                                    overlayResultIcon.setImageResource(R.drawable.ic_cross_circle);
-                                    overlayResultIcon.setVisibility(View.VISIBLE);
-                                    String errorMsg = getString(R.string.registration_failed);
-                                    if (task.getException() != null) {
-                                        errorMsg += "\n" + task.getException().getMessage();
-                                    }
-                                    overlayResultText.setText(errorMsg);
-                                    overlayResultText.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
-                                    overlayResultText.setVisibility(View.VISIBLE);
-                                    handler.postDelayed(() -> {
-                                        // Fade out overlay
-                                        Animation fadeOut = new AlphaAnimation(1, 0);
-                                        fadeOut.setDuration(300);
-                                        fadeOut.setAnimationListener(new Animation.AnimationListener() {
-                                            @Override
-                                            public void onAnimationStart(Animation animation) {}
-                                            @Override
-                                            public void onAnimationEnd(Animation animation) {
-                                                overlayView.setVisibility(View.GONE);
-                                            }
-                                            @Override
-                                            public void onAnimationRepeat(Animation animation) {}
-                                        });
-                                        overlayView.startAnimation(fadeOut);
-                                    }, 3000);
+                                    showErrorAndStay(task.getException());
                                 }
                             }
                         });
@@ -532,5 +517,49 @@ public class Registration extends AppCompatActivity {
 
     private void reload() {
         // TODO: Optionally reload user or refresh UI
+    }
+
+    private void showSuccessAndNavigate() {
+        overlayAppIcon.setVisibility(View.GONE);
+        overlayResultIcon.setImageResource(R.drawable.ic_check_circle);
+        overlayResultIcon.setVisibility(View.VISIBLE);
+        overlayResultText.setText(getString(R.string.registration_success));
+        overlayResultText.setTextColor(getResources().getColor(R.color.progress_blue));
+        overlayResultText.setVisibility(View.VISIBLE);
+        handler.postDelayed(() -> {
+            Intent intent = new Intent(Registration.this, Login.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            finish();
+        }, 700);
+    }
+
+    private void showErrorAndStay(Exception exception) {
+        overlayAppIcon.setVisibility(View.GONE);
+        overlayResultIcon.setImageResource(R.drawable.ic_cross_circle);
+        overlayResultIcon.setVisibility(View.VISIBLE);
+        String errorMsg = getString(R.string.registration_failed);
+        if (exception != null) {
+            errorMsg += "\n" + exception.getMessage();
+        }
+        overlayResultText.setText(errorMsg);
+        overlayResultText.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
+        overlayResultText.setVisibility(View.VISIBLE);
+        handler.postDelayed(() -> {
+            // Fade out overlay
+            Animation fadeOut = new AlphaAnimation(1, 0);
+            fadeOut.setDuration(300);
+            fadeOut.setAnimationListener(new Animation.AnimationListener() {
+                @Override
+                public void onAnimationStart(Animation animation) {}
+                @Override
+                public void onAnimationEnd(Animation animation) {
+                    overlayView.setVisibility(View.GONE);
+                }
+                @Override
+                public void onAnimationRepeat(Animation animation) {}
+            });
+            overlayView.startAnimation(fadeOut);
+        }, 3000);
     }
 }

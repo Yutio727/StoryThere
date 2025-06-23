@@ -35,22 +35,25 @@
         android:id="@+id/search_bar_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:layout_marginLeft="5px"
+        android:layout_marginTop="10dp"
+        android:layout_marginRight="5px"
+        android:background="@drawable/search_bar_background"
         android:gravity="center_vertical"
-        android:background="#E8EDF5"
+        android:orientation="horizontal"
         android:padding="12dp"
-        android:layout_margin="2dp"
-        app:layout_constraintTop_toBottomOf="@id/appBarLayout"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent">
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/appBarLayout">
 
         <ImageView
             android:id="@+id/search_icon"
             android:layout_width="24dp"
             android:layout_height="24dp"
+            android:contentDescription="@string/search"
             android:src="@drawable/ic_search"
-            android:tint="@color/progress_blue"
-            android:contentDescription="@string/search" />
+            android:tint="@color/progress_blue" />
 
         <EditText
             android:id="@+id/search_bar"
@@ -58,13 +61,14 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@android:color/transparent"
+            android:focusable="false"
+            android:fontFamily="@font/montserrat"
             android:hint="@string/find_your_awesome_book"
-            android:textColor="@color/text_activity_primary"
-            android:textColorHint="@color/text_activity_secondary"
+            android:inputType="text"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:inputType="text"
-            android:focusable="false" />
+            android:textColor="@color/search_bar_text"
+            android:textColorHint="@color/search_bar_text" />
     </LinearLayout>
 
     <TextView
@@ -75,48 +79,23 @@
         android:textSize="18sp"
         android:textColor="@color/text_activity_primary"
         android:fontFamily="@font/montserrat_bold"
+        android:textStyle="bold"
         app:layout_constraintTop_toBottomOf="@id/search_bar_container"
         app:layout_constraintLeft_toLeftOf="parent"
         android:layout_marginTop="16dp"
         android:layout_marginStart="16dp" />
 
-    <LinearLayout
-        android:id="@+id/recommend_book_container"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_recommend_books"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center_horizontal"
+        android:layout_height="240dp"
+        android:layout_marginTop="8dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
         app:layout_constraintTop_toBottomOf="@id/recommend_label"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        android:layout_marginTop="8dp">
-
-        <ImageView
-            android:id="@+id/book_image"
-            android:layout_width="160dp"
-            android:layout_height="210dp"
-            android:scaleType="centerCrop"
-            android:contentDescription="@string/book_cover" />
-
-        <TextView
-            android:id="@+id/book_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Title"
-            android:textSize="16sp"
-            android:textColor="@color/text_activity_primary"
-            android:fontFamily="@font/montserrat_bold"
-            android:layout_marginTop="8dp" />
-
-        <TextView
-            android:id="@+id/book_author"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Author"
-            android:textSize="14sp"
-            android:textColor="@color/text_activity_secondary"
-            android:fontFamily="@font/montserrat" />
-    </LinearLayout>
+        android:clipToPadding="false"/>
 
     <TextView
         android:id="@+id/exclusives_label"
@@ -126,10 +105,29 @@
         android:textSize="18sp"
         android:textColor="@color/text_activity_primary"
         android:fontFamily="@font/montserrat_bold"
-        app:layout_constraintTop_toBottomOf="@id/recommend_book_container"
+        android:textStyle="bold"
+        app:layout_constraintTop_toBottomOf="@id/recycler_recommend_books"
         app:layout_constraintLeft_toLeftOf="parent"
         android:layout_marginTop="24dp"
         android:layout_marginStart="16dp" />
+
+    <!-- Admin Add Book Button -->
+    <Button
+        android:id="@+id/button_admin_add_book"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="Add New Book (Admin)"
+        android:textSize="16sp"
+        android:textColor="@color/white"
+        android:background="@drawable/rounded_button"
+        android:fontFamily="@font/montserrat_bold"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/exclusives_label"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent" />
 
     <include
         android:id="@+id/bottom_navigation"

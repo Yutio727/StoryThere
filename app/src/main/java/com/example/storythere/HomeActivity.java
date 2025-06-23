@@ -16,6 +16,24 @@ import android.app.DownloadManager;
 import android.net.Uri;
 import android.os.Environment;
 import android.widget.Toast;
+import com.example.storythere.data.Book;
+import com.example.storythere.data.BookRepository;
+import androidx.lifecycle.ViewModelProvider;
+import com.example.storythere.ui.BookListViewModel;
+import android.util.Log;
+import android.widget.Button;
+import com.example.storythere.data.UserRepository;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import com.example.storythere.ui.RecommendBookAdapter;
+import com.google.firebase.firestore.QuerySnapshot;
+import java.util.ArrayList;
+import java.util.List;
 
 public class HomeActivity extends AppCompatActivity {
     
@@ -24,6 +42,21 @@ public class HomeActivity extends AppCompatActivity {
     private String recommendedFileUrl = null;
     private String recommendedFileType = null;
     private String recommendedTitle = null;
+    private String recommendedAuthor = null;
+    
+    // Second book variables
+    private String recommendedFileUrl2 = null;
+    private String recommendedFileType2 = null;
+    private String recommendedTitle2 = null;
+    private String recommendedAuthor2 = null;
+    
+    private BookRepository bookRepository;
+    private BookListViewModel viewModel;
+    private boolean isDownloading = false;
+    private boolean isCheckingBook = false;
+    private Button adminAddBookButton;
+    private static final String ADMIN_EMAIL = "dima.gurliv@gmail.com";
+    private UserRepository userRepository;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,7 +68,14 @@ public class HomeActivity extends AppCompatActivity {
         setSelectedTab(0); // Home is selected
 
         setupSearchBar();
-        fetchAndDisplayTestBook();
+        
+        // Initialize repositories
+        bookRepository = new BookRepository(getApplication());
+        viewModel = new ViewModelProvider(this).get(BookListViewModel.class);
+        userRepository = new UserRepository();
+        
+        setupAdminButton();
+        setupRecommendedBooksRecycler();
     }
     
     private void initializeViews() {
@@ -48,6 +88,8 @@ public class HomeActivity extends AppCompatActivity {
         textSearch = findViewById(R.id.text_search);
         textMyBooks = findViewById(R.id.text_my_books);
         textProfile = findViewById(R.id.text_profile);
+        
+        adminAddBookButton = findViewById(R.id.button_admin_add_book);
     }
     
     private void setupBottomNavigation() {
@@ -171,53 +213,134 @@ public class HomeActivity extends AppCompatActivity {
         }
     }
 
-    private void fetchAndDisplayTestBook() {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("books").document("bookId1").get().addOnSuccessListener(doc -> {
-            if (doc.exists()) {
-                String title = doc.getString("title");
-                String author = doc.getString("author");
-                String imageUrl = doc.getString("image");
-                String fileUrl = doc.getString("fileUrl");
-                String fileType = doc.getString("fileType");
-
-                TextView titleView = findViewById(R.id.book_title);
-                TextView authorView = findViewById(R.id.book_author);
-                ImageView imageView = findViewById(R.id.book_image);
-
-                titleView.setText(title != null ? title : "");
-                authorView.setText(author != null ? author : "");
-                if (imageUrl != null && !imageUrl.isEmpty()) {
-                    Glide.with(this).load(imageUrl).into(imageView);
+    private void setupAdminButton() {
+        // Check if current user is admin by checking their role in Firestore
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null && adminAddBookButton != null) {
+            userRepository.getUser(currentUser.getUid(), new OnCompleteListener<DocumentSnapshot>() {
+                @Override
+                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        DocumentSnapshot document = task.getResult();
+                        if (document.exists()) {
+                            String userRole = document.getString("role");
+                            if ("admin".equals(userRole)) {
+                                // Show admin button for admin users
+                                adminAddBookButton.setVisibility(View.VISIBLE);
+                                adminAddBookButton.setOnClickListener(v -> {
+                                    Intent intent = new Intent(HomeActivity.this, AddBookActivity.class);
+                                    startActivity(intent);
+                                });
+                                Log.d("HomeActivity", "Admin button shown for user: " + currentUser.getEmail());
+                            } else {
+                                // Hide admin button for non-admin users
+                                adminAddBookButton.setVisibility(View.GONE);
+                                Log.d("HomeActivity", "Admin button hidden for user: " + currentUser.getEmail());
+                            }
+                        } else {
+                            // Document doesn't exist, hide admin button
+                            adminAddBookButton.setVisibility(View.GONE);
+                            Log.d("HomeActivity", "User document not found, hiding admin button");
+                        }
+                    } else {
+                        // Error getting user data, hide admin button
+                        adminAddBookButton.setVisibility(View.GONE);
+                        Log.w("HomeActivity", "Error getting user data", task.getException());
+                    }
                 }
+            });
+        } else {
+            // No user logged in, hide admin button
+            if (adminAddBookButton != null) {
+                adminAddBookButton.setVisibility(View.GONE);
+            }
+        }
+    }
 
-                // Save for click
-                recommendedFileUrl = fileUrl;
-                recommendedFileType = fileType;
-                recommendedTitle = title;
+    public static class RecommendedBook {
+        public String title;
+        public String author;
+        public String fileUrl;
+        public String fileType;
+        public String image;
+        public RecommendedBook(String title, String author, String fileUrl, String fileType, String image) {
+            this.title = title;
+            this.author = author;
+            this.fileUrl = fileUrl;
+            this.fileType = fileType;
+            this.image = image;
+        }
+    }
 
-                View bookContainer = findViewById(R.id.recommend_book_container);
-                bookContainer.setOnClickListener(v -> downloadAndOpenBook());
+    private void setupRecommendedBooksRecycler() {
+        RecyclerView recyclerView = findViewById(R.id.recycler_recommend_books);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("books")
+          .limit(7)
+          .get()
+          .addOnSuccessListener(querySnapshot -> {
+              List<RecommendedBook> bookList = new ArrayList<>();
+              for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                  String title = doc.getString("title");
+                  String author = doc.getString("author");
+                  String fileUrl = doc.getString("fileUrl");
+                  String fileType = doc.getString("fileType");
+                  String image = doc.getString("image");
+                  bookList.add(new RecommendedBook(title, author, fileUrl, fileType, image));
+              }
+              RecommendBookAdapter adapter = new RecommendBookAdapter(bookList, book -> {
+                  handleRecommendedBookClick(book);
+              });
+              recyclerView.setAdapter(adapter);
+          });
+    }
+
+    private void handleRecommendedBookClick(RecommendedBook book) {
+        if (book == null) return;
+        String bookTitle = book.title != null ? book.title : "Unknown Title";
+        String bookAuthor = book.author != null ? book.author : "Unknown Author";
+        String fileUrl = book.fileUrl;
+        String fileType = book.fileType;
+        String imageUrl = book.image;
+
+        if (isDownloading || isCheckingBook) {
+            Toast.makeText(this, "Processing in progress...", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        isCheckingBook = true;
+
+        viewModel.getAllBooks().observe(this, books -> {
+            if (!isCheckingBook) return;
+            isCheckingBook = false;
+            Book existingBook = null;
+            for (Book b : books) {
+                if (b.getTitle().equals(bookTitle) && b.getAuthor().equals(bookAuthor)) {
+                    existingBook = b;
+                    break;
+                }
+            }
+            if (existingBook != null) {
+                openBookOptionsActivity(Uri.parse(existingBook.getFilePath()), fileType, bookTitle);
+            } else {
+                isDownloading = true;
+                downloadAndSaveBookFromServer(bookTitle, bookAuthor, fileUrl, fileType, imageUrl);
             }
         });
     }
 
-    private void downloadAndOpenBook() {
-        if (recommendedFileUrl == null || recommendedFileType == null) {
-            Toast.makeText(this, "Book file not available", Toast.LENGTH_SHORT).show();
-            return;
-        }
+    private void downloadAndSaveBookFromServer(String title, String author, String fileUrl, String fileType, String imageUrl) {
         Toast.makeText(this, getString(R.string.downloading), Toast.LENGTH_SHORT).show();
-        String fileName = "temp_book." + recommendedFileType;
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(recommendedFileUrl));
-        request.setTitle(recommendedTitle != null ? recommendedTitle : fileName);
+        String fileName = title + "." + fileType;
+        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(fileUrl));
+        request.setTitle(title);
         request.setDescription("Downloading book...");
-        request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, fileName);
+        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
         DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
         long downloadId = dm.enqueue(request);
 
-        // Listen for download completion
         new Thread(() -> {
             boolean downloading = true;
             while (downloading) {
@@ -229,10 +352,20 @@ public class HomeActivity extends AppCompatActivity {
                     if (status == DownloadManager.STATUS_SUCCESSFUL) {
                         downloading = false;
                         String uriString = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI));
-                        runOnUiThread(() -> openBookOptionsActivity(Uri.parse(uriString)));
+                        runOnUiThread(() -> {
+                            isDownloading = false;
+                            if (uriString != null) {
+                                saveBookAndOpenFromServer(title, author, uriString, fileType, imageUrl);
+                            } else {
+                                Toast.makeText(this, "Download failed: file not found", Toast.LENGTH_SHORT).show();
+                            }
+                        });
                     } else if (status == DownloadManager.STATUS_FAILED) {
                         downloading = false;
-                        runOnUiThread(() -> Toast.makeText(this, getString(R.string.download_failed), Toast.LENGTH_SHORT).show());
+                        runOnUiThread(() -> {
+                            isDownloading = false;
+                            Toast.makeText(this, getString(R.string.download_failed), Toast.LENGTH_SHORT).show();
+                        });
                     }
                 }
                 if (cursor != null) cursor.close();
@@ -241,11 +374,18 @@ public class HomeActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void openBookOptionsActivity(Uri fileUri) {
+    private void saveBookAndOpenFromServer(String title, String author, String localUriString, String fileType, String imageUrl) {
+        Book book = new Book(title, author, localUriString, fileType);
+        book.setPreviewImagePath(imageUrl);
+        bookRepository.insert(book);
+        openBookOptionsActivity(Uri.parse(localUriString), fileType, title);
+    }
+
+    private void openBookOptionsActivity(Uri fileUri, String fileType, String title) {
         Intent intent = new Intent(this, BookOptionsActivity.class);
         intent.setData(fileUri);
-        intent.putExtra("fileType", recommendedFileType);
-        intent.putExtra("title", recommendedTitle);
+        intent.putExtra("fileType", fileType);
+        intent.putExtra("title", title);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
     }

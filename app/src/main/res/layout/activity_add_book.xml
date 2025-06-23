@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_light">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="24dp">
+
+            <Button
+                android:id="@+id/button_back"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/rounded_button"
+                android:text="←"
+                android:textSize="18sp"
+                android:textColor="@color/white"
+                android:layout_marginEnd="16dp"/>
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Add New Book"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary_light"
+                android:fontFamily="@font/montserrat_bold"/>
+
+        </LinearLayout>
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Title *"
+            android:textSize="16sp"
+            android:textColor="@color/text_primary_light"
+            android:fontFamily="@font/montserrat_bold"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/edit_text_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter book title"
+            android:background="@drawable/rounded_edittext"
+            android:padding="16dp"
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="@font/montserrat_regular"/>
+
+        <!-- Author -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Author *"
+            android:textSize="16sp"
+            android:textColor="@color/text_primary_light"
+            android:fontFamily="@font/montserrat_bold"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/edit_text_author"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter author name"
+            android:background="@drawable/rounded_edittext"
+            android:padding="16dp"
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="@font/montserrat_regular"/>
+
+        <!-- Annotation -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Annotation"
+            android:textSize="16sp"
+            android:textColor="@color/text_primary_light"
+            android:fontFamily="@font/montserrat_bold"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/edit_text_annotation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter book description/annotation"
+            android:background="@drawable/rounded_edittext"
+            android:padding="16dp"
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="@font/montserrat_regular"
+            android:inputType="textMultiLine"
+            android:minLines="3"
+            android:gravity="top"/>
+
+        <!-- File URL -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="File URL *"
+            android:textSize="16sp"
+            android:textColor="@color/text_primary_light"
+            android:fontFamily="@font/montserrat_bold"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/edit_text_file_url"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter file URL (e.g., https://example.com/book.epub)"
+            android:background="@drawable/rounded_edittext"
+            android:padding="16dp"
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="@font/montserrat_regular"
+            android:inputType="textUri"/>
+
+        <!-- Image URL -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Image URL"
+            android:textSize="16sp"
+            android:textColor="@color/text_primary_light"
+            android:fontFamily="@font/montserrat_bold"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/edit_text_image_url"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter cover image URL (optional)"
+            android:background="@drawable/rounded_edittext"
+            android:padding="16dp"
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="@font/montserrat_regular"
+            android:inputType="textUri"/>
+
+        <!-- File Type -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="File Type *"
+            android:textSize="16sp"
+            android:textColor="@color/text_primary_light"
+            android:fontFamily="@font/montserrat_bold"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/edit_text_file_type"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter file type (e.g., epub, pdf)"
+            android:background="@drawable/rounded_edittext"
+            android:padding="16dp"
+            android:textSize="16sp"
+            android:layout_marginBottom="32dp"
+            android:fontFamily="@font/montserrat_regular"/>
+
+        <!-- Add Book Button -->
+        <Button
+            android:id="@+id/button_add_book"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Add Book"
+            android:textSize="18sp"
+            android:textColor="@color/white"
+            android:background="@drawable/rounded_button"
+            android:fontFamily="@font/montserrat_bold"/>
+
+    </LinearLayout>
+
+</ScrollView> 

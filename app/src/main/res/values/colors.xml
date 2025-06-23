@@ -32,4 +32,10 @@
     <color name="bottom_nav_background_light">#F7FAFC</color>
     <color name="bottom_nav_selected_light">#000000</color>
     <color name="bottom_nav_unselected_light">#1A73E8</color>
+    
+    <!-- Add Book Activity Colors -->
+    <color name="background_light">@color/light_blue_background</color>
+    <color name="text_primary_light">@color/text_activity_primary</color>
+    <color name="search_bar_text">#4A739C</color>
+    <color name="search_bar_bg">#E8EDF5</color>
 </resources>

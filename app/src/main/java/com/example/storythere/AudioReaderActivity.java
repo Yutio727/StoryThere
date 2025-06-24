@@ -40,18 +40,18 @@ import android.content.SharedPreferences;
 
 public class AudioReaderActivity extends AppCompatActivity {
     private static final String TAG = "AudioReaderActivity";
-    private static final int MAX_CHUNK_SIZE = 200; // Maximum words per chunk
-    private static final int CHUNK_OVERLAP = 20; // Number of words to overlap between chunks
+    private static final int MAX_CHUNK_SIZE = 100; // Maximum words per chunk
+    private static final int CHUNK_OVERLAP = 30; // Number of words to overlap between chunks
     private static final int SYNC_INTERVAL = 16; // Sync every 16ms (60fps) for smoother updates
     private static final int QUEUE_AHEAD_THRESHOLD = 50; // Queue next chunk when this many words are left
     private static final float POSITION_UPDATE_FACTOR = 0.1f; // Reduced from 0.5f to make updates more frequent
     private static final float WORDS_PER_MINUTE = 150.0f; // Average reading speed in words per minute
     
     // Progressive chunk sizing
-    private static final int FIRST_CHUNK_SIZE = 10;
+    private static final int FIRST_CHUNK_SIZE = 50;
     private static final int SECOND_CHUNK_SIZE = 50;
-    private static final int NORMAL_CHUNK_SIZE = 200;
-    private static final int MAX_QUEUED_CHUNKS = 6;
+    private static final int NORMAL_CHUNK_SIZE = 100;
+    private static final int MAX_QUEUED_CHUNKS = 10; // Increased to ensure smoother playback
     
     private int currentChunkIndex = 0; // Track which chunk we're on
     private int queuedChunksCount = 0; // Count of currently queued chunks
@@ -100,6 +100,8 @@ public class AudioReaderActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "AudioReaderPrefs";
     private static final String KEY_POSITION = "position_";
     private static final String KEY_VOICE = "voice_";
+    
+    private long lastTTSOnDoneTime = 0;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -397,17 +399,14 @@ public class AudioReaderActivity extends AppCompatActivity {
                     public void onStart(String utteranceId) {
                         runOnUiThread(() -> {
                             long currentTime = System.currentTimeMillis();
+                            long delay = lastTTSOnDoneTime > 0 ? (currentTime - lastTTSOnDoneTime) : 0;
                             long elapsedPlaybackTime = totalPlaybackTime + (currentTime - playbackStartTime);
                             int currentSeconds = (int) (elapsedPlaybackTime / 1000);
-                            
-                            Log.d(TAG, "TTS onStart: " + utteranceId + " | Time: " + formatTime(currentSeconds));
-                            
+                            Log.d(TAG, "TTS onStart: " + utteranceId + " | Time: " + formatTime(currentSeconds) + (delay > 0 ? (" | Delay since last onDone: " + delay + "ms") : ""));
                             // Only reset playbackStartTime if this is the first chunk (messageID)
-                            // For subsequent chunks, keep the existing timing
                             if (utteranceId.equals("messageID")) {
                                 playbackStartTime = System.currentTimeMillis();
                             }
-                            
                             isPlaying = true;
                             isPaused = false;
                             ttsIsSpeaking = true;
@@ -420,30 +419,71 @@ public class AudioReaderActivity extends AppCompatActivity {
                             long currentTime = System.currentTimeMillis();
                             long elapsedPlaybackTime = totalPlaybackTime + (currentTime - playbackStartTime);
                             int currentSeconds = (int) (elapsedPlaybackTime / 1000);
-                            
                             Log.d(TAG, "TTS onDone: " + utteranceId + " | Time: " + formatTime(currentSeconds));
-                            
+                            lastTTSOnDoneTime = System.currentTimeMillis();
                             // Increment chunk index when a chunk is completed
                             currentChunkIndex++;
-                            
+                            // Update current chunk start position based on previous chunk's end
+                            if (utteranceId.startsWith("chunk_")) {
+                                String[] parts = utteranceId.split("_");
+                                if (parts.length == 3) {
+                                    int chunkIndex = Integer.parseInt(parts[1]);
+                                    int chunkStart = Integer.parseInt(parts[2]);
+                                    int chunkSize = getChunkSize(chunkIndex);
+                                    currentChunkStart = chunkStart + chunkSize;
+                                }
+                            }
                             // Decrement queued chunks count
                             if (queuedChunksCount > 0) {
                                 queuedChunksCount--;
                             }
-                            
-                            // If we're running low on queued chunks, queue next batch
-                            if (queuedChunksCount <= 2 && isPlaying) {
+                            // Always queue next batch to ensure smooth playback
+                            if (isPlaying) {
                                 String[] words = textContent.split("\\s+");
-                                if (currentPosition < words.length - 1) {
-                                    // Queue next batch starting from current position + 1
-                                    queueNextBatch(currentPosition + 1);
+                                // Calculate next start position based on current chunk's end position
+                                int nextStart = currentChunkStart; // Start from current chunk's end position
+                                // Queue chunks in sequence from current position
+                                for (int i = 0; i < MAX_QUEUED_CHUNKS - queuedChunksCount && nextStart < words.length; i++) {
+                                    int nextChunkSize = getChunkSize(currentChunkIndex + i);
+                                    StringBuilder chunkText = new StringBuilder();
+                                    // Add overlap words from previous chunk
+                                    if (i > 0) {
+                                        int overlapStart = Math.max(0, nextStart - CHUNK_OVERLAP);
+                                        for (int j = overlapStart; j < nextStart; j++) {
+                                            String word = words[j].trim();
+                                            if (!word.isEmpty() && isValidWord(word)) {
+                                                chunkText.append(word).append(" ");
+                                            }
+                                        }
+                                    }
+                                    // Add current chunk words
+                                    int nextEnd = Math.min(nextStart + nextChunkSize, words.length);
+                                    for (int j = nextStart; j < nextEnd; j++) {
+                                        String word = words[j].trim();
+                                        if (!word.isEmpty() && isValidWord(word)) {
+                                            chunkText.append(word).append(" ");
+                                        }
+                                    }
+                                    String nextTextToSpeak = chunkText.toString().trim();
+                                    if (!nextTextToSpeak.isEmpty()) {
+                                        Bundle nextParams = new Bundle();
+                                        String nextUtteranceId = "chunk_" + (currentChunkIndex + i) + "_" + nextStart;
+                                        nextParams.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, nextUtteranceId);
+                                        Log.d(TAG, "Queueing chunk " + (currentChunkIndex + i) + " at position " + nextStart + " with size " + nextChunkSize);
+                                        int nextResult = textToSpeech.speak(nextTextToSpeak, TextToSpeech.QUEUE_ADD, nextParams, nextUtteranceId);
+                                        if (nextResult == TextToSpeech.ERROR) {
+                                            Log.e(TAG, "Error queueing chunk " + (currentChunkIndex + i));
+                                        } else {
+                                            queuedChunksCount++;
+                                        }
+                                    }
+                                    nextStart = nextEnd;
                                 }
                             }
-                            
                             // If no more chunks and we're at the end, stop
                             if (queuedChunksCount == 0) {
                                 stopProgressUpdate();
-                                    isPlaying = false;
+                                isPlaying = false;
                                 isPaused = false;
                                 ttsIsSpeaking = false;
                             }
@@ -620,19 +660,13 @@ public class AudioReaderActivity extends AppCompatActivity {
             queuedChunksCount = 0;
             // Initialize time tracking
             if (!isPlaying) {
-                // playbackStartTime = System.currentTimeMillis();
                 isPaused = false;
             }
-            Bundle params = new Bundle();
-            params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "messageID");
             String[] words = textContent.split("\\s+");
             int startWord = Math.min((int)currentPosition, words.length - 1);
-            
-            // Get chunk size based on current chunk index
-            int chunkSize = FIRST_CHUNK_SIZE; // Always use 10 words for starting chunk
-            
-            StringBuilder remainingText = new StringBuilder();
+            int chunkSize = FIRST_CHUNK_SIZE; // Always use 50 words for starting chunk
             int endWord = Math.min(startWord + chunkSize, words.length);
+            StringBuilder remainingText = new StringBuilder();
             for (int i = startWord; i < endWord; i++) {
                 String word = words[i].trim();
                 if (!word.isEmpty() && isValidWord(word)) {
@@ -640,25 +674,46 @@ public class AudioReaderActivity extends AppCompatActivity {
                 }
             }
             String textToSpeak = remainingText.toString().trim();
-            Log.d(TAG, "Starting TTS at position " + currentPosition + " with chunk size " + chunkSize + " and text: [" + textToSpeak + "]");
             if (!textToSpeak.isEmpty()) {
                 try {
                     textToSpeech.stop();
                     currentPosition = startWord;
                     queuedChunksCount = 1; // First chunk is queued
-                    handler.postDelayed(() -> {
-                        int result = textToSpeech.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, params, "messageID");
-                        if (result == TextToSpeech.ERROR) {
-                            Log.e(TAG, "Error starting TTS");
-                            Toast.makeText(this, "Error starting text-to-speech", Toast.LENGTH_SHORT).show();
-                            return;
+                    Bundle params = new Bundle();
+                    params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "messageID");
+                    int result = textToSpeech.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, params, "messageID");
+                    if (result == TextToSpeech.ERROR) {
+                        Log.e(TAG, "Error starting TTS");
+                        Toast.makeText(this, "Error starting text-to-speech", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    // Immediately queue the next N chunks for seamless playback
+                    int nextStart = endWord;
+                    for (int i = 0; i < MAX_QUEUED_CHUNKS - 1 && nextStart < words.length; i++) {
+                        int nextChunkSize = getChunkSize(i); // Use progressive chunk sizing
+                        int nextEnd = Math.min(nextStart + nextChunkSize, words.length);
+                        StringBuilder chunkText = new StringBuilder();
+                        for (int j = nextStart; j < nextEnd; j++) {
+                            String word = words[j].trim();
+                            if (!word.isEmpty() && isValidWord(word)) {
+                                chunkText.append(word).append(" ");
+                            }
                         }
-                        // Queue next batch of chunks
-                        if (endWord < words.length) {
-                            // Don't use overlap when starting next batch to prevent backwards movement
-                            queueNextBatch(endWord);
+                        String nextTextToSpeak = chunkText.toString().trim();
+                        if (!nextTextToSpeak.isEmpty()) {
+                            Bundle nextParams = new Bundle();
+                            String nextUtteranceId = "chunk_" + (i) + "_" + nextStart;
+                            nextParams.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, nextUtteranceId);
+                            Log.d(TAG, "Queueing chunk " + (i) + " at position " + nextStart + " with size " + nextChunkSize );
+                            int nextResult = textToSpeech.speak(nextTextToSpeak, TextToSpeech.QUEUE_ADD, nextParams, nextUtteranceId);
+                            if (nextResult == TextToSpeech.ERROR) {
+                                Log.e(TAG, "Error queueing chunk " + (i));
+                            } else {
+                                queuedChunksCount++;
+                            }
                         }
-                    }, 100);
+                        nextStart = nextEnd;
+                    }
                 } catch (Exception e) {
                     Log.e(TAG, "Exception while starting TTS: " + e.getMessage());
                     Toast.makeText(this, "Error starting text-to-speech", Toast.LENGTH_SHORT).show();
@@ -676,55 +731,6 @@ public class AudioReaderActivity extends AppCompatActivity {
         } else {
             return NORMAL_CHUNK_SIZE; // 200 words for all other chunks
         }
-    }
-    
-    private void queueNextBatch(int startPosition) {
-        if (!isPlaying || queuedChunksCount >= MAX_QUEUED_CHUNKS) return;
-        
-        String[] words = textContent.split("\\s+");
-        // Ensure startPosition is never negative
-        startPosition = Math.max(0, startPosition);
-        if (startPosition >= words.length) {
-            isChunkQueued = false;
-            return;
-        }
-        
-        // Queue up to MAX_QUEUED_CHUNKS chunks
-        for (int i = 0; i < MAX_QUEUED_CHUNKS && queuedChunksCount < MAX_QUEUED_CHUNKS; i++) {
-            if (startPosition >= words.length) break;
-            
-            int chunkSize = getChunkSize(currentChunkIndex + i);
-            int endWord = Math.min(startPosition + chunkSize, words.length);
-        
-        StringBuilder chunkText = new StringBuilder();
-            for (int j = startPosition; j < endWord; j++) {
-                String word = words[j].trim();
-            if (!word.isEmpty() && isValidWord(word)) {
-                chunkText.append(word).append(" ");
-            }
-        }
-        
-        String textToSpeak = chunkText.toString().trim();
-        if (!textToSpeak.isEmpty()) {
-            Bundle params = new Bundle();
-                String utteranceId = "chunk_" + (currentChunkIndex + i) + "_" + startPosition;
-            params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId);
-            
-                Log.d(TAG, "Queueing chunk " + (currentChunkIndex + i) + " at position " + startPosition + " with size " + chunkSize + " and text: [" + textToSpeak + "]");
-            
-            int result = textToSpeech.speak(textToSpeak, TextToSpeech.QUEUE_ADD, params, utteranceId);
-            if (result == TextToSpeech.ERROR) {
-                    Log.e(TAG, "Error queueing chunk " + (currentChunkIndex + i));
-            } else {
-                    queuedChunksCount++;
-                }
-            }
-            
-            // Move to next position without overlap to prevent backwards movement
-            startPosition = endWord;
-        }
-        
-        isChunkQueued = false; // Reset flag after queuing batch
     }
     
     private void startProgressUpdate() {
@@ -789,20 +795,16 @@ public class AudioReaderActivity extends AppCompatActivity {
     
     private void updateProgressBar() {
         runOnUiThread(() -> {
-            // Calculate current time based on actual elapsed playback time
             long currentTime = System.currentTimeMillis();
+            // Scale elapsed time by playback speed
+            float speed = currentSpeed > 0 ? currentSpeed : 1.0f;
             long elapsedPlaybackTime = totalPlaybackTime + (currentTime - playbackStartTime);
-            float currentSeconds = elapsedPlaybackTime / 1000.0f; // Use float for smoother progress
-            
-            // Calculate total time in seconds (always based on 1.0x speed)
+            float currentSeconds = (elapsedPlaybackTime / 1000.0f) * speed; // scale by speed
             float wordsPerSecond = (WORDS_PER_MINUTE * 1.0f) / 60.0f;
             float totalSeconds = totalWords / wordsPerSecond;
-            
-            // Set progress based on word position as percent
             int progress = totalWords > 0 ? (int)((currentPosition * 100.0f) / totalWords) : 0;
             progressBar.setMax(100);
             progressBar.setProgress(progress);
-
             currentTimeText.setText(formatTime((int)currentSeconds));
             if (isShowingText) {
                 updateCurrentWords();

@@ -34,6 +34,7 @@ import com.example.storythere.ui.RecommendBookAdapter;
 import com.google.firebase.firestore.QuerySnapshot;
 import java.util.ArrayList;
 import java.util.List;
+import androidx.lifecycle.Observer;
 
 public class HomeActivity extends AppCompatActivity {
     
@@ -311,23 +312,29 @@ public class HomeActivity extends AppCompatActivity {
         }
         isCheckingBook = true;
 
-        viewModel.getAllBooks().observe(this, books -> {
-            if (!isCheckingBook) return;
-            isCheckingBook = false;
-            Book existingBook = null;
-            for (Book b : books) {
-                if (b.getTitle().equals(bookTitle) && b.getAuthor().equals(bookAuthor)) {
-                    existingBook = b;
-                    break;
+        // Use a one-time observer to avoid multiple downloads
+        Observer<List<Book>> observer = new Observer<List<Book>>() {
+            @Override
+            public void onChanged(List<Book> books) {
+                viewModel.getAllBooks().removeObserver(this);
+                isCheckingBook = false;
+                Book existingBook = null;
+                for (Book b : books) {
+                    if (b.getTitle().equals(bookTitle) && b.getAuthor().equals(bookAuthor)) {
+                        existingBook = b;
+                        break;
+                    }
+                }
+                if (existingBook != null) {
+                    openBookOptionsActivity(Uri.parse(existingBook.getFilePath()), fileType, bookTitle);
+                } else {
+                    isDownloading = true;
+                    Log.d("HomeActivity", "Starting download: " + bookTitle + " by " + bookAuthor + " from " + fileUrl);
+                    downloadAndSaveBookFromServer(bookTitle, bookAuthor, fileUrl, fileType, imageUrl);
                 }
             }
-            if (existingBook != null) {
-                openBookOptionsActivity(Uri.parse(existingBook.getFilePath()), fileType, bookTitle);
-            } else {
-                isDownloading = true;
-                downloadAndSaveBookFromServer(bookTitle, bookAuthor, fileUrl, fileType, imageUrl);
-            }
-        });
+        };
+        viewModel.getAllBooks().observe(this, observer);
     }
 
     private void downloadAndSaveBookFromServer(String title, String author, String fileUrl, String fileType, String imageUrl) {

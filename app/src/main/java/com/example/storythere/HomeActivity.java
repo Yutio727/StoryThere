@@ -338,46 +338,139 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void downloadAndSaveBookFromServer(String title, String author, String fileUrl, String fileType, String imageUrl) {
+        Log.d("HomeActivity", "=== DOWNLOAD START ===");
+        Log.d("HomeActivity", "Title: " + title);
+        Log.d("HomeActivity", "Author: " + author);
+        Log.d("HomeActivity", "File URL: " + fileUrl);
+        Log.d("HomeActivity", "File Type: " + fileType);
+        Log.d("HomeActivity", "Image URL: " + imageUrl);
+        
         Toast.makeText(this, getString(R.string.downloading), Toast.LENGTH_SHORT).show();
         String fileName = title + "." + fileType;
+        Log.d("HomeActivity", "File name: " + fileName);
+        
         DownloadManager.Request request = new DownloadManager.Request(Uri.parse(fileUrl));
         request.setTitle(title);
         request.setDescription("Downloading book...");
         request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+        
+        // Add headers to make request more like a browser
+        request.addRequestHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36");
+        request.addRequestHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        request.addRequestHeader("Accept-Language", "en-US,en;q=0.5");
+        request.addRequestHeader("Accept-Encoding", "gzip, deflate");
+        request.addRequestHeader("Connection", "keep-alive");
+        request.addRequestHeader("Upgrade-Insecure-Requests", "1");
+        
+        Log.d("HomeActivity", "Download request created with headers, enqueueing...");
         DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
         long downloadId = dm.enqueue(request);
+        Log.d("HomeActivity", "Download ID: " + downloadId);
 
         new Thread(() -> {
             boolean downloading = true;
+            int checkCount = 0;
             while (downloading) {
+                checkCount++;
+                Log.d("HomeActivity", "Checking download status (attempt " + checkCount + ") for ID: " + downloadId);
+                
                 DownloadManager.Query q = new DownloadManager.Query();
                 q.setFilterById(downloadId);
                 android.database.Cursor cursor = dm.query(q);
+                
                 if (cursor != null && cursor.moveToFirst()) {
                     int status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS));
+                    int reason = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_REASON));
+                    long bytesDownloaded = cursor.getLong(cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
+                    long totalBytes = cursor.getLong(cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+                    
+                    Log.d("HomeActivity", "Status: " + status + ", Reason: " + reason + ", Downloaded: " + bytesDownloaded + "/" + totalBytes + " bytes");
+                    
                     if (status == DownloadManager.STATUS_SUCCESSFUL) {
                         downloading = false;
                         String uriString = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI));
+                        Log.d("HomeActivity", "Download successful! Local URI: " + uriString);
+                        
                         runOnUiThread(() -> {
                             isDownloading = false;
                             if (uriString != null) {
+                                Log.d("HomeActivity", "Saving book to database...");
                                 saveBookAndOpenFromServer(title, author, uriString, fileType, imageUrl);
                             } else {
+                                Log.e("HomeActivity", "Download succeeded but local URI is null!");
                                 Toast.makeText(this, "Download failed: file not found", Toast.LENGTH_SHORT).show();
                             }
                         });
                     } else if (status == DownloadManager.STATUS_FAILED) {
                         downloading = false;
+                        String errorMsg = "Download failed with reason: " + reason;
+                        Log.e("HomeActivity", errorMsg);
+                        
+                        // Log specific error reasons
+                        switch (reason) {
+                            case DownloadManager.ERROR_CANNOT_RESUME:
+                                Log.e("HomeActivity", "ERROR_CANNOT_RESUME");
+                                break;
+                            case DownloadManager.ERROR_DEVICE_NOT_FOUND:
+                                Log.e("HomeActivity", "ERROR_DEVICE_NOT_FOUND");
+                                break;
+                            case DownloadManager.ERROR_FILE_ALREADY_EXISTS:
+                                Log.e("HomeActivity", "ERROR_FILE_ALREADY_EXISTS");
+                                break;
+                            case DownloadManager.ERROR_FILE_ERROR:
+                                Log.e("HomeActivity", "ERROR_FILE_ERROR");
+                                break;
+                            case DownloadManager.ERROR_HTTP_DATA_ERROR:
+                                Log.e("HomeActivity", "ERROR_HTTP_DATA_ERROR");
+                                break;
+                            case DownloadManager.ERROR_INSUFFICIENT_SPACE:
+                                Log.e("HomeActivity", "ERROR_INSUFFICIENT_SPACE");
+                                break;
+                            case DownloadManager.ERROR_TOO_MANY_REDIRECTS:
+                                Log.e("HomeActivity", "ERROR_TOO_MANY_REDIRECTS");
+                                break;
+                            case DownloadManager.ERROR_UNHANDLED_HTTP_CODE:
+                                Log.e("HomeActivity", "ERROR_UNHANDLED_HTTP_CODE");
+                                break;
+                            case DownloadManager.ERROR_UNKNOWN:
+                                Log.e("HomeActivity", "ERROR_UNKNOWN");
+                                break;
+                            default:
+                                Log.e("HomeActivity", "Unknown error reason: " + reason);
+                                break;
+                        }
+                        
                         runOnUiThread(() -> {
                             isDownloading = false;
                             Toast.makeText(this, getString(R.string.download_failed), Toast.LENGTH_SHORT).show();
                         });
+                    } else if (status == DownloadManager.STATUS_PAUSED) {
+                        Log.d("HomeActivity", "Download paused");
+                    } else if (status == DownloadManager.STATUS_PENDING) {
+                        Log.d("HomeActivity", "Download pending");
+                    } else if (status == DownloadManager.STATUS_RUNNING) {
+                        Log.d("HomeActivity", "Download running - " + bytesDownloaded + "/" + totalBytes + " bytes");
                     }
+                } else {
+                    Log.e("HomeActivity", "Cursor is null or empty for download ID: " + downloadId);
                 }
+                
                 if (cursor != null) cursor.close();
+                
+                // Stop checking after 60 attempts (30 seconds) to prevent infinite loop
+                if (checkCount > 60) {
+                    Log.e("HomeActivity", "Download timeout after 60 checks");
+                    downloading = false;
+                    runOnUiThread(() -> {
+                        isDownloading = false;
+                        Toast.makeText(this, "Download timeout", Toast.LENGTH_SHORT).show();
+                    });
+                }
+                
                 try { Thread.sleep(500); } catch (InterruptedException ignored) {}
             }
+            Log.d("HomeActivity", "=== DOWNLOAD END ===");
         }).start();
     }
 

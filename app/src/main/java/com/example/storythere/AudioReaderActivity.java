@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.LocaleList;
 import android.speech.tts.TextToSpeech;
-import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
 import android.text.Html;
 import android.util.Log;
@@ -36,15 +35,27 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
+import android.speech.tts.UtteranceProgressListener;
+import android.content.SharedPreferences;
 
 public class AudioReaderActivity extends AppCompatActivity {
     private static final String TAG = "AudioReaderActivity";
     private static final int MAX_CHUNK_SIZE = 200; // Maximum words per chunk
     private static final int CHUNK_OVERLAP = 20; // Number of words to overlap between chunks
-    private static final int SYNC_INTERVAL = 50; // Sync every 50ms
+    private static final int SYNC_INTERVAL = 16; // Sync every 16ms (60fps) for smoother updates
     private static final int QUEUE_AHEAD_THRESHOLD = 50; // Queue next chunk when this many words are left
     private static final float POSITION_UPDATE_FACTOR = 0.1f; // Reduced from 0.5f to make updates more frequent
     private static final float WORDS_PER_MINUTE = 150.0f; // Average reading speed in words per minute
+    
+    // Progressive chunk sizing
+    private static final int FIRST_CHUNK_SIZE = 10;
+    private static final int SECOND_CHUNK_SIZE = 50;
+    private static final int NORMAL_CHUNK_SIZE = 200;
+    private static final int MAX_QUEUED_CHUNKS = 6;
+    
+    private int currentChunkIndex = 0; // Track which chunk we're on
+    private int queuedChunksCount = 0; // Count of currently queued chunks
+    
     private TextToSpeech textToSpeech;
     private String textContent;
     private boolean isPlaying = false;
@@ -79,6 +90,16 @@ public class AudioReaderActivity extends AppCompatActivity {
     
     // Pattern for detecting Russian characters
     private static final Pattern RUSSIAN_PATTERN = Pattern.compile("[а-яА-ЯёЁ]");
+    
+    private int lastLoggedPosition = -1;
+    
+    private boolean ttsIsSpeaking = false;
+    private boolean isChunkQueued = false; // Flag to prevent multiple chunk queuing
+    
+    // Add at the top of the class
+    private static final String PREFS_NAME = "AudioReaderPrefs";
+    private static final String KEY_POSITION = "position_";
+    private static final String KEY_VOICE = "voice_";
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -139,7 +160,7 @@ public class AudioReaderActivity extends AppCompatActivity {
             // Calculate estimated total time in seconds based on words per minute
             int estimatedTotalSeconds = (int) Math.ceil((totalWords * 60.0f) / WORDS_PER_MINUTE);
             
-            progressBar.setMax(totalWords);
+            progressBar.setMax(100);
             totalTimeText.setText(formatTime(estimatedTotalSeconds));
             currentTimeText.setText(formatTime(0));
             
@@ -217,9 +238,12 @@ public class AudioReaderActivity extends AppCompatActivity {
             else if (checkedId == R.id.speed_15) newSpeed = 1.5f;
             else if (checkedId == R.id.speed_2) newSpeed = 2.0f;
 
+            Log.d(TAG, "Speed: " + newSpeed + "x");
+
             if (textToSpeech != null) {
                 textToSpeech.setSpeechRate(newSpeed);
                 currentSpeed = newSpeed;
+                
                 if (isPlaying) {
                     stopReading();
                     startReading();
@@ -369,85 +393,79 @@ public class AudioReaderActivity extends AppCompatActivity {
                 
                 // Set up utterance progress listener
                 textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                    private int wordCount = 0;
-
                     @Override
                     public void onStart(String utteranceId) {
-                        Log.d(TAG, "TTS started for utterance: " + utteranceId);
-                        wordCount = 0;
+                        runOnUiThread(() -> {
+                            long currentTime = System.currentTimeMillis();
+                            long elapsedPlaybackTime = totalPlaybackTime + (currentTime - playbackStartTime);
+                            int currentSeconds = (int) (elapsedPlaybackTime / 1000);
+                            
+                            Log.d(TAG, "TTS onStart: " + utteranceId + " | Time: " + formatTime(currentSeconds));
+                            
+                            // Only reset playbackStartTime if this is the first chunk (messageID)
+                            // For subsequent chunks, keep the existing timing
+                            if (utteranceId.equals("messageID")) {
+                                playbackStartTime = System.currentTimeMillis();
+                            }
+                            
+                            isPlaying = true;
+                            isPaused = false;
+                            ttsIsSpeaking = true;
+                            startProgressUpdate();
+                        });
                     }
-                    
                     @Override
                     public void onDone(String utteranceId) {
-                        Log.d(TAG, "TTS completed for utterance: " + utteranceId);
                         runOnUiThread(() -> {
-                            String[] words = textContent.split("\\s+");
+                            long currentTime = System.currentTimeMillis();
+                            long elapsedPlaybackTime = totalPlaybackTime + (currentTime - playbackStartTime);
+                            int currentSeconds = (int) (elapsedPlaybackTime / 1000);
                             
-                            if (utteranceId.startsWith("chunk_")) {
-                                // Extract the position from the chunk ID
-                                int chunkPosition = Integer.parseInt(utteranceId.substring(6));
-                                currentPosition = chunkPosition;
-                                
-                                if (currentPosition >= words.length - 1) {
-                                    // We've reached the end
-                                    playPauseButton.setImageResource(android.R.drawable.ic_media_play);
-                                    // Adjust padding for the play icon
-                                    int padding = (int) (getResources().getDisplayMetrics().density * 3); // 3dp
-                                    playPauseButton.setPadding(padding, 0, 0, 0);
-                                    isPlaying = false;
-                                    currentPosition = 0;
-                                    // Reset time tracking when reaching the end
-                                    totalPlaybackTime = 0;
-                                } else {
-                                    // For chunks, ensure the button is still showing pause if playing
-                                    if (isPlaying) {
-                                        playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
-                                        playPauseButton.setPadding(0, 0, 0, 0);
-                                    }
-                                }
-                            } else {
-                                // Handle main utterance completion
-                                if (currentPosition >= words.length - 1) {
-                                    playPauseButton.setImageResource(android.R.drawable.ic_media_play);
-                                    int padding = (int) (getResources().getDisplayMetrics().density * 3); // 3dp
-                                    playPauseButton.setPadding(padding, 0, 0, 0);
-                                    isPlaying = false;
-                                    currentPosition = 0;
-                                    // Reset time tracking when reaching the end
-                                    totalPlaybackTime = 0;
-                                } else {
-                                    // If not the end, ensure button shows pause
-                                    if (isPlaying) {
-                                        playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
-                                        playPauseButton.setPadding(0, 0, 0, 0);
-                                    }
+                            Log.d(TAG, "TTS onDone: " + utteranceId + " | Time: " + formatTime(currentSeconds));
+                            
+                            // Increment chunk index when a chunk is completed
+                            currentChunkIndex++;
+                            
+                            // Decrement queued chunks count
+                            if (queuedChunksCount > 0) {
+                                queuedChunksCount--;
+                            }
+                            
+                            // If we're running low on queued chunks, queue next batch
+                            if (queuedChunksCount <= 2 && isPlaying) {
+                                String[] words = textContent.split("\\s+");
+                                if (currentPosition < words.length - 1) {
+                                    // Queue next batch starting from current position + 1
+                                    queueNextBatch(currentPosition + 1);
                                 }
                             }
-                            updateProgressBar();
-                            if (isShowingText) {
-                                updateCurrentWords();
+                            
+                            // If no more chunks and we're at the end, stop
+                            if (queuedChunksCount == 0) {
+                                stopProgressUpdate();
+                                    isPlaying = false;
+                                isPaused = false;
+                                ttsIsSpeaking = false;
                             }
                         });
                     }
-                    
                     @Override
                     public void onError(String utteranceId) {
-                        Log.e(TAG, "TTS error for utterance: " + utteranceId);
                         runOnUiThread(() -> {
-                            playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+                            Log.d(TAG, "TTS onError: " + utteranceId);
+                            stopProgressUpdate();
                             isPlaying = false;
-                            // Reset time tracking on error
-                            totalPlaybackTime = 0;
                             isPaused = false;
-                            Toast.makeText(AudioReaderActivity.this, 
-                                "Error during text-to-speech playback", 
-                                Toast.LENGTH_SHORT).show();
+                            ttsIsSpeaking = false;
                         });
                     }
                 });
 
                 isTTSReady = true;
                 Log.d(TAG, "TTS initialized successfully");
+                
+                // In initializeTTS, after TTS is ready and voices are set, call restoreCache()
+                restoreCache();
             } else {
                 Log.e(TAG, "TTS initialization failed with status: " + status);
                 Toast.makeText(this, "Failed to initialize text-to-speech", Toast.LENGTH_LONG).show();
@@ -460,13 +478,19 @@ public class AudioReaderActivity extends AppCompatActivity {
         
         rewindButton.setOnClickListener(v -> {
             if (textToSpeech != null) {
+                Log.d(TAG, "Rewind: " + currentPosition);
                 stopReading();
                 // Skip back 10 seconds worth of words
-                float wordsPerSecond = (WORDS_PER_MINUTE * currentSpeed) / 60.0f;
+                float wordsPerSecond = (WORDS_PER_MINUTE * 1.0f) / 60.0f; // Always use 1.0x for time calculation
                 int skipWords = (int)(10 * wordsPerSecond);
-                currentPosition = Math.max(0, currentPosition - skipWords);
-                // Reset time tracking
-                totalPlaybackTime = 0;
+                int newPosition = Math.max(0, currentPosition - skipWords);
+                
+                currentPosition = newPosition;
+                
+                // Calculate the correct time for this position
+                long expectedTimeForPosition = (long)((newPosition * 1000.0f) / wordsPerSecond);
+                totalPlaybackTime = expectedTimeForPosition;
+                
                 updateProgressBar();
                 startReading();
             }
@@ -474,14 +498,20 @@ public class AudioReaderActivity extends AppCompatActivity {
         
         forwardButton.setOnClickListener(v -> {
             if (textToSpeech != null) {
+                Log.d(TAG, "Forward: " + currentPosition);
                 stopReading();
                 // Skip forward 10 seconds worth of words
-                float wordsPerSecond = (WORDS_PER_MINUTE * currentSpeed) / 60.0f;
+                float wordsPerSecond = (WORDS_PER_MINUTE * 1.0f) / 60.0f; // Always use 1.0x for time calculation
                 int skipWords = (int)(10 * wordsPerSecond);
                 String[] words = textContent.split("\\s+");
-                currentPosition = Math.min(words.length - 1, currentPosition + skipWords);
-                // Reset time tracking
-                totalPlaybackTime = 0;
+                int newPosition = Math.min(words.length - 1, currentPosition + skipWords);
+                
+                currentPosition = newPosition;
+                
+                // Calculate the correct time for this position
+                long expectedTimeForPosition = (long)((newPosition * 1000.0f) / wordsPerSecond);
+                totalPlaybackTime = expectedTimeForPosition;
+                
                 updateProgressBar();
                 startReading();
             }
@@ -493,13 +523,30 @@ public class AudioReaderActivity extends AppCompatActivity {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
-                    currentPosition = progress;
-                    // Reset time tracking when user seeks
-                    totalPlaybackTime = 0;
-                    if (isPlaying) {
+                    Log.d(TAG, "Seek: " + currentPosition + " -> " + progress + "%");
+                    // Map percent to word index
+                    int targetPosition = (int)((progress / 100.0f) * totalWords);
+                    targetPosition = Math.max(0, Math.min(targetPosition, totalWords - 1));
+                    currentPosition = targetPosition;
+                    float wordsPerSecond = (WORDS_PER_MINUTE * 1.0f) / 60.0f;
+                    long expectedTimeForPosition = (long)((currentPosition * 1000.0f) / wordsPerSecond);
+                    totalPlaybackTime = expectedTimeForPosition;
+                    // Fix: Reset playbackStartTime if not playing, so time calculation is correct
+                    if (!isPlaying) {
                         playbackStartTime = System.currentTimeMillis();
                     }
                     updateProgressBar();
+                    // Log the current time after updating the UI
+                    Log.d(TAG, "SeekBar currentTimeText: " + currentTimeText.getText().toString());
+                    // Update play/pause button state to reflect isPlaying
+                    if (isPlaying) {
+                        playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
+                        playPauseButton.setPadding(0, 0, 0, 0);
+                    } else {
+                        playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+                        int padding = (int) (getResources().getDisplayMetrics().density * 3); // 3dp
+                        playPauseButton.setPadding(padding, 0, 0, 0);
+                    }
                 }
             }
             
@@ -567,41 +614,38 @@ public class AudioReaderActivity extends AppCompatActivity {
                 handler.removeCallbacks(updateProgressRunnable);
                 updateProgressRunnable = null;
             }
-            
+            // Reset chunk queuing flag and tracking
+            isChunkQueued = false;
+            currentChunkIndex = 0;
+            queuedChunksCount = 0;
             // Initialize time tracking
             if (!isPlaying) {
-                playbackStartTime = System.currentTimeMillis();
+                // playbackStartTime = System.currentTimeMillis();
                 isPaused = false;
             }
-            
             Bundle params = new Bundle();
             params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "messageID");
-            
             String[] words = textContent.split("\\s+");
             int startWord = Math.min((int)currentPosition, words.length - 1);
-            StringBuilder remainingText = new StringBuilder();
             
-            // Take a larger chunk of text for TTS
-            int endWord = Math.min(startWord + MAX_CHUNK_SIZE, words.length);
+            // Get chunk size based on current chunk index
+            int chunkSize = FIRST_CHUNK_SIZE; // Always use 10 words for starting chunk
+            
+            StringBuilder remainingText = new StringBuilder();
+            int endWord = Math.min(startWord + chunkSize, words.length);
             for (int i = startWord; i < endWord; i++) {
                 String word = words[i].trim();
                 if (!word.isEmpty() && isValidWord(word)) {
                     remainingText.append(word).append(" ");
                 }
             }
-            
             String textToSpeak = remainingText.toString().trim();
-            Log.d(TAG, "Starting TTS at position " + currentPosition + " with text: [" + textToSpeak + "]");
-            
+            Log.d(TAG, "Starting TTS at position " + currentPosition + " with chunk size " + chunkSize + " and text: [" + textToSpeak + "]");
             if (!textToSpeak.isEmpty()) {
                 try {
-                    // Stop any ongoing speech first
                     textToSpeech.stop();
-
-                    // Reset position tracking
                     currentPosition = startWord;
-                    
-                    // Add a small delay before starting new speech
+                    queuedChunksCount = 1; // First chunk is queued
                     handler.postDelayed(() -> {
                         int result = textToSpeech.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, params, "messageID");
                         if (result == TextToSpeech.ERROR) {
@@ -609,12 +653,10 @@ public class AudioReaderActivity extends AppCompatActivity {
                             Toast.makeText(this, "Error starting text-to-speech", Toast.LENGTH_SHORT).show();
                             return;
                         }
-                        isPlaying = true;
-                        startProgressUpdate();
-                        
-                        // Queue next chunk immediately
+                        // Queue next batch of chunks
                         if (endWord < words.length) {
-                            queueNextChunk(endWord - CHUNK_OVERLAP);
+                            // Don't use overlap when starting next batch to prevent backwards movement
+                            queueNextBatch(endWord);
                         }
                     }, 100);
                 } catch (Exception e) {
@@ -628,17 +670,35 @@ public class AudioReaderActivity extends AppCompatActivity {
         }
     }
     
-    private void queueNextChunk(int startPosition) {
-        if (!isPlaying) return;
+    private int getChunkSize(int chunkIndex) {
+        if (chunkIndex == 0) {
+            return SECOND_CHUNK_SIZE; // 50 words for first queued chunk
+        } else {
+            return NORMAL_CHUNK_SIZE; // 200 words for all other chunks
+        }
+    }
+    
+    private void queueNextBatch(int startPosition) {
+        if (!isPlaying || queuedChunksCount >= MAX_QUEUED_CHUNKS) return;
         
         String[] words = textContent.split("\\s+");
-        if (startPosition >= words.length) return;
+        // Ensure startPosition is never negative
+        startPosition = Math.max(0, startPosition);
+        if (startPosition >= words.length) {
+            isChunkQueued = false;
+            return;
+        }
         
-        int endWord = Math.min(startPosition + MAX_CHUNK_SIZE, words.length);
+        // Queue up to MAX_QUEUED_CHUNKS chunks
+        for (int i = 0; i < MAX_QUEUED_CHUNKS && queuedChunksCount < MAX_QUEUED_CHUNKS; i++) {
+            if (startPosition >= words.length) break;
+            
+            int chunkSize = getChunkSize(currentChunkIndex + i);
+            int endWord = Math.min(startPosition + chunkSize, words.length);
         
         StringBuilder chunkText = new StringBuilder();
-        for (int i = startPosition; i < endWord; i++) {
-            String word = words[i].trim();
+            for (int j = startPosition; j < endWord; j++) {
+                String word = words[j].trim();
             if (!word.isEmpty() && isValidWord(word)) {
                 chunkText.append(word).append(" ");
             }
@@ -647,21 +707,24 @@ public class AudioReaderActivity extends AppCompatActivity {
         String textToSpeak = chunkText.toString().trim();
         if (!textToSpeak.isEmpty()) {
             Bundle params = new Bundle();
-            String utteranceId = "chunk_" + startPosition;
+                String utteranceId = "chunk_" + (currentChunkIndex + i) + "_" + startPosition;
             params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId);
             
-            Log.d(TAG, "Queueing chunk at position " + startPosition + " with text: [" + textToSpeak + "]");
+                Log.d(TAG, "Queueing chunk " + (currentChunkIndex + i) + " at position " + startPosition + " with size " + chunkSize + " and text: [" + textToSpeak + "]");
             
             int result = textToSpeech.speak(textToSpeak, TextToSpeech.QUEUE_ADD, params, utteranceId);
             if (result == TextToSpeech.ERROR) {
-                Log.e(TAG, "Error queueing next chunk");
+                    Log.e(TAG, "Error queueing chunk " + (currentChunkIndex + i));
             } else {
-                // Queue the next chunk after this one
-                if (endWord < words.length) {
-                    handler.postDelayed(() -> queueNextChunk(endWord - CHUNK_OVERLAP), 100);
+                    queuedChunksCount++;
                 }
             }
+            
+            // Move to next position without overlap to prevent backwards movement
+            startPosition = endWord;
         }
+        
+        isChunkQueued = false; // Reset flag after queuing batch
     }
     
     private void startProgressUpdate() {
@@ -673,8 +736,8 @@ public class AudioReaderActivity extends AppCompatActivity {
                     long currentTime = System.currentTimeMillis();
                     long elapsedPlaybackTime = totalPlaybackTime + (currentTime - playbackStartTime);
                     
-                    // Calculate current position based on elapsed time and estimated reading speed
-                    float wordsPerSecond = (WORDS_PER_MINUTE * currentSpeed) / 60.0f;
+                    // Calculate current position based on elapsed time at 1.0x speed (real time)
+                    float wordsPerSecond = (WORDS_PER_MINUTE * 1.0f) / 60.0f;
                     float newPosition = (elapsedPlaybackTime * wordsPerSecond) / 1000.0f;
 
                     // Ensure we don't exceed the total words
@@ -685,46 +748,62 @@ public class AudioReaderActivity extends AppCompatActivity {
                         return;
                     }
 
-                    // Only update if we've moved to a new position
+                    // Update position and progress bar smoothly
                     int currentPos = (int)newPosition;
                     if (currentPos != currentPosition) {
                         synchronized (this) {
                             currentPosition = currentPos;
-                            updateProgressBar();
                         }
                     }
                     
-                    // Check if we need to queue next chunk
-                    int wordsLeft = words.length - currentPos;
-                    
-                    if (wordsLeft <= QUEUE_AHEAD_THRESHOLD && currentPos < words.length - 1) {
-                        // Queue next chunk if we're running low on words
-                        queueNextChunk(currentPos + 1);
-                    }
-                    
                     handler.postDelayed(this, SYNC_INTERVAL);
+                        }
+                    }
+        };
+        handler.post(updateProgressRunnable);
+        
+        // Start separate smooth progress updates
+        startSmoothProgressUpdate();
+    }
+    
+    private void startSmoothProgressUpdate() {
+        Runnable smoothProgressRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (isPlaying && !isPaused) {
+                    updateProgressBar();
+                    handler.postDelayed(this, 50); // Update every 50ms for smooth progress
                 }
             }
         };
-        handler.post(updateProgressRunnable);
+        handler.post(smoothProgressRunnable);
     }
     
     private void stopProgressUpdate() {
         if (updateProgressRunnable != null) {
             handler.removeCallbacks(updateProgressRunnable);
         }
+        // Remove any pending smooth progress updates
+        handler.removeCallbacksAndMessages(null);
     }
     
     private void updateProgressBar() {
         runOnUiThread(() -> {
-            progressBar.setProgress((int)currentPosition);
-            
             // Calculate current time based on actual elapsed playback time
             long currentTime = System.currentTimeMillis();
             long elapsedPlaybackTime = totalPlaybackTime + (currentTime - playbackStartTime);
-            int currentSeconds = (int) (elapsedPlaybackTime / 1000);
+            float currentSeconds = elapsedPlaybackTime / 1000.0f; // Use float for smoother progress
             
-            currentTimeText.setText(formatTime(currentSeconds));
+            // Calculate total time in seconds (always based on 1.0x speed)
+            float wordsPerSecond = (WORDS_PER_MINUTE * 1.0f) / 60.0f;
+            float totalSeconds = totalWords / wordsPerSecond;
+            
+            // Set progress based on word position as percent
+            int progress = totalWords > 0 ? (int)((currentPosition * 100.0f) / totalWords) : 0;
+            progressBar.setMax(100);
+            progressBar.setProgress(progress);
+
+            currentTimeText.setText(formatTime((int)currentSeconds));
             if (isShowingText) {
                 updateCurrentWords();
             }
@@ -743,8 +822,10 @@ public class AudioReaderActivity extends AppCompatActivity {
              BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
             String line;
             while ((line = reader.readLine()) != null) {
+                // Remove HTML entities like &#160; (non-breaking space)
+                String cleanedLine = line.replaceAll("&#\\d+;", " ");
                 // Clean the line by removing special characters and extra spaces
-                String cleanedLine = line.trim()
+                cleanedLine = cleanedLine.trim()
                     .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", "") // Remove control characters except newlines and tabs
                     .replaceAll("\\s+", " ") // Replace multiple spaces with single space
                     .replaceAll("[^\\p{L}\\p{N}\\p{P}\\s]", ""); // Keep only letters, numbers, punctuation and spaces
@@ -778,14 +859,32 @@ public class AudioReaderActivity extends AppCompatActivity {
         if (!isShowingText) return;
         
         String[] words = textContent.split("\\s+");
-        int currentPos = (int)currentPosition;
+        
+        // Use the actual current position (what TTS is actually speaking)
+        // The currentPosition is already updated based on TTS progress
+        int currentPos = currentPosition;
+        
+        // Ensure bounds
+        currentPos = Math.max(0, Math.min(currentPos, words.length - 1));
+        
+        // Only log when position changes (not on every update)
+        if (currentPos != lastLoggedPosition) {
+            String dictatedWord = currentPos < words.length ? words[currentPos] : "END";
+            String shownWord = currentPos < words.length ? words[currentPos] : "END";
+            long currentTime = System.currentTimeMillis();
+            long elapsedPlaybackTime = totalPlaybackTime + (currentTime - playbackStartTime);
+            int currentSeconds = (int) (elapsedPlaybackTime / 1000);
+            
+
+        }
+        
         int startWord = Math.max(0, currentPos - 2); // Show 2 words before current position
         int endWord = Math.min(words.length, startWord + 7); // Show 7 words total (2 before + current + 4 after)
         
         StringBuilder currentWords = new StringBuilder();
         for (int i = startWord; i < endWord; i++) {
             if (!words[i].trim().isEmpty() && isValidWord(words[i])) {
-                // Highlight the current word
+                // Highlight the current word being spoken
                 if (i == currentPos) {
                     currentWords.append("<b>").append(words[i]).append("</b> ");
                 } else {
@@ -795,7 +894,6 @@ public class AudioReaderActivity extends AppCompatActivity {
         }
         
         String displayText = currentWords.toString().trim();
-        Log.d(TAG, "Current words at position " + currentPos + ": [" + displayText + "]");
         currentWordsText.setText(Html.fromHtml(displayText, Html.FROM_HTML_MODE_LEGACY));
     }
     
@@ -864,6 +962,9 @@ public class AudioReaderActivity extends AppCompatActivity {
             
             isPlaying = false;
             isPaused = false;
+            isChunkQueued = false; // Reset chunk queuing flag
+            currentChunkIndex = 0; // Reset chunk index
+            queuedChunksCount = 0; // Reset queued chunks count
             stopProgressUpdate();
             // Reset position tracking
             if (updateProgressRunnable != null) {
@@ -893,5 +994,55 @@ public class AudioReaderActivity extends AppCompatActivity {
         totalPlaybackTime = 0;
         isPaused = false;
         super.onDestroy();
+    }
+
+    private void saveCache() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        String uniqueKey = getUniqueKey();
+        editor.putInt(KEY_POSITION + uniqueKey, currentPosition);
+        if (textToSpeech != null && textToSpeech.getVoice() != null) {
+            editor.putString(KEY_VOICE + uniqueKey, textToSpeech.getVoice().getName());
+        }
+        editor.apply();
+    }
+
+    private void restoreCache() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String uniqueKey = getUniqueKey();
+        currentPosition = prefs.getInt(KEY_POSITION + uniqueKey, 0);
+        // Set totalPlaybackTime to match restored position
+        float wordsPerSecond = (WORDS_PER_MINUTE * 1.0f) / 60.0f;
+        totalPlaybackTime = (long)((currentPosition * 1000.0f) / wordsPerSecond);
+        int restoredSeconds = (int)(currentPosition / wordsPerSecond);
+        String savedVoice = prefs.getString(KEY_VOICE + uniqueKey, null);
+        Log.d(TAG, "[CACHE] Restored position: " + currentPosition + " (" + formatTime(restoredSeconds) + ")");
+        Log.d(TAG, "[CACHE] Restored voice: " + savedVoice);
+        if (savedVoice != null && textToSpeech != null) {
+            for (Voice voice : textToSpeech.getVoices()) {
+                if (voice.getName().equals(savedVoice)) {
+                    textToSpeech.setVoice(voice);
+                    break;
+                }
+            }
+        }
+        // Update UI to show correct current time
+        if (currentTimeText != null) {
+            currentTimeText.setText(formatTime(restoredSeconds));
+        }
+        if (progressBar != null && totalWords > 0) {
+            int progress = (int)((currentPosition * 100.0f) / totalWords);
+            progressBar.setProgress(progress);
+        }
+    }
+
+    private String getUniqueKey() {
+        return (bookTitle != null && bookTitle.getText() != null) ? bookTitle.getText().toString() : "default";
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        saveCache();
     }
 } 

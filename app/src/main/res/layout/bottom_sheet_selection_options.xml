@@ -18,7 +18,7 @@
         android:textSize="16sp"
         android:minHeight="48dp"
         app:drawableStartCompat="@android:drawable/ic_menu_delete"
-        app:drawableTint="@android:color/black" />
+        app:drawableTint="?android:attr/textColorPrimary" />
 
     <TextView
         android:id="@+id/btnAddToFavourite"

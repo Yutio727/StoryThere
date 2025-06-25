@@ -35,6 +35,12 @@ import com.google.firebase.firestore.QuerySnapshot;
 import java.util.ArrayList;
 import java.util.List;
 import androidx.lifecycle.Observer;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.io.InputStream;
 
 public class HomeActivity extends AppCompatActivity {
     
@@ -312,6 +318,18 @@ public class HomeActivity extends AppCompatActivity {
         }
         isCheckingBook = true;
 
+        // First, check if the file already exists on the device
+        String fileName = bookTitle + "." + fileType;
+        File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File existingFile = new File(downloadsDir, fileName);
+        
+        if (existingFile.exists()) {
+            Log.d("HomeActivity", "File already exists on device: " + existingFile.getAbsolutePath());
+            // File exists, check if it's in our database
+            checkDatabaseAndAddIfNeeded(bookTitle, bookAuthor, existingFile.getAbsolutePath(), fileType, imageUrl);
+            return;
+        }
+
         // Use a one-time observer to avoid multiple downloads
         Observer<List<Book>> observer = new Observer<List<Book>>() {
             @Override
@@ -326,18 +344,114 @@ public class HomeActivity extends AppCompatActivity {
                     }
                 }
                 if (existingBook != null) {
-                    openBookOptionsActivity(Uri.parse(existingBook.getFilePath()), fileType, bookTitle);
+                    // Check if the file referenced in database actually exists
+                    boolean fileExists = false;
+                    try {
+                        Uri bookUri = Uri.parse(existingBook.getFilePath());
+                        if ("content".equals(bookUri.getScheme())) {
+                            // Content URI - try to open input stream
+                            try (InputStream is = getContentResolver().openInputStream(bookUri)) {
+                                fileExists = (is != null);
+                            }
+                        } else {
+                            // File path - check if file exists
+                            File dbFile = new File(existingBook.getFilePath());
+                            fileExists = dbFile.exists();
+                        }
+                    } catch (Exception e) {
+                        Log.e("HomeActivity", "Error checking file existence: " + e.getMessage());
+                        fileExists = false;
+                    }
+                    
+                    if (fileExists) {
+                        Log.d("HomeActivity", "Book found in database and file exists: " + existingBook.getFilePath());
+                        openBookOptionsActivity(Uri.parse(existingBook.getFilePath()), fileType, bookTitle);
+                    } else {
+                        Log.d("HomeActivity", "Book in database but file missing, will re-download");
+                        // File doesn't exist, remove from database and download again
+                        bookRepository.delete(existingBook);
+                        startDownload(bookTitle, bookAuthor, fileUrl, fileType, imageUrl);
+                    }
                 } else {
-                    isDownloading = true;
-                    Log.d("HomeActivity", "Starting download: " + bookTitle + " by " + bookAuthor + " from " + fileUrl);
-                    downloadAndSaveBookFromServer(bookTitle, bookAuthor, fileUrl, fileType, imageUrl);
+                    startDownload(bookTitle, bookAuthor, fileUrl, fileType, imageUrl);
                 }
             }
         };
         viewModel.getAllBooks().observe(this, observer);
     }
 
-    private void downloadAndSaveBookFromServer(String title, String author, String fileUrl, String fileType, String imageUrl) {
+    private void checkDatabaseAndAddIfNeeded(String title, String author, String filePath, String fileType, String imageUrl) {
+        Observer<List<Book>> observer = new Observer<List<Book>>() {
+            @Override
+            public void onChanged(List<Book> books) {
+                viewModel.getAllBooks().removeObserver(this);
+                isCheckingBook = false;
+                
+                // Check if book is already in database
+                boolean bookExists = false;
+                for (Book b : books) {
+                    if (b.getTitle().equals(title) && b.getAuthor().equals(author)) {
+                        bookExists = true;
+                        // Update file path if it's different
+                        if (!b.getFilePath().equals(filePath)) {
+                            b.setFilePath(filePath);
+                            bookRepository.update(b);
+                            Log.d("HomeActivity", "Updated file path for existing book: " + title);
+                        }
+                        break;
+                    }
+                }
+                
+                if (!bookExists) {
+                    // Convert file path to content URI for better compatibility
+                    String contentUri = convertFilePathToContentUri(filePath);
+                    if (contentUri != null) {
+                        // Add to database with content URI
+                        Book newBook = new Book(title, author, contentUri, fileType);
+                        newBook.setPreviewImagePath(imageUrl);
+                        bookRepository.insert(newBook);
+                        Log.d("HomeActivity", "Added existing file to database: " + title + " with URI: " + contentUri);
+                        
+                        // Open the book with content URI
+                        openBookOptionsActivity(Uri.parse(contentUri), fileType, title);
+                    } else {
+                        // Fallback to file path if conversion fails
+                        Book newBook = new Book(title, author, filePath, fileType);
+                        newBook.setPreviewImagePath(imageUrl);
+                        bookRepository.insert(newBook);
+                        Log.d("HomeActivity", "Added existing file to database with file path: " + title);
+                        
+                        // Open the book with file path
+                        openBookOptionsActivity(Uri.parse(filePath), fileType, title);
+                    }
+                } else {
+                    // Book exists, open it
+                    openBookOptionsActivity(Uri.parse(filePath), fileType, title);
+                }
+            }
+        };
+        viewModel.getAllBooks().observe(this, observer);
+    }
+
+    private String convertFilePathToContentUri(String filePath) {
+        try {
+            File file = new File(filePath);
+            if (file.exists()) {
+                // Use FileProvider to get content URI
+                return androidx.core.content.FileProvider.getUriForFile(
+                    this,
+                    getApplicationContext().getPackageName() + ".provider",
+                    file
+                ).toString();
+            }
+        } catch (Exception e) {
+            Log.e("HomeActivity", "Error converting file path to content URI: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private void startDownload(String title, String author, String fileUrl, String fileType, String imageUrl) {
+        isDownloading = true;
         Log.d("HomeActivity", "=== DOWNLOAD START ===");
         Log.d("HomeActivity", "Title: " + title);
         Log.d("HomeActivity", "Author: " + author);
@@ -482,6 +596,14 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void openBookOptionsActivity(Uri fileUri, String fileType, String title) {
+        // Grant permissions for the URI
+        try {
+            getContentResolver().takePersistableUriPermission(fileUri, 
+                Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (Exception e) {
+            Log.w("HomeActivity", "Could not take persistable permission for URI: " + e.getMessage());
+        }
+        
         Intent intent = new Intent(this, BookOptionsActivity.class);
         intent.setData(fileUri);
         intent.putExtra("fileType", fileType);

@@ -2,7 +2,6 @@ package com.example.storythere;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -17,7 +16,6 @@ import androidx.appcompat.widget.Toolbar;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.List;
 
 public class ReaderActivity extends AppCompatActivity {
     private static final String TAG = "ReaderActivity";

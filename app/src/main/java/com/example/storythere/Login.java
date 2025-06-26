@@ -1,20 +1,14 @@
 package com.example.storythere;
 
 import android.os.Bundle;
-
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-import android.content.res.ColorStateList;
 import com.google.android.material.textfield.TextInputLayout;
 import android.widget.EditText;
 import android.content.Intent;
 import android.view.View;
 import android.widget.TextView;
 import android.util.Log;
-import android.widget.Toast;
 import android.os.Handler;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;

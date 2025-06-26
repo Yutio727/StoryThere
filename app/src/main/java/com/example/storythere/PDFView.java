@@ -12,9 +12,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 import java.util.List;
-import java.util.Map;
 import android.util.LruCache;
-import android.content.res.Resources;
 import androidx.core.content.res.ResourcesCompat;
 
 public class PDFView extends View {

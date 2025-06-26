@@ -238,6 +238,25 @@ public class PDFView extends View {
                 continue;
             }
 
+            // For blank pages, draw a placeholder
+            if (page.text == null || page.text.isEmpty()) {
+                // Calculate page height based on aspect ratio
+                float pageAspect = page.pageWidth / page.pageHeight;
+                float pageHeight = availableWidth / pageAspect;
+                
+                // Draw a subtle border for blank pages
+                Paint borderPaint = new Paint();
+                borderPaint.setColor(0x20000000); // Semi-transparent border
+                borderPaint.setStyle(Paint.Style.STROKE);
+                borderPaint.setStrokeWidth(1);
+                
+                tempRect.set(getPaddingLeft(), currentY, getPaddingLeft() + availableWidth, currentY + pageHeight);
+                canvas.drawRect(tempRect, borderPaint);
+                
+                currentY += pageHeight + pageSpacing;
+                continue;
+            }
+
             // Draw text
             if (page.text != null && !page.text.isEmpty()) {
                 String[] paragraphs = page.text.split("\n");
@@ -314,6 +333,15 @@ public class PDFView extends View {
             for (PDFParser.ParsedPage page : pages) {
                 if (page == null) {
                     totalHeight += defaultSettings.fontSize * 2;
+                    continue;
+                }
+
+                // For blank pages, use page dimensions to calculate height
+                if (page.text == null || page.text.isEmpty()) {
+                    // Calculate height based on page aspect ratio
+                    float pageAspect = page.pageWidth / page.pageHeight;
+                    float pageHeight = availableWidth / pageAspect;
+                    totalHeight += pageHeight + pageSpacing;
                     continue;
                 }
 

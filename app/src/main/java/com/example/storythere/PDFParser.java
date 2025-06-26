@@ -69,6 +69,10 @@ public class PDFParser {
         return pdfDoc != null ? pdfDoc.getNumberOfPages() : 0;
     }
 
+    public PdfDocument getPdfDocument() {
+        return pdfDoc;
+    }
+
     private boolean shouldLoadImages() {
         return fileSize <= MAX_FILE_SIZE_FOR_IMAGES;
     }

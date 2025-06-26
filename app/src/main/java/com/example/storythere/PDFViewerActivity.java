@@ -29,9 +29,8 @@ import java.util.concurrent.Executors;
 
 public class PDFViewerActivity extends AppCompatActivity implements TextSettingsDialog.TextSettingsListener, ScrollView.OnScrollChangeListener {
     private static final String TAG = "PDFViewerActivity";
-    private static final int PAGE_LOAD_BATCH_SIZE = 5; // Load 2 pages at a time
-    private static final float SCROLL_THRESHOLD_PERCENT = 0.1f; // distance to load
-    private static final long SCROLL_DEBOUNCE_DELAY = 0; // milliseconds
+    private static final int INITIAL_LOAD_RANGE = 5; // Load 5 pages before and after current
+    private static final int LOAD_RANGE = 10; // Load 3 pages in scroll direction
     
     private PDFView pdfView;
     private ScrollView scrollView;
@@ -55,6 +54,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     private Handler scrollHandler = new Handler(Looper.getMainLooper());
     private Runnable scrollRunnable;
     private int lastScrollY = 0;
+    private int lastScrollDirection = 0; // 0 = no scroll, 1 = down, -1 = up
     private EPUBParser epubParser;
     private boolean isEPUB = false;
 
@@ -165,11 +165,37 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             // Initialize PDF parser
             pdfParser = new PDFParser(this, pdfUri);
             totalPages = pdfParser.getPageCount();
-            pages = new ArrayList<>(totalPages);
             
-            // Initialize the list with nulls
+            // Create blank pages for all pages initially
+            pages = new ArrayList<>(totalPages);
             for (int i = 0; i < totalPages; i++) {
-                pages.add(null);
+                // Create blank page with page dimensions
+                float pageWidth = 612.0f; // Default page width
+                float pageHeight = 792.0f; // Default page height
+                
+                // Try to get actual page dimensions from the first page
+                if (i == 0) {
+                    try {
+                        com.itextpdf.kernel.pdf.PdfPage firstPage = pdfParser.getPdfDocument().getPage(1);
+                        if (firstPage != null) {
+                            com.itextpdf.kernel.geom.Rectangle pageSize = firstPage.getPageSize();
+                            pageWidth = pageSize.getWidth();
+                            pageHeight = pageSize.getHeight();
+                        }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Could not get page dimensions, using defaults");
+                    }
+                }
+                
+                PDFParser.ParsedPage blankPage = new PDFParser.ParsedPage(
+                    "", // Empty text
+                    new ArrayList<>(), // No images
+                    i + 1, // Page number
+                    pageWidth,
+                    pageHeight,
+                    currentSettings
+                );
+                pages.add(blankPage);
             }
 
             // Check file size and show message if images will be skipped
@@ -179,8 +205,11 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 }
             }
 
-            // Load first batch of pages
-            loadPageBatch(1, PAGE_LOAD_BATCH_SIZE);
+            // Set all blank pages to PDFView immediately
+            pdfView.setPages(pages);
+
+            // Load initial content around current page
+            loadInitialContent();
 
         } catch (Exception e) {
             Log.e(TAG, "Error initializing PDF: " + e.getMessage());
@@ -189,8 +218,18 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         }
     }
 
-    private void loadPageBatch(int startPage, int count) {
-        if (isLoadingMore || isDestroyed || startPage > totalPages) {
+    private void loadInitialContent() {
+        if (isDestroyed) return;
+        
+        // Calculate range to load (5 pages before and after current page)
+        int startPage = Math.max(1, currentPage - INITIAL_LOAD_RANGE);
+        int endPage = Math.min(totalPages, currentPage + INITIAL_LOAD_RANGE);
+        
+        loadPageRange(startPage, endPage);
+    }
+
+    private void loadPageRange(int startPage, int endPage) {
+        if (isLoadingMore || isDestroyed || startPage > totalPages || endPage < 1) {
             return;
         }
 
@@ -201,15 +240,17 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 return;
             }
 
-            int endPage = Math.min(startPage + count - 1, totalPages);
             List<PDFParser.ParsedPage> loadedPages = new ArrayList<>();
             
             for (int pageNum = startPage; pageNum <= endPage; pageNum++) {
                 if (isDestroyed) break;
 
-                if (pages.get(pageNum - 1) != null) {
-                    continue;
+                // Check if page already has content
+                PDFParser.ParsedPage existingPage = pages.get(pageNum - 1);
+                if (existingPage != null && existingPage.text != null && !existingPage.text.isEmpty()) {
+                    continue; // Skip if page already has content
                 }
+                
                 PDFParser.ParsedPage page = pdfParser.parsePage(pageNum, currentSettings);
                 if (page != null) {
                     loadedPages.add(page);
@@ -223,14 +264,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                             pages.set(page.pageNumber - 1, page);
                         }
                         pdfView.setPages(pages);
-                        currentPage = endPage;
                         isLoadingMore = false;
-                        
-                        // If this was the first load, start loading next batch
-                        if (isFirstLoad) {
-                            isFirstLoad = false;
-                            loadPageBatch(endPage + 1, PAGE_LOAD_BATCH_SIZE);
-                        }
                     }
                 });
             } else {
@@ -243,38 +277,79 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
         if (isDestroyed) return;
         
-        // Cancel any pending scroll updates
-        if (scrollRunnable != null) {
-            scrollHandler.removeCallbacks(scrollRunnable);
+        // Determine scroll direction
+        int scrollDirection = 0;
+        if (scrollY > oldScrollY) {
+            scrollDirection = 1; // Scrolling down
+        } else if (scrollY < oldScrollY) {
+            scrollDirection = -1; // Scrolling up
+        }
+        
+        // Only process if direction changed or we haven't determined direction yet
+        if (scrollDirection != 0 && scrollDirection != lastScrollDirection) {
+            lastScrollDirection = scrollDirection;
+            
+            // Cancel any pending scroll updates
+            if (scrollRunnable != null) {
+                scrollHandler.removeCallbacks(scrollRunnable);
+            }
+            
+            // Create new runnable for delayed scroll handling
+            int finalScrollDirection = scrollDirection;
+            scrollRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    loadContentInScrollDirection(finalScrollDirection);
+                }
+            };
+            
+            // Post the scroll handling with a small delay to avoid excessive loading
+            scrollHandler.postDelayed(scrollRunnable, 100);
         }
         
         // Store current scroll position
         lastScrollY = scrollY;
+    }
+
+    private void loadContentInScrollDirection(int direction) {
+        if (isDestroyed || isLoadingMore) return;
         
-        // Create new runnable for delayed scroll handling
-        scrollRunnable = new Runnable() {
-            @Override
-            public void run() {
-                // Check if we're near the bottom of the content
-                int scrollViewHeight = scrollView.getHeight();
-                int scrollViewChildHeight = scrollView.getChildAt(0).getHeight();
-                
-                // Calculate total scrollable distance
-                int totalScrollDistance = scrollViewChildHeight - scrollViewHeight;
-                if (totalScrollDistance <= 0) return;
-                
-                // Calculate how far we've scrolled as a percentage
-                float scrollPercentage = (float)lastScrollY / totalScrollDistance;
-                
-                // If we've scrolled more than 1%, load next batch
-                if (scrollPercentage >= SCROLL_THRESHOLD_PERCENT) {
-                    loadPageBatch(currentPage + 1, PAGE_LOAD_BATCH_SIZE);
-                }
+        // Find the range of pages to load based on scroll direction
+        int startPage, endPage;
+        
+        if (direction > 0) {
+            // Scrolling down - load pages after the last loaded page
+            startPage = findLastLoadedPage() + 1;
+            endPage = Math.min(totalPages, startPage + LOAD_RANGE - 1);
+        } else {
+            // Scrolling up - load pages before the first loaded page
+            endPage = findFirstLoadedPage() - 1;
+            startPage = Math.max(1, endPage - LOAD_RANGE + 1);
+        }
+        
+        if (startPage <= endPage) {
+            loadPageRange(startPage, endPage);
+        }
+    }
+
+    private int findLastLoadedPage() {
+        for (int i = pages.size() - 1; i >= 0; i--) {
+            PDFParser.ParsedPage page = pages.get(i);
+            if (page != null && page.text != null && !page.text.isEmpty()) {
+                return page.pageNumber;
             }
-        };
-        
-        // Post the scroll handling with delay
-        scrollHandler.postDelayed(scrollRunnable, SCROLL_DEBOUNCE_DELAY);
+        }
+        return 0;
+    }
+
+    private int findFirstLoadedPage() {
+        for (int i = 0; i < pages.size(); i++) {
+            PDFParser.ParsedPage page = pages.get(i);
+            if (page != null && page.text != null && !page.text.isEmpty()) {
+                return page.pageNumber;
+            }
+        }
+        return totalPages + 1;
     }
 
     @Override
@@ -368,12 +443,19 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             );
             pages.set(0, newPage);
             pdfView.setPages(pages);
-        } else {
-            // For PDF content, reload all loaded pages with new settings
+        } else if (pdfParser != null) {
+            // For PDF content, reload only the pages that have content with new settings
+            List<Integer> pagesToReload = new ArrayList<>();
             for (int i = 0; i < pages.size(); i++) {
-                if (pages.get(i) != null) {
-                    loadPageBatch(i + 1, PAGE_LOAD_BATCH_SIZE);
+                PDFParser.ParsedPage page = pages.get(i);
+                if (page != null && page.text != null && !page.text.isEmpty()) {
+                    pagesToReload.add(i + 1); // Page numbers are 1-based
                 }
+            }
+            
+            // Reload pages with new settings
+            for (Integer pageNum : pagesToReload) {
+                loadPageRange(pageNum, pageNum);
             }
         }
     }

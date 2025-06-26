@@ -18,29 +18,13 @@
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 
-    <ScrollView
-        android:id="@+id/scrollView"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/pdfRecyclerView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true"
-        android:background="?android:colorBackground">
-
-        <HorizontalScrollView
-            android:id="@+id/horizontalScrollView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fillViewport="true"
-            android:background="?android:colorBackground">
-
-            <com.example.storythere.PDFView
-                android:id="@+id/pdfView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:background="?android:colorBackground" />
-
-        </HorizontalScrollView>
-
-    </ScrollView>
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@color/background_activity"
+        android:clipToPadding="false"
+        android:padding="16dp"/>
 
 </LinearLayout>

@@ -93,24 +93,10 @@ public class PDFView extends View {
         updateThemeColors();
     }
 
-    private void updateThemeColors() {
-        // Get theme colors using the correct attributes
+    public void updateThemeColors() {
         int textColor = getContext().getResources().getColor(R.color.text_activity_primary, getContext().getTheme());
-        int backgroundColor = getContext().getResources().getColor(R.color.background_activity, getContext().getTheme());
-        
-        Log.d(TAG, "Updating theme colors - Text color: " + String.format("#%08X", textColor) + 
-                    ", Background color: " + String.format("#%08X", backgroundColor));
-        
-        // Update text color
         textPaint.setColor(textColor);
-        
-        // Update background
-        setBackgroundColor(backgroundColor);
-        
-        // Clear caches to force redraw with new colors
-        if (layoutCache != null) {
-            layoutCache.evictAll();
-        }
+        setBackgroundColor(android.graphics.Color.TRANSPARENT); // Let RecyclerView background show through
         invalidate();
     }
 
@@ -140,6 +126,7 @@ public class PDFView extends View {
 
     public void setPages(List<PDFParser.ParsedPage> pages) {
         this.pages = pages;
+        updateThemeColors(); // Ensure theme is applied
         if (pages != null && !pages.isEmpty()) {
             // Find first non-null page to get settings
             for (PDFParser.ParsedPage page : pages) {
@@ -208,6 +195,7 @@ public class PDFView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        updateThemeColors(); // Ensure theme is applied on every draw
         super.onDraw(canvas);
         if (pages == null || pages.isEmpty()) {
             return;
@@ -222,7 +210,6 @@ public class PDFView extends View {
 
         // Save canvas state
         canvas.save();
-        
         // Apply scale
         canvas.scale(scale, scale);
 
@@ -238,26 +225,33 @@ public class PDFView extends View {
                 continue;
             }
 
+            // Use precomputed layout for EPUB/TXT if available
+            if (page.precomputedLayout != null) {
+                canvas.save();
+                canvas.translate(getPaddingLeft(), currentY);
+                page.precomputedLayout.draw(canvas);
+                canvas.restore();
+                currentY += page.precomputedLayout.getHeight() + page.textSettings.fontSize * page.textSettings.paragraphSpacing;
+                continue;
+            }
+
             // For blank pages, draw a placeholder
             if (page.text == null || page.text.isEmpty()) {
                 // Calculate page height based on aspect ratio
                 float pageAspect = page.pageWidth / page.pageHeight;
                 float pageHeight = availableWidth / pageAspect;
-                
                 // Draw a subtle border for blank pages
                 Paint borderPaint = new Paint();
                 borderPaint.setColor(0x20000000); // Semi-transparent border
                 borderPaint.setStyle(Paint.Style.STROKE);
                 borderPaint.setStrokeWidth(1);
-                
                 tempRect.set(getPaddingLeft(), currentY, getPaddingLeft() + availableWidth, currentY + pageHeight);
                 canvas.drawRect(tempRect, borderPaint);
-                
                 currentY += pageHeight + pageSpacing;
                 continue;
             }
 
-            // Draw text
+            // Draw text (PDF fallback)
             if (page.text != null && !page.text.isEmpty()) {
                 String[] paragraphs = page.text.split("\n");
                 for (String paragraph : paragraphs) {
@@ -265,27 +259,22 @@ public class PDFView extends View {
                         currentY += page.textSettings.fontSize * page.textSettings.paragraphSpacing;
                         continue;
                     }
-                    
-                    // Create layout with hardware acceleration
                     Layout.Alignment align = Layout.Alignment.ALIGN_NORMAL;
                     switch (page.textSettings.textAlignment) {
                         case CENTER: align = Layout.Alignment.ALIGN_CENTER; break;
                         case RIGHT: align = Layout.Alignment.ALIGN_OPPOSITE; break;
                         default: align = Layout.Alignment.ALIGN_NORMAL;
                     }
-                    
                     StaticLayout layout = getCachedLayout(
                         paragraph,
                         (int)availableWidth,
                         align,
                         page.textSettings.lineHeight
                     );
-                    
                     canvas.save();
                     canvas.translate(getPaddingLeft(), currentY);
                     layout.draw(canvas);
                     canvas.restore();
-                    
                     currentY += layout.getHeight() + page.textSettings.fontSize * page.textSettings.paragraphSpacing;
                 }
             }
@@ -299,26 +288,21 @@ public class PDFView extends View {
                         float scaledWidth = availableWidth;
                         float scaledHeight = scaledWidth / imgAspect;
                         float imageX = getPaddingLeft();
-                        
                         if (page.textSettings.textAlignment == Paint.Align.CENTER) {
                             imageX = getPaddingLeft() + (availableWidth - scaledWidth) / 2f;
                         } else if (page.textSettings.textAlignment == Paint.Align.RIGHT) {
                             imageX = getWidth() - getPaddingRight() - scaledWidth;
                         }
-                        
                         Bitmap scaledBitmap = getScaledBitmap(imageInfo, availableWidth);
                         tempRect.set(imageX, currentY, imageX + scaledWidth, currentY + scaledHeight);
                         canvas.drawBitmap(scaledBitmap, null, tempRect, imagePaint);
-                        
                         currentY += scaledHeight + page.textSettings.fontSize * page.textSettings.paragraphSpacing;
                     }
                 }
             }
-
             // Add spacing between pages
             currentY += pageSpacing;
         }
-
         // Restore canvas state
         canvas.restore();
     }
@@ -328,23 +312,24 @@ public class PDFView extends View {
         int width = MeasureSpec.getSize(widthMeasureSpec);
         float totalHeight = getPaddingTop() + getPaddingBottom();
         float availableWidth = width - getPaddingLeft() - getPaddingRight();
-        
         if (pages != null && !pages.isEmpty()) {
             for (PDFParser.ParsedPage page : pages) {
                 if (page == null) {
                     totalHeight += defaultSettings.fontSize * 2;
                     continue;
                 }
-
+                // Use precomputed layout for EPUB/TXT if available
+                if (page.precomputedLayout != null) {
+                    totalHeight += page.precomputedLayout.getHeight() + page.textSettings.fontSize * page.textSettings.paragraphSpacing;
+                    continue;
+                }
                 // For blank pages, use page dimensions to calculate height
                 if (page.text == null || page.text.isEmpty()) {
-                    // Calculate height based on page aspect ratio
                     float pageAspect = page.pageWidth / page.pageHeight;
                     float pageHeight = availableWidth / pageAspect;
                     totalHeight += pageHeight + pageSpacing;
                     continue;
                 }
-
                 if (page.text != null && !page.text.isEmpty()) {
                     String[] paragraphs = page.text.split("\n");
                     for (String paragraph : paragraphs) {
@@ -352,24 +337,20 @@ public class PDFView extends View {
                             totalHeight += page.textSettings.fontSize * page.textSettings.paragraphSpacing;
                             continue;
                         }
-                        
                         Layout.Alignment align = Layout.Alignment.ALIGN_NORMAL;
                         switch (page.textSettings.textAlignment) {
                             case CENTER: align = Layout.Alignment.ALIGN_CENTER; break;
                             case RIGHT: align = Layout.Alignment.ALIGN_OPPOSITE; break;
                             default: align = Layout.Alignment.ALIGN_NORMAL;
                         }
-                        
                         StaticLayout layout = StaticLayout.Builder.obtain(paragraph, 0, paragraph.length(), textPaint, (int) availableWidth)
                             .setAlignment(align)
                             .setLineSpacing(0, page.textSettings.lineHeight)
                             .setIncludePad(true)
                             .build();
-                            
                         totalHeight += layout.getHeight() + page.textSettings.fontSize * page.textSettings.paragraphSpacing;
                     }
                 }
-                
                 if (page.images != null) {
                     for (PDFParser.ImageInfo imageInfo : page.images) {
                         if (imageInfo.bitmap != null) {
@@ -383,7 +364,6 @@ public class PDFView extends View {
                 totalHeight += pageSpacing;
             }
         }
-        
         int measuredHeight = (int) (totalHeight * scale);
         setMeasuredDimension(width, measuredHeight);
     }

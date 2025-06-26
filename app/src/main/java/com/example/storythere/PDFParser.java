@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.io.IOException;
+import android.text.StaticLayout;
 
 public class PDFParser {
     private static final String TAG = "PDFParser";
@@ -223,24 +224,18 @@ public class PDFParser {
         // Only remove null bytes and replacement characters
         text = text.replace("\u0000", "")
                   .replace("\uFFFD", "");
-        
+
         // Normalize line endings
         text = text.replace("\r\n", "\n").replace("\r", "\n");
-        
+
         // Remove multiple consecutive line breaks (keep at most 2)
         text = text.replaceAll("\n{3,}", "\n\n");
-        
-        // Clean up each line while preserving internal spacing
-        String[] lines = text.split("\n");
-        StringBuilder cleaned = new StringBuilder();
-        for (String line : lines) {
-            String trimmed = line.trim();
-            if (!trimmed.isEmpty()) {
-                cleaned.append(trimmed).append("\n");
-            }
-        }
-        
-        return cleaned.toString().trim();
+
+        // Replace single newlines (not part of a double newline) with a space
+        text = text.replaceAll("(?<!\n)\n(?!\n)", " ");
+
+        // Trim leading/trailing whitespace from the whole text, but DO NOT split into lines and rejoin
+        return text.trim();
     }
 
     public static class TextSettings {
@@ -276,6 +271,9 @@ public class PDFParser {
         public final float pageWidth;
         public final float pageHeight;
         public final TextSettings textSettings;
+        // For EPUB/TXT: precomputed layout (nullable)
+        @androidx.annotation.Nullable
+        public StaticLayout precomputedLayout;
 
         public ParsedPage(String text, List<ImageInfo> images, int pageNumber, float pageWidth, 
                          float pageHeight, TextSettings textSettings) {
@@ -285,6 +283,7 @@ public class PDFParser {
             this.pageWidth = pageWidth;
             this.pageHeight = pageHeight;
             this.textSettings = textSettings;
+            this.precomputedLayout = null;
         }
     }
 

@@ -365,6 +365,7 @@ public class HomeActivity extends AppCompatActivity {
                     
                     if (fileExists) {
                         Log.d("HomeActivity", "Book found in database and file exists: " + existingBook.getFilePath());
+                        // Always use the URI stored in the database (which should be content URI)
                         openBookOptionsActivity(Uri.parse(existingBook.getFilePath()), fileType, bookTitle);
                     } else {
                         Log.d("HomeActivity", "Book in database but file missing, will re-download");
@@ -387,47 +388,39 @@ public class HomeActivity extends AppCompatActivity {
                 viewModel.getAllBooks().removeObserver(this);
                 isCheckingBook = false;
                 
+                // Convert file path to content URI first
+                String contentUri = convertFilePathToContentUri(filePath);
+                if (contentUri == null) {
+                    Log.e("HomeActivity", "Failed to convert file path to content URI: " + filePath);
+                    Toast.makeText(HomeActivity.this, "Error accessing file", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
                 // Check if book is already in database
                 boolean bookExists = false;
                 for (Book b : books) {
                     if (b.getTitle().equals(title) && b.getAuthor().equals(author)) {
                         bookExists = true;
-                        // Update file path if it's different
-                        if (!b.getFilePath().equals(filePath)) {
-                            b.setFilePath(filePath);
+                        // Update file path if it's different (always use content URI)
+                        if (!b.getFilePath().equals(contentUri)) {
+                            b.setFilePath(contentUri);
                             bookRepository.update(b);
-                            Log.d("HomeActivity", "Updated file path for existing book: " + title);
+                            Log.d("HomeActivity", "Updated file path for existing book: " + title + " to content URI");
                         }
                         break;
                     }
                 }
                 
                 if (!bookExists) {
-                    // Convert file path to content URI for better compatibility
-                    String contentUri = convertFilePathToContentUri(filePath);
-                    if (contentUri != null) {
-                        // Add to database with content URI
-                        Book newBook = new Book(title, author, contentUri, fileType);
-                        newBook.setPreviewImagePath(imageUrl);
-                        bookRepository.insert(newBook);
-                        Log.d("HomeActivity", "Added existing file to database: " + title + " with URI: " + contentUri);
-                        
-                        // Open the book with content URI
-                        openBookOptionsActivity(Uri.parse(contentUri), fileType, title);
-                    } else {
-                        // Fallback to file path if conversion fails
-                        Book newBook = new Book(title, author, filePath, fileType);
-                        newBook.setPreviewImagePath(imageUrl);
-                        bookRepository.insert(newBook);
-                        Log.d("HomeActivity", "Added existing file to database with file path: " + title);
-                        
-                        // Open the book with file path
-                        openBookOptionsActivity(Uri.parse(filePath), fileType, title);
-                    }
-                } else {
-                    // Book exists, open it
-                    openBookOptionsActivity(Uri.parse(filePath), fileType, title);
+                    // Add to database with content URI
+                    Book newBook = new Book(title, author, contentUri, fileType);
+                    newBook.setPreviewImagePath(imageUrl);
+                    bookRepository.insert(newBook);
+                    Log.d("HomeActivity", "Added existing file to database: " + title + " with URI: " + contentUri);
                 }
+                
+                // Always open the book with content URI
+                openBookOptionsActivity(Uri.parse(contentUri), fileType, title);
             }
         };
         viewModel.getAllBooks().observe(this, observer);

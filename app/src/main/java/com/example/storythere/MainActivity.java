@@ -39,6 +39,8 @@ import androidx.core.content.res.ResourcesCompat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.io.File;
+import java.io.InputStream;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -126,10 +128,47 @@ public class MainActivity extends AppCompatActivity {
             for (Book book : books) {
                 try {
                     Uri uri = Uri.parse(book.getFilePath());
-                    // Try to open the file
-                    Objects.requireNonNull(getContentResolver().openInputStream(uri)).close();
-                    validBooks.add(book);
+                    boolean isValid = false;
+                    
+                    if ("content".equals(uri.getScheme())) {
+                        // Content URI - try to open input stream
+                        try (InputStream is = getContentResolver().openInputStream(uri)) {
+                            isValid = (is != null);
+                        }
+                    } else {
+                        // File path - check if file exists
+                        File file = new File(book.getFilePath());
+                        if (file.exists()) {
+                            // Convert to content URI for better compatibility
+                            try {
+                                String contentUri = androidx.core.content.FileProvider.getUriForFile(
+                                    MainActivity.this,
+                                    getApplicationContext().getPackageName() + ".provider",
+                                    file
+                                ).toString();
+                                // Update the book with content URI
+                                book.setFilePath(contentUri);
+                                viewModel.update(book);
+                                isValid = true;
+                                Log.d("MainActivity", "Updated book path to content URI: " + book.getTitle());
+                            } catch (Exception e) {
+                                Log.e("MainActivity", "Failed to convert file path to content URI: " + e.getMessage());
+                                isValid = false;
+                            }
+                        } else {
+                            isValid = false;
+                        }
+                    }
+                    
+                    if (isValid) {
+                        validBooks.add(book);
+                    } else {
+                        // If file is not accessible, delete it from database
+                        Log.w("MainActivity", "Removing invalid book from database: " + book.getTitle());
+                        viewModel.delete(book);
+                    }
                 } catch (Exception e) {
+                    Log.e("MainActivity", "Error validating book " + book.getTitle() + ": " + e.getMessage());
                     // If file is not accessible, delete it from database
                     viewModel.delete(book);
                 }

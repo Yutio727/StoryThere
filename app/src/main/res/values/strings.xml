@@ -62,7 +62,7 @@
     <string name="unknown_author">Unknown Author</string>
     <string name="author_name">Author Name</string>
     <string name="book_cover_long_press_to_change_cover_image">Book cover. Long press to change cover image.</string>
-    <string name="images_disabled_for_large_pdf_files"><![CDATA[Images disabled for large PDF files (>3MB)]]></string>
+    <string name="images_disabled_for_large_pdf_files"><![CDATA[Images disabled for large PDF files (>20MB)]]></string>
     <string name="no_content_provided">No content provided</string>
     <string name="failed_to_load_pdf">Failed to load PDF</string>
     <string name="failed_to_load_text_content">Failed to load text content</string>
@@ -98,4 +98,20 @@
     <string name="error_initializing_reader">"Error initializing reader: "</string>
     <string name="error_opening_pdf">Error opening PDF</string>
     <string name="error_reading_epub_file">Error reading EPUB file</string>
+    <string name="please_fill_in_all_required_fields">Please fill in all required fields</string>
+    <string name="book_added_successfully">Book added successfully!</string>
+    <string name="failed_to_add_book">"Failed to add book: "</string>
+    <string name="add_book">Add Book</string>
+    <string name="adding">Adding...</string>
+    <string name="using">"Using "</string>
+    <string name="tts">" TTS"</string>
+    <string name="language_is_not_supported_on_this_device">" language is not supported on this device"</string>
+    <string name="failed_to_initialize_text_to_speech">Failed to initialize text-to-speech</string>
+    <string name="error_starting_text_to_speech">Error starting text-to-speech</string>
+    <string name="text_to_speech_is_not_ready">Text-to-speech is not ready</string>
+    <string name="preparing_audio">"Preparing audio: "</string>
+    <string name="ready_to_play">Ready to play</string>
+    <string name="download_failed_file_not_found">Download failed: file not found</string>
+    <string name="download_timeout">Download timeout</string>
+    <string name="processing_in_progress">Processing in progress...</string>
 </resources>

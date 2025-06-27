@@ -354,7 +354,7 @@ public class AudioReaderActivity extends AppCompatActivity {
             if (status == TextToSpeech.SUCCESS) {
                 // Set appropriate locale based on the language flag
                 Locale selectedLocale = isRussian ? new Locale("ru", "RU") : Locale.US;
-                Toast.makeText(this, "Using " + (isRussian ? "Russian" : "English") + " TTS", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.using) + (isRussian ? getString(R.string.russian) : getString(R.string.english)) + getString(R.string.tts), Toast.LENGTH_SHORT).show();
 
                 int result = textToSpeech.setLanguage(selectedLocale);
                 
@@ -365,7 +365,7 @@ public class AudioReaderActivity extends AppCompatActivity {
                     startActivity(installIntent);
                 } else if (result == TextToSpeech.LANG_NOT_SUPPORTED) {
                     // Language is not supported
-                    Toast.makeText(this, selectedLocale.getLanguage() + " language is not supported on this device", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, selectedLocale.getLanguage() + getString(R.string.language_is_not_supported_on_this_device), Toast.LENGTH_LONG).show();
                     // Fallback to default language
                     textToSpeech.setLanguage(Locale.getDefault());
                 }
@@ -505,7 +505,7 @@ public class AudioReaderActivity extends AppCompatActivity {
                 restoreCache();
             } else {
                 Log.e(TAG, "TTS initialization failed with status: " + status);
-                Toast.makeText(this, "Failed to initialize text-to-speech", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, R.string.failed_to_initialize_text_to_speech, Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -681,7 +681,7 @@ public class AudioReaderActivity extends AppCompatActivity {
                     int result = textToSpeech.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, params, "messageID");
                     if (result == TextToSpeech.ERROR) {
                         Log.e(TAG, "Error starting TTS");
-                        Toast.makeText(this, "Error starting text-to-speech", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.error_starting_text_to_speech, Toast.LENGTH_SHORT).show();
                         return;
                     }
                     // Immediately queue the next N chunks for seamless playback
@@ -713,12 +713,12 @@ public class AudioReaderActivity extends AppCompatActivity {
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Exception while starting TTS: " + e.getMessage());
-                    Toast.makeText(this, "Error starting text-to-speech", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.error_starting_text_to_speech, Toast.LENGTH_SHORT).show();
                 }
             }
         } else {
             Log.e(TAG, "Cannot start reading: TTS not ready");
-            Toast.makeText(this, "Text-to-speech is not ready", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.text_to_speech_is_not_ready, Toast.LENGTH_SHORT).show();
         }
     }
     
@@ -926,7 +926,7 @@ public class AudioReaderActivity extends AppCompatActivity {
                 int progress = (processedWords * 100) / totalWords;
                 runOnUiThread(() -> {
                     loadingProgressBar.setProgress(progress);
-                    loadingStatusText.setText("Preparing audio: " + progress + "%");
+                    loadingStatusText.setText(getString(R.string.preparing_audio) + progress + "%");
                 });
                 
                 // Simulate processing time
@@ -943,7 +943,7 @@ public class AudioReaderActivity extends AppCompatActivity {
                 loadingProgressBar.setVisibility(View.GONE);
                 loadingStatusText.setVisibility(View.GONE);
                 playPauseButton.setEnabled(true);
-                Toast.makeText(this, "Ready to play", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.ready_to_play, Toast.LENGTH_SHORT).show();
             });
         }).start();
     }

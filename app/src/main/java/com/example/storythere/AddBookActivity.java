@@ -1,5 +1,7 @@
 package com.example.storythere;
 
+import static com.example.storythere.R.*;
+
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
@@ -55,13 +57,13 @@ public class AddBookActivity extends AppCompatActivity {
         
         // Validate input
         if (title.isEmpty() || author.isEmpty() || fileUrl.isEmpty() || fileType.isEmpty()) {
-            Toast.makeText(this, "Please fill in all required fields", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.please_fill_in_all_required_fields, Toast.LENGTH_SHORT).show();
             return;
         }
         
         // Show loading
         addBookButton.setEnabled(false);
-        addBookButton.setText("Adding...");
+        addBookButton.setText(R.string.adding);
         
         // Create book data
         Map<String, Object> book = new HashMap<>();
@@ -79,15 +81,15 @@ public class AddBookActivity extends AppCompatActivity {
         db.collection("books").document(documentId)
             .set(book)
             .addOnSuccessListener(aVoid -> {
-                Toast.makeText(this, "Book added successfully!", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, R.string.book_added_successfully, Toast.LENGTH_LONG).show();
                 clearFields();
                 addBookButton.setEnabled(true);
-                addBookButton.setText("Add Book");
+                addBookButton.setText(R.string.add_book);
             })
             .addOnFailureListener(e -> {
-                Toast.makeText(this, "Failed to add book: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.failed_to_add_book) + e.getMessage(), Toast.LENGTH_LONG).show();
                 addBookButton.setEnabled(true);
-                addBookButton.setText("Add Book");
+                addBookButton.setText(R.string.add_book);
             });
     }
     

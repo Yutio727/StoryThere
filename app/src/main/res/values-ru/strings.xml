@@ -63,7 +63,7 @@
     <string name="unknown_author">Неизвестный автор</string>
     <string name="author_name">Автор</string>
     <string name="book_cover_long_press_to_change_cover_image">Обложка книги. Зажмите, чтобы изменить обложку.</string>
-    <string name="images_disabled_for_large_pdf_files"><![CDATA[Изображения недоступны в pdf файлах, размером > 3 мб]]></string>
+    <string name="images_disabled_for_large_pdf_files"><![CDATA[Изображения недоступны в pdf файлах, размером > 20 мб]]></string>
     <string name="no_content_provided">Файл не найден или удалён</string>
     <string name="failed_to_load_pdf">Ошибка при загрузке PDF файла</string>
     <string name="failed_to_load_text_content">Не удалось загрузить текст</string>

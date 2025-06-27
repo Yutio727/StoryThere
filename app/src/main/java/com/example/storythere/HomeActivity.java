@@ -1,6 +1,7 @@
 package com.example.storythere;
 
 import android.content.Intent;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
@@ -10,7 +11,6 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.bumptech.glide.Glide;
 import android.widget.EditText;
 import android.app.DownloadManager;
 import android.net.Uri;
@@ -31,15 +31,10 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.storythere.ui.RecommendBookAdapter;
-import com.google.firebase.firestore.QuerySnapshot;
 import java.util.ArrayList;
 import java.util.List;
 import androidx.lifecycle.Observer;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.channels.FileChannel;
 import java.io.InputStream;
 
 public class HomeActivity extends AppCompatActivity {
@@ -211,13 +206,7 @@ public class HomeActivity extends AppCompatActivity {
         };
         searchBar.setOnClickListener(listener);
         searchIcon.setOnClickListener(listener);
-        // Set hint based on locale
-        String lang = getResources().getConfiguration().locale.getLanguage();
-        if (lang.equals("ru")) {
-            searchBar.setHint("Найти лучшую книгу");
-        } else {
-            searchBar.setHint("Find your awesome book");
-        }
+        searchBar.setHint(R.string.find_your_awesome_book);
     }
 
     private void setupAdminButton() {
@@ -313,7 +302,7 @@ public class HomeActivity extends AppCompatActivity {
         String imageUrl = book.image;
 
         if (isDownloading || isCheckingBook) {
-            Toast.makeText(this, "Processing in progress...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.processing_in_progress, Toast.LENGTH_SHORT).show();
             return;
         }
         isCheckingBook = true;
@@ -491,7 +480,7 @@ public class HomeActivity extends AppCompatActivity {
                 
                 DownloadManager.Query q = new DownloadManager.Query();
                 q.setFilterById(downloadId);
-                android.database.Cursor cursor = dm.query(q);
+                Cursor cursor = dm.query(q);
                 
                 if (cursor != null && cursor.moveToFirst()) {
                     int status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS));
@@ -513,7 +502,7 @@ public class HomeActivity extends AppCompatActivity {
                                 saveBookAndOpenFromServer(title, author, uriString, fileType, imageUrl);
                             } else {
                                 Log.e("HomeActivity", "Download succeeded but local URI is null!");
-                                Toast.makeText(this, "Download failed: file not found", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
                             }
                         });
                     } else if (status == DownloadManager.STATUS_FAILED) {
@@ -578,7 +567,7 @@ public class HomeActivity extends AppCompatActivity {
                     downloading = false;
                     runOnUiThread(() -> {
                         isDownloading = false;
-                        Toast.makeText(this, "Download timeout", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.download_timeout, Toast.LENGTH_SHORT).show();
                     });
                 }
                 

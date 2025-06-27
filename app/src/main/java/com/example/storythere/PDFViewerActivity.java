@@ -76,6 +76,15 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         pdfRecyclerView = findViewById(R.id.pdfRecyclerView);
         pdfRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         pdfRecyclerView.setItemViewCacheSize(10);
+        
+        // Set a temporary adapter to prevent "No adapter attached" error
+        List<PDFParser.ParsedPage> tempPages = new ArrayList<>();
+        PDFParser.TextSettings tempSettings = new PDFParser.TextSettings();
+        tempSettings.fontSize = 54.0f;
+        tempSettings.textAlignment = Paint.Align.LEFT;
+        tempPages.add(new PDFParser.ParsedPage("Loading content...", new ArrayList<>(), 1, 612.0f, 792.0f, tempSettings));
+        PDFPageAdapter tempAdapter = new PDFPageAdapter(this, tempPages, PDFPageAdapter.DocumentType.TXT, null, null, null, null, tempSettings);
+        pdfRecyclerView.setAdapter(tempAdapter);
 
         // Initialize scale detector
         scaleDetector = new ScaleGestureDetector(this, new ScaleListener());
@@ -190,7 +199,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             paint.setLetterSpacing(currentSettings.letterSpacing);
             paint.setTextAlign(Paint.Align.LEFT);
             executor.execute(() -> {
-                int width = getResources().getDisplayMetrics().widthPixels - 64; // 32dp padding each side
+                int width = getResources().getDisplayMetrics().widthPixels - 64;
                 for (int i = 0; i < txtChunks.size(); i++) {
                     String text = txtChunks.get(i);
                     Layout.Alignment align = Layout.Alignment.ALIGN_NORMAL;
@@ -204,7 +213,8 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 }
                 mainHandler.post(() -> {
                     pdfPageAdapter = new PDFPageAdapter(PDFViewerActivity.this, pages, PDFPageAdapter.DocumentType.TXT, null, txtChunks, null, null, currentSettings);
-                    pdfRecyclerView.setAdapter(pdfPageAdapter);
+                    pdfRecyclerView.getRecycledViewPool().clear();
+                    pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
                 });
             });
         } catch (Exception e) {
@@ -274,7 +284,8 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     }
                     mainHandler.post(() -> {
                         pdfPageAdapter = new PDFPageAdapter(PDFViewerActivity.this, pages, PDFPageAdapter.DocumentType.EPUB, null, null, epubPages, epubImages, currentSettings);
-                        pdfRecyclerView.setAdapter(pdfPageAdapter);
+                        pdfRecyclerView.getRecycledViewPool().clear();
+                        pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
                         String title = epubParser.getTitle();
                         String author = epubParser.getAuthor();
                         if (title != null && !title.isEmpty()) {
@@ -326,7 +337,8 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 pages.add(new PDFParser.ParsedPage("", new ArrayList<>(), i + 1, pageWidth, pageHeight, currentSettings));
             }
             pdfPageAdapter = new PDFPageAdapter(this, pages, PDFPageAdapter.DocumentType.PDF, pdfParser, null, null, null, currentSettings);
-            pdfRecyclerView.setAdapter(pdfPageAdapter);
+            pdfRecyclerView.getRecycledViewPool().clear();
+            pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
         } catch (Exception e) {
             Log.e(TAG, "Error initializing PDF: " + e.getMessage());
             Toast.makeText(this, R.string.failed_to_load_pdf, Toast.LENGTH_SHORT).show();

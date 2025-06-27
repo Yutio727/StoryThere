@@ -27,7 +27,7 @@ import android.text.StaticLayout;
 public class PDFParser {
     private static final String TAG = "PDFParser";
     private static final float SCALE_FACTOR = 1.0f;
-    private static final long MAX_FILE_SIZE_FOR_IMAGES = 3 * 1024 * 1024; // 3MB in bytes
+    private static final long MAX_FILE_SIZE_FOR_IMAGES = 20 * 1024 * 1024; // 20MB in bytes
     private final Context context;
     private final Uri pdfUri;
     private PdfDocument pdfDoc;
@@ -116,6 +116,24 @@ public class PDFParser {
                                         byte[] imageBytes = image.getImageBytes();
                                         if (imageBytes != null && imageBytes.length > 0) {
                                             Log.d(TAG, "Found image of size " + imageBytes.length + " bytes");
+                                            
+                                            // Log image format information
+                                            try {
+                                                String format = getImageFormat(imageBytes);
+                                                Log.d(TAG, "Image format detected: " + format);
+                                                
+                                                // Skip certain problematic formats that Android doesn't handle well
+                                                if (format.equals("Unknown") || format.equals("Unknown (too small)")) {
+                                                    Log.w(TAG, "Skipping image with unknown/unsupported format");
+                                                    continue;
+                                                }
+                                                
+                                                // Log detailed diagnostics
+                                                String diagnostics = getImageDiagnostics(imageBytes);
+                                                Log.d(TAG, "Image diagnostics: " + diagnostics);
+                                            } catch (Exception e) {
+                                                Log.d(TAG, "Could not determine image format");
+                                            }
 
                                             // Get image dimensions and position from PDF
                                             float width = image.getWidth();
@@ -135,35 +153,150 @@ public class PDFParser {
                                                 }
                                             }
 
-                                            // Create bitmap with original dimensions
-                                            BitmapFactory.Options options = new BitmapFactory.Options();
-                                            options.inSampleSize = 1; // No downsampling
-                                            options.inScaled = false; // Don't scale
-                                            options.inDensity = 0;
-                                            options.inTargetDensity = 0; // Use original density
-                                            options.inMutable = true; // Allow bitmap modification
-                                            options.inPreferredConfig = Bitmap.Config.ARGB_8888; // Use ARGB_8888 for better quality
-
-                                            // First try to decode bounds to check if the image is valid
-                                            options.inJustDecodeBounds = true;
-                                            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
-
-                                            if (options.outWidth > 0 && options.outHeight > 0) {
-                                                // Now decode the actual bitmap
-                                                options.inJustDecodeBounds = false;
-                                                Bitmap originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
-
-                                                if (originalBitmap != null) {
-                                                    Log.d(TAG, "Successfully decoded image: " + originalBitmap.getWidth() + "x" + originalBitmap.getHeight());
-
-                                                    // Add image with its position (no scaling here, handled in PDFView)
-                                                    images.add(new ImageInfo(originalBitmap, x, y, width, height));
-                                                    Log.d(TAG, "Added image at position: " + x + "," + y);
+                                            // Try to decode the image with better error handling
+                                            Bitmap originalBitmap = null;
+                                            String errorMessage = null;
+                                            
+                                            try {
+                                                // First attempt: Try with default settings
+                                                BitmapFactory.Options options = new BitmapFactory.Options();
+                                                options.inSampleSize = 1;
+                                                options.inScaled = false;
+                                                options.inDensity = 0;
+                                                options.inTargetDensity = 0;
+                                                options.inMutable = true;
+                                                options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+                                                
+                                                // Check bounds first
+                                                options.inJustDecodeBounds = true;
+                                                BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
+                                                
+                                                if (options.outWidth > 0 && options.outHeight > 0) {
+                                                    // Check if image is too large and needs downsampling
+                                                    int maxDimension = 2048; // Max dimension to prevent memory issues
+                                                    int sampleSize = 1;
+                                                    while ((options.outWidth / sampleSize) > maxDimension || 
+                                                           (options.outHeight / sampleSize) > maxDimension) {
+                                                        sampleSize *= 2;
+                                                    }
+                                                    
+                                                    if (sampleSize > 1) {
+                                                        Log.d(TAG, "Image is large (" + options.outWidth + "x" + options.outHeight + 
+                                                              "), using sample size " + sampleSize + " for downsampling");
+                                                    }
+                                                    
+                                                    // Valid dimensions, try to decode
+                                                    options.inJustDecodeBounds = false;
+                                                    options.inSampleSize = sampleSize;
+                                                    originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
+                                                    
+                                                    if (originalBitmap == null) {
+                                                        errorMessage = "Failed to decode image with default settings";
+                                                    }
                                                 } else {
-                                                    Log.e(TAG, "Failed to decode image after bounds check");
+                                                    errorMessage = "Invalid image dimensions: " + options.outWidth + "x" + options.outHeight;
                                                 }
+                                            } catch (OutOfMemoryError e) {
+                                                errorMessage = "Out of memory while decoding image";
+                                                Log.e(TAG, "OutOfMemoryError decoding image: " + e.getMessage());
+                                            } catch (Exception e) {
+                                                errorMessage = "Exception while decoding image: " + e.getMessage();
+                                                Log.e(TAG, "Exception decoding image: " + e.getMessage());
+                                            }
+                                            
+                                            // If first attempt failed, try with different settings
+                                            if (originalBitmap == null) {
+                                                try {
+                                                    Log.d(TAG, "First attempt failed: " + errorMessage + ". Trying with RGB_565 config...");
+                                                    
+                                                    BitmapFactory.Options fallbackOptions = new BitmapFactory.Options();
+                                                    fallbackOptions.inSampleSize = 1;
+                                                    fallbackOptions.inScaled = false;
+                                                    fallbackOptions.inDensity = 0;
+                                                    fallbackOptions.inTargetDensity = 0;
+                                                    fallbackOptions.inMutable = true;
+                                                    fallbackOptions.inPreferredConfig = Bitmap.Config.RGB_565; // Try RGB_565 instead
+                                                    
+                                                    originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, fallbackOptions);
+                                                    
+                                                    if (originalBitmap != null) {
+                                                        Log.d(TAG, "Successfully decoded image with RGB_565 config: " + originalBitmap.getWidth() + "x" + originalBitmap.getHeight());
+                                                    } else {
+                                                        Log.e(TAG, "Failed to decode image with RGB_565 config as well");
+                                                    }
+                                                } catch (Exception e) {
+                                                    Log.e(TAG, "Fallback decoding also failed: " + e.getMessage());
+                                                }
+                                            }
+                                            
+                                            // If still failed, try with downsampling
+                                            if (originalBitmap == null) {
+                                                try {
+                                                    Log.d(TAG, "Trying with aggressive downsampling (sample size 4)...");
+                                                    
+                                                    BitmapFactory.Options downsampleOptions = new BitmapFactory.Options();
+                                                    downsampleOptions.inSampleSize = 4; // Aggressive downsampling
+                                                    downsampleOptions.inScaled = false;
+                                                    downsampleOptions.inDensity = 0;
+                                                    downsampleOptions.inTargetDensity = 0;
+                                                    downsampleOptions.inMutable = true;
+                                                    downsampleOptions.inPreferredConfig = Bitmap.Config.RGB_565;
+                                                    
+                                                    originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, downsampleOptions);
+                                                    
+                                                    if (originalBitmap != null) {
+                                                        Log.d(TAG, "Successfully decoded image with downsampling: " + originalBitmap.getWidth() + "x" + originalBitmap.getHeight());
+                                                    } else {
+                                                        Log.e(TAG, "Failed to decode image even with downsampling");
+                                                    }
+                                                } catch (Exception e) {
+                                                    Log.e(TAG, "Downsampling attempt also failed: " + e.getMessage());
+                                                }
+                                            }
+                                            
+                                            // Last resort: try with different color configs
+                                            if (originalBitmap == null) {
+                                                try {
+                                                    Log.d(TAG, "Trying with ALPHA_8 config as last resort...");
+                                                    
+                                                    BitmapFactory.Options alphaOptions = new BitmapFactory.Options();
+                                                    alphaOptions.inSampleSize = 1;
+                                                    alphaOptions.inScaled = false;
+                                                    alphaOptions.inDensity = 0;
+                                                    alphaOptions.inTargetDensity = 0;
+                                                    alphaOptions.inMutable = true;
+                                                    alphaOptions.inPreferredConfig = Bitmap.Config.ALPHA_8; // Try ALPHA_8
+                                                    
+                                                    originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, alphaOptions);
+                                                    
+                                                    if (originalBitmap != null) {
+                                                        Log.d(TAG, "Successfully decoded image with ALPHA_8 config: " + originalBitmap.getWidth() + "x" + originalBitmap.getHeight());
+                                                    } else {
+                                                        Log.e(TAG, "All decoding attempts failed");
+                                                    }
+                                                } catch (Exception e) {
+                                                    Log.e(TAG, "ALPHA_8 attempt also failed: " + e.getMessage());
+                                                }
+                                            }
+                                            
+                                            // If we successfully decoded the image, add it
+                                            if (originalBitmap != null) {
+                                                Log.d(TAG, "Successfully decoded image: " + originalBitmap.getWidth() + "x" + originalBitmap.getHeight());
+                                                images.add(new ImageInfo(originalBitmap, x, y, width, height));
+                                                Log.d(TAG, "Added image at position: " + x + "," + y);
                                             } else {
-                                                Log.e(TAG, "Invalid image dimensions: " + options.outWidth + "x" + options.outHeight);
+                                                Log.w(TAG, "Skipping image that could not be decoded: " + errorMessage);
+                                                
+                                                // Create a placeholder image to indicate where the image should be
+                                                try {
+                                                    Bitmap placeholder = createPlaceholderImage((int)width, (int)height);
+                                                    if (placeholder != null) {
+                                                        images.add(new ImageInfo(placeholder, x, y, width, height));
+                                                        Log.d(TAG, "Added placeholder image for failed decode");
+                                                    }
+                                                } catch (Exception e) {
+                                                    Log.e(TAG, "Failed to create placeholder image: " + e.getMessage());
+                                                }
                                             }
                                         } else {
                                             Log.e(TAG, "Image bytes are null or empty");
@@ -224,18 +357,109 @@ public class PDFParser {
         // Only remove null bytes and replacement characters
         text = text.replace("\u0000", "")
                   .replace("\uFFFD", "");
-
+        
         // Normalize line endings
         text = text.replace("\r\n", "\n").replace("\r", "\n");
-
+        
         // Remove multiple consecutive line breaks (keep at most 2)
         text = text.replaceAll("\n{3,}", "\n\n");
-
+        
         // Replace single newlines (not part of a double newline) with a space
         text = text.replaceAll("(?<!\n)\n(?!\n)", " ");
 
         // Trim leading/trailing whitespace from the whole text, but DO NOT split into lines and rejoin
         return text.trim();
+    }
+
+    private static String getImageFormat(byte[] imageBytes) {
+        if (imageBytes.length < 4) {
+            return "Unknown (too small)";
+        }
+        
+        // Check for common image format signatures
+        if (imageBytes[0] == (byte) 0xFF && imageBytes[1] == (byte) 0xD8) {
+            return "JPEG";
+        } else if (imageBytes[0] == (byte) 0x89 && imageBytes[1] == (byte) 0x50 && 
+                   imageBytes[2] == (byte) 0x4E && imageBytes[3] == (byte) 0x47) {
+            return "PNG";
+        } else if (imageBytes[0] == (byte) 0x47 && imageBytes[1] == (byte) 0x49 && 
+                   imageBytes[2] == (byte) 0x46) {
+            return "GIF";
+        } else if (imageBytes[0] == (byte) 0x42 && imageBytes[1] == (byte) 0x4D) {
+            return "BMP";
+        } else if (imageBytes[0] == (byte) 0x52 && imageBytes[1] == (byte) 0x49 && 
+                   imageBytes[2] == (byte) 0x46 && imageBytes[3] == (byte) 0x46) {
+            return "WebP";
+        } else {
+            return "Unknown";
+        }
+    }
+
+    private static String getImageDiagnostics(byte[] imageBytes) {
+        if (imageBytes == null || imageBytes.length == 0) {
+            return "Null or empty image data";
+        }
+        
+        StringBuilder diagnostics = new StringBuilder();
+        diagnostics.append("Image size: ").append(imageBytes.length).append(" bytes, ");
+        
+        if (imageBytes.length >= 4) {
+            diagnostics.append("First 4 bytes: ");
+            for (int i = 0; i < 4; i++) {
+                diagnostics.append(String.format("%02X ", imageBytes[i] & 0xFF));
+            }
+            diagnostics.append(", ");
+        }
+        
+        // Check for common corruption patterns
+        boolean allZeros = true;
+        boolean allSame = true;
+        byte firstByte = imageBytes[0];
+        
+        for (int i = 0; i < Math.min(imageBytes.length, 100); i++) { // Check first 100 bytes
+            if (imageBytes[i] != 0) allZeros = false;
+            if (imageBytes[i] != firstByte) allSame = false;
+        }
+        
+        if (allZeros) {
+            diagnostics.append("WARNING: All zeros detected (likely corrupted)");
+        } else if (allSame) {
+            diagnostics.append("WARNING: All same bytes detected (likely corrupted)");
+        } else {
+            diagnostics.append("Data appears valid");
+        }
+        
+        return diagnostics.toString();
+    }
+
+    private static Bitmap createPlaceholderImage(int width, int height) {
+        try {
+            // Create a simple placeholder bitmap
+            Bitmap placeholder = Bitmap.createBitmap(Math.max(width, 100), Math.max(height, 100), Bitmap.Config.ARGB_8888);
+            
+            // Fill with a light gray background
+            placeholder.eraseColor(0xFFE0E0E0);
+            
+            // Draw a simple border
+            android.graphics.Canvas canvas = new android.graphics.Canvas(placeholder);
+            android.graphics.Paint paint = new android.graphics.Paint();
+            paint.setColor(0xFF808080);
+            paint.setStyle(android.graphics.Paint.Style.STROKE);
+            paint.setStrokeWidth(2);
+            canvas.drawRect(0, 0, placeholder.getWidth() - 1, placeholder.getHeight() - 1, paint);
+            
+            // Draw "Image" text
+            paint.setStyle(android.graphics.Paint.Style.FILL);
+            paint.setColor(0xFF404040);
+            paint.setTextSize(16);
+            paint.setTextAlign(android.graphics.Paint.Align.CENTER);
+            canvas.drawText("Image", placeholder.getWidth() / 2f, placeholder.getHeight() / 2f, paint);
+            
+            return placeholder;
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating placeholder image: " + e.getMessage());
+            return null;
+        }
     }
 
     public static class TextSettings {

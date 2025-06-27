@@ -2,6 +2,7 @@ package com.example.storythere;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Paint;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -99,6 +100,23 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
                             parsed = pdfParser.parsePage(bindPosition + 1, currentSettings);
                         }
                         if (parsed != null) {
+                            // For the first page (position 0), center the text
+                            if (bindPosition == 0) {
+                                PDFParser.TextSettings centeredSettings = new PDFParser.TextSettings();
+                                centeredSettings.fontSize = currentSettings.fontSize;
+                                centeredSettings.letterSpacing = currentSettings.letterSpacing;
+                                centeredSettings.textAlignment = Paint.Align.CENTER; // Center the first page
+                                centeredSettings.lineHeight = currentSettings.lineHeight;
+                                centeredSettings.paragraphSpacing = currentSettings.paragraphSpacing;
+                                parsed = new PDFParser.ParsedPage(
+                                    parsed.text,
+                                    parsed.images,
+                                    parsed.pageNumber,
+                                    parsed.pageWidth,
+                                    parsed.pageHeight,
+                                    centeredSettings
+                                );
+                            }
                             pages.set(bindPosition, parsed);
                             mainHandler.post(() -> {
                                 pdfParsingInProgress.remove(bindPosition);

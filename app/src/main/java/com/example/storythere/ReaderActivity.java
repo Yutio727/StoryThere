@@ -74,12 +74,12 @@ public class ReaderActivity extends AppCompatActivity {
                 loadContent(contentUri, fileType);
             } else {
                 Log.e(TAG, "No file URI provided in intent");
-                Toast.makeText(this, "No file selected", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.no_file_selected, Toast.LENGTH_SHORT).show();
                 finish();
             }
         } catch (Exception e) {
             Log.e(TAG, "Error in onCreate: " + e.getMessage(), e);
-            Toast.makeText(this, "Error initializing reader: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.error_initializing_reader) + e.getMessage(), Toast.LENGTH_LONG).show();
             finish();
         }
     }
@@ -100,7 +100,7 @@ public class ReaderActivity extends AppCompatActivity {
                         finish(); // Close the reader activity since we're using PDFViewerActivity
                     } catch (Exception e) {
                         Log.e(TAG, "Error opening PDF: " + e.getMessage(), e);
-                        Toast.makeText(this, "Error opening PDF.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, R.string.error_opening_pdf, Toast.LENGTH_LONG).show();
                         finish();
                     }
                     break;
@@ -149,7 +149,7 @@ public class ReaderActivity extends AppCompatActivity {
                         finish(); // Close the reader activity
                     } catch (Exception e) {
                         Log.e(TAG, "Error opening EPUB file: " + e.getMessage(), e);
-                        Toast.makeText(this, "Error reading EPUB file", Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, R.string.error_reading_epub_file, Toast.LENGTH_LONG).show();
                         finish();
                     }
                     break;

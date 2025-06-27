@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">StoryThere</string>
     <string name="text_settings">Настройки Текста</string>
+    <string name="default_settings">Стандартные</string>
     <string name="you_sure_delete">Вы точно хотите удалить этот файл?</string>
     <string name="delete">Удалить</string>
     <string name="cancel">Отмена</string>
@@ -94,4 +95,8 @@
     <string name="exclusives">Эксклюзивы</string>
     <string name="downloading">Загрузка книги...</string>
     <string name="download_failed">Не удалось загрузить</string>
+    <string name="no_file_selected">Файл не выбран</string>
+    <string name="error_initializing_reader">Ошибка инициализации читалки</string>
+    <string name="error_opening_pdf">Ошибка при открытии PDF файла</string>
+    <string name="error_reading_epub_file">Ошибка при открытии EPUB файла</string>
 </resources>

@@ -94,4 +94,8 @@
     <string name="exclusives">Exclusives</string>
     <string name="downloading">Downloading book...</string>
     <string name="download_failed">Download failed</string>
+    <string name="no_file_selected">No file selected</string>
+    <string name="error_initializing_reader">"Error initializing reader: "</string>
+    <string name="error_opening_pdf">Error opening PDF</string>
+    <string name="error_reading_epub_file">Error reading EPUB file</string>
 </resources>

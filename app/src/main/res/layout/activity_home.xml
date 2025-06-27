@@ -123,7 +123,7 @@
         android:id="@+id/button_admin_add_book"
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:text="Add New Book (Admin)"
+        android:text="@string/add_new_book_admin"
         android:textSize="16sp"
         android:textColor="@color/white"
         android:background="@drawable/rounded_button"

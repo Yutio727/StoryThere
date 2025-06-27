@@ -165,7 +165,7 @@ public class ReaderActivity extends AppCompatActivity {
                             // For now, show a message
                             String ebookMessageHtml = "<html><body style='padding: 20px; text-align: center;'>" +
                                                     "<h2>EPUB/FB2 Support Coming Soon</h2>" +
-                                                    "<p>We're working on adding native support for EPUB and FB2 files.</p>" +
+                                                    getString(R.string.p_we_re_working_on_adding_native_support_for_epub_and_fb2_files_p) +
                                                     "</body></html>";
                             webView.loadData(ebookMessageHtml, "text/html", "UTF-8");
                         } else {
@@ -180,7 +180,7 @@ public class ReaderActivity extends AppCompatActivity {
                     
                     String unsupportedMessageHtml = "<html><body style='padding: 20px; text-align: center;'>" +
                                                   "<h2>Unsupported File Type</h2>" +
-                                                  "<p>This file type is not currently supported.</p>" +
+                                                  getString(R.string.p_this_file_type_is_not_currently_supported_p) +
                                                   "</body></html>";
                     webView.loadData(unsupportedMessageHtml, "text/html", "UTF-8");
                     progressBar.setVisibility(View.GONE);
@@ -191,7 +191,7 @@ public class ReaderActivity extends AppCompatActivity {
             webView.setVisibility(View.VISIBLE);
             
             String errorMessageHtml = "<html><body style='padding: 20px;'>Error loading file: " + e.getMessage() + 
-                                    "<br><br>Please try again or contact support.</body></html>";
+                                    getString(R.string.br_br_please_try_again_or_contact_support_body_html);
             webView.loadData(errorMessageHtml, "text/html", "UTF-8");
             progressBar.setVisibility(View.GONE);
         }

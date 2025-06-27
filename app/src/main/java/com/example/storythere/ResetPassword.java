@@ -151,7 +151,7 @@ public class ResetPassword extends AppCompatActivity {
                                 overlayAppIcon.setVisibility(View.GONE);
                                 overlayResultIcon.setImageResource(R.drawable.ic_check_circle);
                                 overlayResultIcon.setVisibility(View.VISIBLE);
-                                overlayResultText.setText("Password reset email sent successfully!\nPlease check your email.");
+                                overlayResultText.setText(R.string.password_reset_email_sent_successfully_please_check_your_email);
                                 overlayResultText.setTextColor(getResources().getColor(R.color.progress_blue));
                                 overlayResultText.setVisibility(View.VISIBLE);
                                 Log.d("ResetPassword", "Password reset email sent to: " + email);
@@ -163,7 +163,7 @@ public class ResetPassword extends AppCompatActivity {
                                 overlayAppIcon.setVisibility(View.GONE);
                                 overlayResultIcon.setImageResource(R.drawable.ic_cross_circle);
                                 overlayResultIcon.setVisibility(View.VISIBLE);
-                                String errorMsg = "Failed to send reset email";
+                                String errorMsg = getString(R.string.failed_to_send_reset_email);
                                 if (task.getException() != null) {
                                     errorMsg += ":\n" + task.getException().getMessage();
                                 }

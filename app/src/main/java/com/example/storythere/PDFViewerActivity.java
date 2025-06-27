@@ -82,7 +82,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         PDFParser.TextSettings tempSettings = new PDFParser.TextSettings();
         tempSettings.fontSize = 54.0f;
         tempSettings.textAlignment = Paint.Align.LEFT;
-        tempPages.add(new PDFParser.ParsedPage("Loading content...", new ArrayList<>(), 1, 612.0f, 792.0f, tempSettings));
+        tempPages.add(new PDFParser.ParsedPage(getString(R.string.loading_content), new ArrayList<>(), 1, 612.0f, 792.0f, tempSettings));
         PDFPageAdapter tempAdapter = new PDFPageAdapter(this, tempPages, PDFPageAdapter.DocumentType.TXT, null, null, null, null, tempSettings);
         pdfRecyclerView.setAdapter(tempAdapter);
 
@@ -114,7 +114,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to read cached .txt file: " + e.getMessage(), e);
-                Toast.makeText(this, "Failed to load cached text", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.failed_to_load_cached_text, Toast.LENGTH_SHORT).show();
                 finish();
             }
         } else if (uri != null) {

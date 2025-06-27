@@ -178,7 +178,7 @@ public class ProfileActivity extends AppCompatActivity {
                         toolbarTitle.setText(emailPrefix);
                     }
                 } else {
-                    userName.setText("User");
+                    userName.setText(R.string.user);
                 }
             }
             
@@ -187,7 +187,7 @@ public class ProfileActivity extends AppCompatActivity {
             if (email != null) {
                 userEmail.setText(email);
             } else {
-                userEmail.setText("No email available");
+                userEmail.setText(R.string.no_email_available);
             }
             
             // Set join date
@@ -198,9 +198,9 @@ public class ProfileActivity extends AppCompatActivity {
             String formattedDate = sdf.format(date);
             String joinText;
             if ("ru".equals(locale.getLanguage())) {
-                joinText = "Вы с нами с " + formattedDate;
+                joinText = getString(R.string.signed_in) + formattedDate;
             } else {
-                joinText = "Signed in: " + formattedDate;
+                joinText = getString(R.string.signed_in) + formattedDate;
             }
             joinDate.setText(joinText);
             
@@ -313,9 +313,9 @@ public class ProfileActivity extends AppCompatActivity {
         // joinDate: recalc with new locale
         String joinText;
         if ("ru".equals(nextLang)) {
-            joinText = "Вы с нами с " + joinDate.getText().toString().replaceAll(".*(\\d{2}\\.\\d{2}\\.\\d{4})$", "$1");
+            joinText = getString(R.string.signed_in) + joinDate.getText().toString().replaceAll(".*(\\d{2}\\.\\d{2}\\.\\d{4})$", "$1");
         } else {
-            joinText = "Signed in: " + joinDate.getText().toString().replaceAll(".*(\\d{2}\\.\\d{2}\\.\\d{4})$", "$1");
+            joinText = getString(R.string.signed_in) + joinDate.getText().toString().replaceAll(".*(\\d{2}\\.\\d{2}\\.\\d{4})$", "$1");
         }
         newTexts[0] = joinText;
         // currentTheme

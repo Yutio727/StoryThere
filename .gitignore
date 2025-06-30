@@ -10,3 +10,14 @@ local.properties
 /.idea
 .idea
 /.idea/deploymentTargetSelector.xml
+
+# API Keys and sensitive configuration
+.env
+config.properties
+secrets.properties
+api_keys.properties
+local_config.properties
+
+# Temporary files
+*.tmp
+*.temp

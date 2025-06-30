@@ -259,12 +259,14 @@ public class HomeActivity extends AppCompatActivity {
         public String fileUrl;
         public String fileType;
         public String image;
-        public RecommendedBook(String title, String author, String fileUrl, String fileType, String image) {
+        public String annotation;
+        public RecommendedBook(String title, String author, String fileUrl, String fileType, String image, String annotation) {
             this.title = title;
             this.author = author;
             this.fileUrl = fileUrl;
             this.fileType = fileType;
             this.image = image;
+            this.annotation = annotation;
         }
     }
 
@@ -284,7 +286,8 @@ public class HomeActivity extends AppCompatActivity {
                   String fileUrl = doc.getString("fileUrl");
                   String fileType = doc.getString("fileType");
                   String image = doc.getString("image");
-                  bookList.add(new RecommendedBook(title, author, fileUrl, fileType, image));
+                  String annotation = doc.getString("annotation");
+                  bookList.add(new RecommendedBook(title, author, fileUrl, fileType, image, annotation));
               }
               RecommendBookAdapter adapter = new RecommendBookAdapter(bookList, book -> {
                   handleRecommendedBookClick(book);
@@ -300,6 +303,7 @@ public class HomeActivity extends AppCompatActivity {
         String fileUrl = book.fileUrl;
         String fileType = book.fileType;
         String imageUrl = book.image;
+        String annotation = book.annotation;
 
         if (isDownloading || isCheckingBook) {
             Toast.makeText(this, R.string.processing_in_progress, Toast.LENGTH_SHORT).show();
@@ -315,7 +319,7 @@ public class HomeActivity extends AppCompatActivity {
         if (existingFile.exists()) {
             Log.d("HomeActivity", "File already exists on device: " + existingFile.getAbsolutePath());
             // File exists, check if it's in our database
-            checkDatabaseAndAddIfNeeded(bookTitle, bookAuthor, existingFile.getAbsolutePath(), fileType, imageUrl);
+            checkDatabaseAndAddIfNeeded(bookTitle, bookAuthor, existingFile.getAbsolutePath(), fileType, imageUrl, annotation);
             return;
         }
 
@@ -355,22 +359,22 @@ public class HomeActivity extends AppCompatActivity {
                     if (fileExists) {
                         Log.d("HomeActivity", "Book found in database and file exists: " + existingBook.getFilePath());
                         // Always use the URI stored in the database (which should be content URI)
-                        openBookOptionsActivity(Uri.parse(existingBook.getFilePath()), fileType, bookTitle);
+                        openBookOptionsActivity(Uri.parse(existingBook.getFilePath()), fileType, bookTitle, annotation);
                     } else {
                         Log.d("HomeActivity", "Book in database but file missing, will re-download");
                         // File doesn't exist, remove from database and download again
                         bookRepository.delete(existingBook);
-                        startDownload(bookTitle, bookAuthor, fileUrl, fileType, imageUrl);
+                        startDownload(bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
                     }
                 } else {
-                    startDownload(bookTitle, bookAuthor, fileUrl, fileType, imageUrl);
+                    startDownload(bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
                 }
             }
         };
         viewModel.getAllBooks().observe(this, observer);
     }
 
-    private void checkDatabaseAndAddIfNeeded(String title, String author, String filePath, String fileType, String imageUrl) {
+    private void checkDatabaseAndAddIfNeeded(String title, String author, String filePath, String fileType, String imageUrl, String annotation) {
         Observer<List<Book>> observer = new Observer<List<Book>>() {
             @Override
             public void onChanged(List<Book> books) {
@@ -404,12 +408,13 @@ public class HomeActivity extends AppCompatActivity {
                     // Add to database with content URI
                     Book newBook = new Book(title, author, contentUri, fileType);
                     newBook.setPreviewImagePath(imageUrl);
+                    newBook.setAnnotation(annotation);
                     bookRepository.insert(newBook);
                     Log.d("HomeActivity", "Added existing file to database: " + title + " with URI: " + contentUri);
                 }
                 
                 // Always open the book with content URI
-                openBookOptionsActivity(Uri.parse(contentUri), fileType, title);
+                openBookOptionsActivity(Uri.parse(contentUri), fileType, title, annotation);
             }
         };
         viewModel.getAllBooks().observe(this, observer);
@@ -432,7 +437,7 @@ public class HomeActivity extends AppCompatActivity {
         return null;
     }
 
-    private void startDownload(String title, String author, String fileUrl, String fileType, String imageUrl) {
+    private void startDownload(String title, String author, String fileUrl, String fileType, String imageUrl, String annotation) {
         isDownloading = true;
         Log.d("HomeActivity", "=== DOWNLOAD START ===");
         Log.d("HomeActivity", "Title: " + title);
@@ -492,7 +497,7 @@ public class HomeActivity extends AppCompatActivity {
                             isDownloading = false;
                             if (uriString != null) {
                                 Log.d("HomeActivity", "Saving book to database...");
-                                saveBookAndOpenFromServer(title, author, uriString, fileType, imageUrl);
+                                saveBookAndOpenFromServer(title, author, uriString, fileType, imageUrl, annotation);
                             } else {
                                 Log.e("HomeActivity", "Download succeeded but local URI is null!");
                                 Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
@@ -570,14 +575,15 @@ public class HomeActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void saveBookAndOpenFromServer(String title, String author, String localUriString, String fileType, String imageUrl) {
+    private void saveBookAndOpenFromServer(String title, String author, String localUriString, String fileType, String imageUrl, String annotation) {
         Book book = new Book(title, author, localUriString, fileType);
         book.setPreviewImagePath(imageUrl);
+        book.setAnnotation(annotation);
         bookRepository.insert(book);
-        openBookOptionsActivity(Uri.parse(localUriString), fileType, title);
+        openBookOptionsActivity(Uri.parse(localUriString), fileType, title, annotation);
     }
 
-    private void openBookOptionsActivity(Uri fileUri, String fileType, String title) {
+    private void openBookOptionsActivity(Uri fileUri, String fileType, String title, String annotation) {
         // Grant permissions for the URI
         try {
             getContentResolver().takePersistableUriPermission(fileUri, 
@@ -590,6 +596,7 @@ public class HomeActivity extends AppCompatActivity {
         intent.setData(fileUri);
         intent.putExtra("fileType", fileType);
         intent.putExtra("title", title);
+        intent.putExtra("annotation", annotation);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
     }

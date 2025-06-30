@@ -347,17 +347,18 @@ public class MainActivity extends AppCompatActivity {
         intent.setData(Uri.parse(book.getFilePath()));
         intent.putExtra("fileType", book.getFileType());
         intent.putExtra("title", book.getTitle());
+        intent.putExtra("annotation", book.getAnnotation());
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
     }
 
     private String getAnnotationWithTime(Book book) {
-        String annotation = book.getAnnotation();
-        if (annotation == null || annotation.trim().isEmpty()) return "";
-        String result = annotation;
+        String timeOfListen = book.getTimeOfListen();
+        if (timeOfListen == null || timeOfListen.trim().isEmpty()) return "";
+        String result = timeOfListen;
         int estimatedMinutes = -1;
         try {
-            int count = Integer.parseInt(annotation.trim().split(" ")[0]);
+            int count = Integer.parseInt(timeOfListen.trim().split(" ")[0]);
             if (book.getFileType().equals("pdf")) {
                 estimatedMinutes = (int) Math.ceil(count * 300.0 / 250.0);
             } else {
@@ -368,7 +369,7 @@ public class MainActivity extends AppCompatActivity {
             // Use translations for separator and min
             String separator = " | ";
             String min = getString(R.string.min);
-            result = annotation + separator + estimatedMinutes + min;
+            result = timeOfListen + separator + estimatedMinutes + min;
         }
         return result;
     }

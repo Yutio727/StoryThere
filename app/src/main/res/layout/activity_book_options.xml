@@ -17,116 +17,212 @@
         app:layout_constraintTop_toTopOf="parent"
         />
 
-    <!-- Book Info Section -->
+    <!-- Sticky Reading Mode Buttons Header -->
     <LinearLayout
-        android:id="@+id/bookInfoSection"
+        android:id="@+id/stickyReadingModeButtons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center_horizontal"
+        android:orientation="horizontal"
+        android:gravity="center"
         android:padding="16dp"
-        app:layout_constraintTop_toBottomOf="@id/toolbar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        android:background="?android:attr/colorBackground"
+        android:elevation="4dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/toolbar">
 
-        <ImageView
-            android:id="@+id/bookCoverImage"
-            android:layout_width="120dp"
-            android:layout_height="180dp"
-            android:src="@drawable/ic_book_placeholder"
-            android:scaleType="centerCrop"
-            android:contentDescription="@string/book_cover_long_press_to_change_cover_image"
-            android:layout_gravity="center_horizontal" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/stickyBtnReadMode"
+            style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/progress_blue"
+            android:text="@string/read"
+            android:textColor="@color/white"
+            app:cornerRadius="12dp"
+            app:icon="@drawable/book_icon"
+            app:iconPadding="6dp"
+            app:iconSize="18dp"
+            app:iconTint="@color/white"
+            android:fontFamily="@font/montserrat"
+            android:textAllCaps="false"
+            android:stateListAnimator="@null" />
 
-        <TextView
-            android:id="@+id/bookAuthorText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/author_name"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginTop="16dp"
-            android:gravity="center_horizontal"
-            android:fontFamily="@font/montserrat"/>
-
-        <TextView
-            android:id="@+id/bookReadingTimeText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/estimated_time"
-            android:textSize="14sp"
-            android:layout_marginTop="8dp"
-            android:gravity="center_horizontal"
-            android:fontFamily="@font/montserrat"/>
-
-        <TextView
-            android:id="@+id/bookEstimatedTimeText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/estimated_time_uncalc"
-            android:textSize="14sp"
-            android:layout_marginTop="4dp"
-            android:gravity="center_horizontal"
-            android:fontFamily="@font/montserrat"/>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/stickyBtnListenMode"
+            style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/background_blue"
+            android:text="@string/listen"
+            android:textColor="@color/text_black"
+            app:cornerRadius="12dp"
+            app:icon="@drawable/headhones_icon"
+            app:iconPadding="6dp"
+            app:iconSize="18dp"
+            app:iconTint="@color/text_black"
+            android:fontFamily="@font/montserrat"
+            android:textAllCaps="false"
+            android:stateListAnimator="@null" />
     </LinearLayout>
 
-    <LinearLayout
+    <ScrollView
+        android:id="@+id/scrollView"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp"
-        app:layout_constraintBottom_toTopOf="@id/footerButton"
-        app:layout_constraintTop_toBottomOf="@+id/bookInfoSection"
-        app:layout_constraintVertical_bias="0.0"
-        tools:layout_editor_absoluteX="0dp">
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        app:layout_constraintBottom_toTopOf="@id/footerButton">
 
         <LinearLayout
-            android:id="@+id/readingModeButtons"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:gravity="center"
-            android:orientation="horizontal">
+            android:orientation="vertical">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnReadMode"
-                style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
-                android:layout_width="0dp"
-                android:layout_height="60dp"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:backgroundTint="@color/progress_blue"
-                android:text="@string/read"
-                android:textColor="@color/white"
-                app:cornerRadius="12dp"
-                app:icon="@drawable/book_icon"
-                app:iconPadding="8dp"
-                app:iconSize="20dp"
-                app:iconTint="@color/white"
-                android:fontFamily="@font/montserrat"
-                android:textAllCaps="false"
-                android:stateListAnimator="@null" />
+            <!-- Book Info Section -->
+            <LinearLayout
+                android:id="@+id/bookInfoSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:padding="16dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnListenMode"
-                style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
-                android:layout_width="0dp"
-                android:layout_height="60dp"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:backgroundTint="@color/background_blue"
-                android:text="@string/listen"
-                android:textColor="@color/text_black"
-                app:cornerRadius="12dp"
-                app:icon="@drawable/headhones_icon"
-                app:iconPadding="8dp"
-                app:iconSize="20dp"
-                app:iconTint="@color/text_black"
-                android:fontFamily="@font/montserrat"
-                android:textAllCaps="false"
-                android:stateListAnimator="@null" />
+                <ImageView
+                    android:id="@+id/bookCoverImage"
+                    android:layout_width="120dp"
+                    android:layout_height="180dp"
+                    android:src="@drawable/ic_book_placeholder"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="@string/book_cover_long_press_to_change_cover_image"
+                    android:layout_gravity="center_horizontal" />
+
+                <TextView
+                    android:id="@+id/bookAuthorText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/author_name"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center_horizontal"
+                    android:fontFamily="@font/montserrat"/>
+
+                <TextView
+                    android:id="@+id/bookReadingTimeText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/estimated_time"
+                    android:textSize="14sp"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_horizontal"
+                    android:fontFamily="@font/montserrat"/>
+
+                <TextView
+                    android:id="@+id/bookEstimatedTimeText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/estimated_time_uncalc"
+                    android:textSize="14sp"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center_horizontal"
+                    android:fontFamily="@font/montserrat"/>
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:id="@+id/readingModeButtons"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnReadMode"
+                        style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="60dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="@color/progress_blue"
+                        android:text="@string/read"
+                        android:textColor="@color/white"
+                        app:cornerRadius="12dp"
+                        app:icon="@drawable/book_icon"
+                        app:iconPadding="8dp"
+                        app:iconSize="20dp"
+                        app:iconTint="@color/white"
+                        android:fontFamily="@font/montserrat"
+                        android:textAllCaps="false"
+                        android:stateListAnimator="@null" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnListenMode"
+                        style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="60dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="@color/background_blue"
+                        android:text="@string/listen"
+                        android:textColor="@color/text_black"
+                        app:cornerRadius="12dp"
+                        app:icon="@drawable/headhones_icon"
+                        app:iconPadding="8dp"
+                        app:iconSize="20dp"
+                        app:iconTint="@color/text_black"
+                        android:fontFamily="@font/montserrat"
+                        android:textAllCaps="false"
+                        android:stateListAnimator="@null" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/bookAnnotationText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/montserrat"
+                    android:gravity="center_horizontal"
+                    android:paddingHorizontal="24dp"
+                    android:text="@string/annotation"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_primary_light"
+                    android:lineSpacingExtra="2dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSummarize"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/generate_annotation"
+                    android:textColor="@color/progress_blue"
+                    app:cornerRadius="12dp"
+                    app:icon="@drawable/ic_book_placeholder"
+                    app:iconPadding="8dp"
+                    app:iconSize="20dp"
+                    app:iconTint="@color/progress_blue"
+                    app:strokeColor="@color/progress_blue"
+                    android:fontFamily="@font/montserrat"
+                    android:textAllCaps="false"
+                    android:stateListAnimator="@null" />
+
+            </LinearLayout>
+
         </LinearLayout>
-    </LinearLayout>
+
+    </ScrollView>
 
     <Button
         android:id="@+id/footerButton"

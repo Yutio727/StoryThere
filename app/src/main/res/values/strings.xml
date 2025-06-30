@@ -140,4 +140,19 @@
     <string name="add_new_book_admin">Add New Book (Admin)</string>
     <string name="search_page_content_will_be_here">Search page content will be here</string>
     <string name="book_title">Book Title</string>
+    <string name="summarize">Summarize</string>
+    <string name="summarizing_text">Summarizing text...</string>
+    <string name="summary_generated">Summary generated successfully</string>
+    <string name="failed_to_generate_summary">Failed to generate summary</string>
+    <string name="text_too_long_for_summary">Text is too long for summarization. Please try with a shorter text.</string>
+    <string name="book_summary">Book Summary</string>
+    <string name="copy">Copy</string>
+    <string name="summary_copied_to_clipboard">Summary copied to clipboard</string>
+    <string name="no_book_content_available">No book content available</string>
+    <string name="failed_to_extract_text_content">Failed to extract text content</string>
+    <string name="no_annotation_found">Seems no annotation in this book, try to generate it!</string>
+    <string name="no_annotation_no_internet">Annotation: Annotation not found, connect to the network and try to generate it</string>
+    <string name="generate_annotation">Generate Annotation</string>
+    <string name="generating_annotation">Generating annotation...</string>
+    <string name="generated_annotation">Generated Annotation</string>
 </resources>

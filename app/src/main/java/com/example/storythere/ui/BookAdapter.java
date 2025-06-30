@@ -48,15 +48,15 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
         Book book = books.get(position);
         holder.titleTextView.setText(book.getTitle());
         holder.authorTextView.setText(book.getAuthor());
-        // Format annotation with time for display only
-        String annotation = book.getAnnotation();
-        if (annotation == null || annotation.trim().isEmpty()) {
+        // Format timeOfListen with time for display only
+        String timeOfListen = book.getTimeOfListen();
+        if (timeOfListen == null || timeOfListen.trim().isEmpty()) {
             holder.annotationTextView.setText("");
         } else {
-            String result = annotation;
+            String result = timeOfListen;
             int estimatedMinutes = -1;
             try {
-                int count = Integer.parseInt(annotation.trim().split(" ")[0]);
+                int count = Integer.parseInt(timeOfListen.trim().split(" ")[0]);
                 if (book.getFileType().equals("pdf")) {
                     estimatedMinutes = (int) Math.ceil(count * 300.0 / 250.0);
                 } else {
@@ -66,7 +66,7 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
             if (estimatedMinutes > 0) {
                 String separator = " | ";
                 String min = holder.itemView.getContext().getString(R.string.min);
-                result = annotation + separator + estimatedMinutes + min;
+                result = timeOfListen + separator + estimatedMinutes + min;
             }
             holder.annotationTextView.setText(result);
         }

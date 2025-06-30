@@ -22,6 +22,7 @@ public class Book {
     private String parsedTextPath;
     private String image; // for server-side field
     private int readingPosition; // Store reading position for all document types
+    private String timeOfListen; // for word count/listening time
     
     public Book(String title, String author, String filePath, String fileType) {
         this.title = title;
@@ -82,4 +83,7 @@ public class Book {
     // For server books, use previewImagePath as the image
     public String getImage() { return image != null ? image : previewImagePath; }
     public void setImage(String image) { this.image = image; }
+
+    public String getTimeOfListen() { return timeOfListen; }
+    public void setTimeOfListen(String timeOfListen) { this.timeOfListen = timeOfListen; }
 } 

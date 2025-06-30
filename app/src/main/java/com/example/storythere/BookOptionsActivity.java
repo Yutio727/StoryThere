@@ -44,6 +44,15 @@ import androidx.core.content.ContextCompat;
 import android.graphics.Typeface;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.app.ProgressDialog;
+import android.content.ClipboardManager;
+import android.content.ClipData;
+import android.view.View;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.content.Context;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
 
 public class BookOptionsActivity extends AppCompatActivity {
 
@@ -55,6 +64,7 @@ public class BookOptionsActivity extends AppCompatActivity {
     private TextView bookAuthorText;
     private TextView bookReadingTimeText;
     private TextView bookEstimatedTimeText;
+    private TextView bookAnnotationText;
     private BookRepository bookRepository;
     private Book currentBook;
     private String filePath;
@@ -62,8 +72,17 @@ public class BookOptionsActivity extends AppCompatActivity {
     private Uri newCoverUri;
     private MaterialButton btnReadMode;
     private MaterialButton btnListenMode;
+    private MaterialButton btnSummarize;
+    private MaterialButton stickyBtnReadMode;
+    private MaterialButton stickyBtnListenMode;
+    private LinearLayout stickyReadingModeButtons;
+    private ScrollView scrollView;
+    private Toolbar toolbar;
     private boolean isReadModeSelected = true; // Track the selected mode, default to read
     private Animation scaleAnimation;
+    private GigaChatService gigaChatService;
+    private ProgressDialog progressDialog;
+    private ConnectivityManager.NetworkCallback networkCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,7 +90,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_book_options);
 
         // Setup toolbar
-        Toolbar toolbar = findViewById(R.id.toolbar);
+        toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
@@ -84,6 +103,7 @@ public class BookOptionsActivity extends AppCompatActivity {
             contentUri = intent.getData();
             fileType = intent.getStringExtra("fileType");
             title = intent.getStringExtra("title");
+            String annotation = intent.getStringExtra("annotation");
 
             if (title != null && getSupportActionBar() != null) {
                 getSupportActionBar().setTitle(title);
@@ -96,9 +116,21 @@ public class BookOptionsActivity extends AppCompatActivity {
         bookAuthorText = findViewById(R.id.bookAuthorText);
         bookReadingTimeText = findViewById(R.id.bookReadingTimeText);
         bookEstimatedTimeText = findViewById(R.id.bookEstimatedTimeText);
+        bookAnnotationText = findViewById(R.id.bookAnnotationText);
         btnReadMode = findViewById(R.id.btnReadMode);
         btnListenMode = findViewById(R.id.btnListenMode);
+        btnSummarize = findViewById(R.id.btnSummarize);
+        stickyBtnReadMode = findViewById(R.id.stickyBtnReadMode);
+        stickyBtnListenMode = findViewById(R.id.stickyBtnListenMode);
+        stickyReadingModeButtons = findViewById(R.id.stickyReadingModeButtons);
+        scrollView = findViewById(R.id.scrollView);
         scaleAnimation = AnimationUtils.loadAnimation(this, R.anim.button_scale);
+
+        // Display annotation from intent if available (after views are initialized)
+        if (intent != null) {
+            String annotation = intent.getStringExtra("annotation");
+            updateAnnotationDisplay(annotation);
+        }
 
         // Get file path from intent
         if (intent != null && intent.getData() != null) {
@@ -113,6 +145,24 @@ public class BookOptionsActivity extends AppCompatActivity {
                     if (book != null) {
                         currentBook = book;
                         bookAuthorText.setText(book.getAuthor() != null ? book.getAuthor() : "Unknown Author");
+                        
+                        // Display annotation from database if not already set from intent
+                        if (book.getAnnotation() != null && !book.getAnnotation().trim().isEmpty() && 
+                            (bookAnnotationText.getText() == null || bookAnnotationText.getText().toString().equals(getString(R.string.annotation)))) {
+                            updateAnnotationDisplay(book.getAnnotation());
+                        } else if (bookAnnotationText.getText() == null || bookAnnotationText.getText().toString().equals(getString(R.string.annotation))) {
+                            // No annotation from database either, show default message
+                            updateAnnotationDisplay(null);
+                        }
+                        
+                        // Migrate old annotation data to timeOfListen if needed
+                        if (book.getTimeOfListen() == null && book.getAnnotation() != null && isCountTimeOfListen(book.getAnnotation())) {
+                            // This is old data where annotation contains word count - migrate it
+                            book.setTimeOfListen(book.getAnnotation());
+                            book.setAnnotation(null); // Clear the old annotation field
+                            bookRepository.update(book);
+                        }
+                        
                         if (book.getPreviewImagePath() != null) {
                             Glide.with(BookOptionsActivity.this)
                                     .load(book.getPreviewImagePath())
@@ -130,6 +180,17 @@ public class BookOptionsActivity extends AppCompatActivity {
         updateButtonStates(isReadModeSelected);
         setupButtonAnimations();
 
+        // Initialize GigaChat service
+        gigaChatService = new GigaChatService();
+        progressDialog = new ProgressDialog(this);
+        progressDialog.setMessage(getString(R.string.generating_annotation));
+        progressDialog.setCancelable(false);
+
+        // Set up summarize button click listener
+        btnSummarize.setOnClickListener(v -> {
+            v.startAnimation(scaleAnimation);
+            performTextSummarization();
+        });
 
         // Set up footer button click listener
         footerButton.setOnClickListener(v -> {
@@ -412,6 +473,34 @@ public class BookOptionsActivity extends AppCompatActivity {
 
         // Initial update of book info text based on default mode
         updateBookReadingTimeText();
+        
+        // Setup network callback to monitor internet connectivity
+        setupNetworkCallback();
+        
+        // Setup scroll listener for sticky header
+        setupScrollListener();
+
+        // Set click listeners for reading mode buttons
+        btnReadMode.setOnClickListener(v -> {
+            isReadModeSelected = true;
+            updateButtonStates(true);
+        });
+
+        btnListenMode.setOnClickListener(v -> {
+            isReadModeSelected = false;
+            updateButtonStates(false);
+        });
+
+        // Set click listeners for sticky reading mode buttons
+        stickyBtnReadMode.setOnClickListener(v -> {
+            isReadModeSelected = true;
+            updateButtonStates(true);
+        });
+
+        stickyBtnListenMode.setOnClickListener(v -> {
+            isReadModeSelected = false;
+            updateButtonStates(false);
+        });
     }
 
     private void openImagePicker() {
@@ -497,6 +586,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                 == android.content.res.Configuration.UI_MODE_NIGHT_YES;
 
         if (isReadMode) {
+            // Update regular buttons
             btnReadMode.setEnabled(false);
             btnListenMode.setEnabled(true);
             btnReadMode.setBackgroundTintList(ColorStateList.valueOf(blueColor));
@@ -507,9 +597,23 @@ public class BookOptionsActivity extends AppCompatActivity {
             btnListenMode.setTextColor(blackText);
             btnListenMode.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.NORMAL));
             btnListenMode.setIconTintResource(R.color.text_black);
+            
+            // Update sticky buttons
+            stickyBtnReadMode.setEnabled(false);
+            stickyBtnListenMode.setEnabled(true);
+            stickyBtnReadMode.setBackgroundTintList(ColorStateList.valueOf(blueColor));
+            stickyBtnListenMode.setBackgroundTintList(ColorStateList.valueOf(isDarkTheme ? darkBackground : lightBackground));
+            stickyBtnReadMode.setTextColor(whiteText);
+            stickyBtnReadMode.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.BOLD));
+            stickyBtnReadMode.setIconTintResource(R.color.white);
+            stickyBtnListenMode.setTextColor(blackText);
+            stickyBtnListenMode.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.NORMAL));
+            stickyBtnListenMode.setIconTintResource(R.color.text_black);
+            
             footerButton.setText(R.string.start_reading);
             footerButton.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.BOLD));
         } else {
+            // Update regular buttons
             btnReadMode.setEnabled(true);
             btnListenMode.setEnabled(false);
             btnReadMode.setBackgroundTintList(ColorStateList.valueOf(isDarkTheme ? darkBackground : lightBackground));
@@ -520,16 +624,29 @@ public class BookOptionsActivity extends AppCompatActivity {
             btnListenMode.setTextColor(whiteText);
             btnListenMode.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.BOLD));
             btnListenMode.setIconTintResource(R.color.white);
+            
+            // Update sticky buttons
+            stickyBtnReadMode.setEnabled(true);
+            stickyBtnListenMode.setEnabled(false);
+            stickyBtnReadMode.setBackgroundTintList(ColorStateList.valueOf(isDarkTheme ? darkBackground : lightBackground));
+            stickyBtnListenMode.setBackgroundTintList(ColorStateList.valueOf(blueColor));
+            stickyBtnReadMode.setTextColor(blackText);
+            stickyBtnReadMode.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.NORMAL));
+            stickyBtnReadMode.setIconTintResource(R.color.text_black);
+            stickyBtnListenMode.setTextColor(whiteText);
+            stickyBtnListenMode.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.BOLD));
+            stickyBtnListenMode.setIconTintResource(R.color.white);
+            
             footerButton.setText(R.string.start_listening);
             footerButton.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.BOLD));
         }
     }
 
-    // Helper to check if annotation starts with a number (for word/page count)
-    private boolean isCountAnnotation(String annotation) {
-        if (annotation == null) return false;
+    // Helper to check if timeOfListen starts with a number (for word/page count)
+    private boolean isCountTimeOfListen(String timeOfListen) {
+        if (timeOfListen == null) return false;
         try {
-            String first = annotation.trim().split(" ")[0];
+            String first = timeOfListen.trim().split(" ")[0];
             Integer.parseInt(first);
             return true;
         } catch (Exception e) {
@@ -543,21 +660,21 @@ public class BookOptionsActivity extends AppCompatActivity {
             int estimatedMinutes = -1;
             if (isReadModeSelected) {
                 if ("pdf".equals(fileType)) {
-                    String annotation = currentBook.getAnnotation();
-                    if (isCountAnnotation(annotation)) {
-                        bookReadingTimeText.setText(annotation);
+                    String timeOfListen = currentBook.getTimeOfListen();
+                    if (isCountTimeOfListen(timeOfListen)) {
+                        bookReadingTimeText.setText(timeOfListen);
                         try {
-                            int pageCount = Integer.parseInt(annotation.trim().split(" ")[0]);
+                            int pageCount = Integer.parseInt(timeOfListen.trim().split(" ")[0]);
                             estimatedMinutes = (int) Math.ceil(pageCount * 300.0 / 250.0); // 300 words/page
                         } catch (Exception ignored) {}
                     } else {
                         try {
                             PDFParser pdfParser = new PDFParser(this, contentUri);
                             int totalPages = pdfParser.getPageCount();
-                            annotation = totalPages + getString(R.string.pages);
-                            bookReadingTimeText.setText(annotation);
+                            timeOfListen = totalPages + getString(R.string.pages);
+                            bookReadingTimeText.setText(timeOfListen);
                             pdfParser.close();
-                            currentBook.setAnnotation(annotation);
+                            currentBook.setTimeOfListen(timeOfListen);
                             bookRepository.update(currentBook);
                             estimatedMinutes = (int) Math.ceil(totalPages * 300.0 / 250.0);
                         } catch (Exception e) {
@@ -565,20 +682,20 @@ public class BookOptionsActivity extends AppCompatActivity {
                         }
                     }
                 } else {
-                    String annotation = currentBook.getAnnotation();
-                    if (isCountAnnotation(annotation)) {
-                        bookReadingTimeText.setText(annotation);
+                    String timeOfListen = currentBook.getTimeOfListen();
+                    if (isCountTimeOfListen(timeOfListen)) {
+                        bookReadingTimeText.setText(timeOfListen);
                         try {
-                            int wordCount = Integer.parseInt(annotation.trim().split(" ")[0]);
+                            int wordCount = Integer.parseInt(timeOfListen.trim().split(" ")[0]);
                             estimatedMinutes = (int) Math.ceil(wordCount / 250.0);
                         } catch (Exception ignored) {}
                     } else {
                         try {
                             TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
                             int wordCount = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
-                            annotation = wordCount + getString(R.string.words);
-                            bookReadingTimeText.setText(annotation);
-                            currentBook.setAnnotation(annotation);
+                            timeOfListen = wordCount + getString(R.string.words);
+                            bookReadingTimeText.setText(timeOfListen);
+                            currentBook.setTimeOfListen(timeOfListen);
                             bookRepository.update(currentBook);
                             estimatedMinutes = (int) Math.ceil(wordCount / 250.0);
                         } catch (Exception e) {
@@ -587,11 +704,11 @@ public class BookOptionsActivity extends AppCompatActivity {
                     }
                 }
             } else {
-                String annotation = currentBook.getAnnotation();
-                if (isCountAnnotation(annotation)) {
-                    bookReadingTimeText.setText(annotation);
+                String timeOfListen = currentBook.getTimeOfListen();
+                if (isCountTimeOfListen(timeOfListen)) {
+                    bookReadingTimeText.setText(timeOfListen);
                     try {
-                        int count = Integer.parseInt(annotation.trim().split(" ")[0]);
+                        int count = Integer.parseInt(timeOfListen.trim().split(" ")[0]);
                         if ("pdf".equals(fileType)) {
                             estimatedMinutes = (int) Math.ceil(count * 300.0 / 250.0);
                         } else {
@@ -630,6 +747,231 @@ public class BookOptionsActivity extends AppCompatActivity {
                 isReadModeSelected = false;
                 updateButtonStates(false);
                 updateBookReadingTimeText();
+            }
+        });
+    }
+
+    private void performTextSummarization() {
+        if (contentUri == null) {
+            Toast.makeText(this, getString(R.string.no_book_content_available), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        progressDialog.show();
+
+        // Extract text content based on file type
+        new Thread(() -> {
+            try {
+                String textContent = extractTextContent();
+                
+                if (textContent == null || textContent.trim().isEmpty()) {
+                    runOnUiThread(() -> {
+                        progressDialog.dismiss();
+                        Toast.makeText(this, getString(R.string.failed_to_extract_text_content), Toast.LENGTH_SHORT).show();
+                    });
+                    return;
+                }
+
+                // Call GigaChat API for summarization
+                gigaChatService.summarizeText(textContent, new GigaChatService.SummarizationCallback() {
+                    @Override
+                    public void onSuccess(String summary) {
+                        runOnUiThread(() -> {
+                            progressDialog.dismiss();
+                            showSummaryDialog(summary);
+                        });
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        runOnUiThread(() -> {
+                            progressDialog.dismiss();
+                            Toast.makeText(BookOptionsActivity.this, 
+                                getString(R.string.failed_to_generate_summary) + ": " + error, 
+                                Toast.LENGTH_LONG).show();
+                        });
+                    }
+                });
+
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        }).start();
+    }
+
+    private String extractTextContent() {
+        try {
+            if ("txt".equals(fileType)) {
+                // For TXT files, use TextParser
+                TextParser.ParsedText parsed = TextParser.parseText(this, contentUri);
+                return parsed.content;
+            } else if ("epub".equals(fileType)) {
+                // For EPUB files, use EPUBParser
+                EPUBParser epubParser = new EPUBParser(this);
+                if (epubParser.parse(contentUri)) {
+                    List<String> epubTextContent = epubParser.getTextContent();
+                    StringBuilder sb = new StringBuilder();
+                    for (String page : epubTextContent) {
+                        sb.append(page).append("\n\n");
+                    }
+                    return sb.toString();
+                }
+            } else if ("pdf".equals(fileType)) {
+                // For PDF files, extract text
+                StringBuilder allText = new StringBuilder();
+                try (InputStream inputStream = getContentResolver().openInputStream(contentUri)) {
+                    if (inputStream == null) throw new Exception("Failed to open PDF");
+                    PdfReader reader = new PdfReader(inputStream);
+                    PdfDocument doc = new PdfDocument(reader);
+                    int totalPages = doc.getNumberOfPages();
+                    
+                    for (int i = 1; i <= totalPages; i++) {
+                        String text = PdfTextExtractor.getTextFromPage(
+                            doc.getPage(i),
+                            new SimpleTextExtractionStrategy()
+                        );
+                        allText.append(text).append("\n");
+                    }
+                    
+                    doc.close();
+                    reader.close();
+                    return allText.toString();
+                }
+            }
+        } catch (Exception e) {
+            Log.e("BookOptionsActivity", "Error extracting text: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private void showSummaryDialog(String summary) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(getString(R.string.generated_annotation))
+               .setMessage(summary)
+               .setPositiveButton("OK", (dialog, which) -> {
+                   // Update the annotation display with the generated summary
+                   updateAnnotationDisplay(summary);
+                   // Save the summary to the database as annotation
+                   if (currentBook != null) {
+                       currentBook.setAnnotation(summary);
+                       bookRepository.update(currentBook);
+                       // Hide the button permanently - user can only generate once
+                       btnSummarize.setVisibility(View.GONE);
+                   }
+               })
+               .setNegativeButton(getString(R.string.copy), (dialog, which) -> {
+                   ClipboardManager clipboard = 
+                       (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                   ClipData clip = 
+                       ClipData.newPlainText(getString(R.string.generated_annotation), summary);
+                   clipboard.setPrimaryClip(clip);
+                   Toast.makeText(this, getString(R.string.summary_copied_to_clipboard), Toast.LENGTH_SHORT).show();
+               })
+               .show();
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (gigaChatService != null) {
+            gigaChatService.shutdown();
+        }
+        
+        // Unregister network callback
+        if (networkCallback != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            ConnectivityManager connectivityManager = (ConnectivityManager) 
+                getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (connectivityManager != null) {
+                connectivityManager.unregisterNetworkCallback(networkCallback);
+            }
+        }
+    }
+
+    private void updateAnnotationDisplay(String annotation) {
+        boolean hasInternet = NetworkUtils.isInternetAvailable(this);
+        
+        if (annotation != null && !annotation.trim().isEmpty()) {
+            // Annotation exists - show it and hide summarize button
+            bookAnnotationText.setText(annotation);
+            btnSummarize.setVisibility(View.GONE);
+        } else {
+            // No annotation - check internet connectivity
+            if (hasInternet) {
+                // Has internet - show default text and show summarize button
+                bookAnnotationText.setText(getString(R.string.no_annotation_found));
+                btnSummarize.setVisibility(View.VISIBLE);
+            } else {
+                // No internet - show no internet message and hide summarize button
+                bookAnnotationText.setText(getString(R.string.no_annotation_no_internet));
+                btnSummarize.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    private void setupNetworkCallback() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            ConnectivityManager connectivityManager = (ConnectivityManager) 
+                getSystemService(Context.CONNECTIVITY_SERVICE);
+            
+            networkCallback = new ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onAvailable(Network network) {
+                    runOnUiThread(() -> {
+                        // Internet became available, update annotation display
+                        if (currentBook != null) {
+                            updateAnnotationDisplay(currentBook.getAnnotation());
+                        }
+                    });
+                }
+                
+                @Override
+                public void onLost(Network network) {
+                    runOnUiThread(() -> {
+                        // Internet became unavailable, update annotation display
+                        if (currentBook != null) {
+                            updateAnnotationDisplay(currentBook.getAnnotation());
+                        }
+                    });
+                }
+            };
+            
+            connectivityManager.registerDefaultNetworkCallback(networkCallback);
+        }
+    }
+
+    private void setupScrollListener() {
+        scrollView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            // Get the position of the regular reading mode buttons (not the sticky ones)
+            int[] location = new int[2];
+            btnReadMode.getLocationInWindow(location);
+            int buttonTop = location[1];
+            
+            // Check if buttons are visible (below toolbar)
+            if (buttonTop < toolbar.getHeight()) {
+                // Regular buttons are scrolled out of view, show sticky header
+                stickyReadingModeButtons.setVisibility(View.VISIBLE);
+            } else {
+                // Regular buttons are visible, hide sticky header
+                stickyReadingModeButtons.setVisibility(View.GONE);
+            }
+        });
+        
+        scrollView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+            // Get the position of the regular reading mode buttons (not the sticky ones)
+            int[] location = new int[2];
+            btnReadMode.getLocationInWindow(location);
+            int buttonTop = location[1];
+            
+            // Check if buttons are visible (below toolbar)
+            if (buttonTop < toolbar.getHeight()) {
+                // Regular buttons are scrolled out of view, show sticky header
+                stickyReadingModeButtons.setVisibility(View.VISIBLE);
+            } else {
+                // Regular buttons are visible, hide sticky header
+                stickyReadingModeButtons.setVisibility(View.GONE);
             }
         });
     }

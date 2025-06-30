@@ -31,11 +31,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import com.example.storythere.data.Book;
+import com.example.storythere.data.BookRepository;
 
 public class PDFViewerActivity extends AppCompatActivity implements TextSettingsDialog.TextSettingsListener {
     private static final String TAG = "PDFViewerActivity";
     private static final int INITIAL_LOAD_RANGE = 5; // Load 5 pages before and after current
     private static final int LOAD_RANGE = 10; // Load 3 pages in scroll direction
+    private static final int POSITION_SAVE_DELAY = 1000; // Save position after 1 second of no scrolling
     
     private RecyclerView pdfRecyclerView;
     private ScaleGestureDetector scaleDetector;
@@ -54,6 +57,14 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     private EPUBParser epubParser;
     private boolean isEPUB = false;
     private PDFPageAdapter pdfPageAdapter;
+    private PDFPageAdapter.DocumentType documentType;
+    
+    // Position tracking variables
+    private Book currentBook;
+    private BookRepository bookRepository;
+    private Handler positionSaveHandler = new Handler(Looper.getMainLooper());
+    private Runnable positionSaveRunnable;
+    private boolean isPositionRestored = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,10 +83,36 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
+        // Initialize position tracking
+        bookRepository = new BookRepository(getApplication());
+        positionSaveRunnable = new Runnable() {
+            @Override
+            public void run() {
+                saveCurrentPosition();
+            }
+        };
+
         // Initialize views
         pdfRecyclerView = findViewById(R.id.pdfRecyclerView);
         pdfRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         pdfRecyclerView.setItemViewCacheSize(10);
+        
+        // Set up scroll listener for position tracking
+        pdfRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                Log.d(TAG, "[SCROLL] Scroll state changed to: " + newState + " (IDLE=" + RecyclerView.SCROLL_STATE_IDLE + ")");
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    // Save position after scrolling stops
+                    Log.d(TAG, "[SCROLL] Scrolling stopped, scheduling position save in " + POSITION_SAVE_DELAY + "ms");
+                    positionSaveHandler.postDelayed(positionSaveRunnable, POSITION_SAVE_DELAY);
+                } else {
+                    // Cancel pending save if user starts scrolling again
+                    Log.d(TAG, "[SCROLL] Scrolling started, canceling pending position save");
+                    positionSaveHandler.removeCallbacks(positionSaveRunnable);
+                }
+            }
+        });
         
         // Set a temporary adapter to prevent "No adapter attached" error
         List<PDFParser.ParsedPage> tempPages = new ArrayList<>();
@@ -97,6 +134,30 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         Intent intent = getIntent();
         Uri uri = intent.getData();
         String fileType = intent.getStringExtra("fileType");
+        String filePath = intent.getStringExtra("filePath");
+        
+        // Load book from database for position tracking
+        if (filePath != null) {
+            Log.d(TAG, "[BOOK_LOAD] Loading book from database with filePath: " + filePath);
+            bookRepository.getBookByPath(filePath).observe(this, book -> {
+                if (book != null) {
+                    currentBook = book;
+                    Log.d(TAG, "[BOOK_LOAD] Successfully loaded book: " + book.getTitle() + " with reading position: " + book.getReadingPosition());
+                    Log.d(TAG, "[BOOK_LOAD] Book details - ID: " + book.getId() + ", FilePath: " + book.getFilePath() + ", FileType: " + book.getFileType());
+                    
+                    // Try to restore position now that book is loaded
+                    if (!isPositionRestored && pdfPageAdapter != null) {
+                        Log.d(TAG, "[BOOK_LOAD] Book loaded, attempting to restore position now");
+                        restoreReadingPosition();
+                    }
+                } else {
+                    Log.w(TAG, "[BOOK_LOAD] No book found in database for filePath: " + filePath);
+                }
+            });
+        } else {
+            Log.w(TAG, "[BOOK_LOAD] filePath is null, cannot load book from database");
+        }
+        
         if (uri != null && "txt".equals(fileType)) {
             // Read cached .txt content from file
             try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
@@ -135,11 +196,21 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
 
     @Override
     protected void onDestroy() {
+        // Save position before destroying
+        saveCurrentPosition();
+        
         if (pdfParser != null) {
             pdfParser.close();
         }
         executorService.shutdown();
         super.onDestroy();
+    }
+
+    @Override
+    protected void onPause() {
+        // Save position when activity is paused
+        saveCurrentPosition();
+        super.onPause();
     }
 
     @Override
@@ -215,6 +286,22 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     pdfPageAdapter = new PDFPageAdapter(PDFViewerActivity.this, pages, PDFPageAdapter.DocumentType.TXT, null, txtChunks, null, null, currentSettings);
                     pdfRecyclerView.getRecycledViewPool().clear();
                     pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
+                    
+                    // Set document type for position restoration
+                    documentType = PDFPageAdapter.DocumentType.TXT;
+                    
+                    Log.d(TAG, "[TXT_LOAD] TXT adapter set successfully:");
+                    Log.d(TAG, "[TXT_LOAD] - pages.size: " + pages.size());
+                    Log.d(TAG, "[TXT_LOAD] - adapter item count: " + pdfPageAdapter.getItemCount());
+                    Log.d(TAG, "[TXT_LOAD] - currentBook: " + (currentBook != null ? currentBook.getTitle() : "null"));
+                    
+                    // Try to restore position if book is already loaded, otherwise it will be called when book loads
+                    if (currentBook != null && !isPositionRestored) {
+                        Log.d(TAG, "[TXT_LOAD] Book already loaded, calling restoreReadingPosition()");
+                        restoreReadingPosition();
+                    } else {
+                        Log.d(TAG, "[TXT_LOAD] Book not loaded yet, position restoration will be called when book loads");
+                    }
                 });
             });
         } catch (Exception e) {
@@ -286,6 +373,23 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                         pdfPageAdapter = new PDFPageAdapter(PDFViewerActivity.this, pages, PDFPageAdapter.DocumentType.EPUB, null, null, epubPages, epubImages, currentSettings);
                         pdfRecyclerView.getRecycledViewPool().clear();
                         pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
+                        
+                        // Set document type for position restoration
+                        documentType = PDFPageAdapter.DocumentType.EPUB;
+                        
+                        Log.d(TAG, "[EPUB_LOAD] EPUB adapter set successfully:");
+                        Log.d(TAG, "[EPUB_LOAD] - pages.size: " + pages.size());
+                        Log.d(TAG, "[EPUB_LOAD] - adapter item count: " + pdfPageAdapter.getItemCount());
+                        Log.d(TAG, "[EPUB_LOAD] - currentBook: " + (currentBook != null ? currentBook.getTitle() : "null"));
+                        
+                        // Try to restore position if book is already loaded, otherwise it will be called when book loads
+                        if (currentBook != null && !isPositionRestored) {
+                            Log.d(TAG, "[EPUB_LOAD] Book already loaded, calling restoreReadingPosition()");
+                            restoreReadingPosition();
+                        } else {
+                            Log.d(TAG, "[EPUB_LOAD] Book not loaded yet, position restoration will be called when book loads");
+                        }
+                        
                         String title = epubParser.getTitle();
                         String author = epubParser.getAuthor();
                         if (title != null && !title.isEmpty()) {
@@ -339,10 +443,186 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             pdfPageAdapter = new PDFPageAdapter(this, pages, PDFPageAdapter.DocumentType.PDF, pdfParser, null, null, null, currentSettings);
             pdfRecyclerView.getRecycledViewPool().clear();
             pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
+            
+            // Set document type for position restoration
+            documentType = PDFPageAdapter.DocumentType.PDF;
+            
+            Log.d(TAG, "[PDF_LOAD] PDF adapter set successfully:");
+            Log.d(TAG, "[PDF_LOAD] - totalPages: " + totalPages);
+            Log.d(TAG, "[PDF_LOAD] - pages.size: " + pages.size());
+            Log.d(TAG, "[PDF_LOAD] - adapter item count: " + pdfPageAdapter.getItemCount());
+            Log.d(TAG, "[PDF_LOAD] - currentBook: " + (currentBook != null ? currentBook.getTitle() : "null"));
+            
+            // Try to restore position if book is already loaded, otherwise it will be called when book loads
+            if (currentBook != null && !isPositionRestored) {
+                Log.d(TAG, "[PDF_LOAD] Book already loaded, calling restoreReadingPosition()");
+                restoreReadingPosition();
+            } else {
+                Log.d(TAG, "[PDF_LOAD] Book not loaded yet, position restoration will be called when book loads");
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error initializing PDF: " + e.getMessage());
             Toast.makeText(this, R.string.failed_to_load_pdf, Toast.LENGTH_SHORT).show();
             finish();
+        }
+    }
+
+    private void saveCurrentPosition() {
+        if (currentBook != null && pdfRecyclerView != null && pdfRecyclerView.getLayoutManager() != null) {
+            LinearLayoutManager layoutManager = (LinearLayoutManager) pdfRecyclerView.getLayoutManager();
+            int firstVisiblePosition = layoutManager.findFirstVisibleItemPosition();
+            int lastVisiblePosition = layoutManager.findLastVisibleItemPosition();
+            
+            Log.d(TAG, "[POSITION_SAVE] Attempting to save position:");
+            Log.d(TAG, "[POSITION_SAVE] - currentBook: " + (currentBook != null ? currentBook.getTitle() : "null"));
+            Log.d(TAG, "[POSITION_SAVE] - pdfRecyclerView: " + (pdfRecyclerView != null ? "not null" : "null"));
+            Log.d(TAG, "[POSITION_SAVE] - layoutManager: " + (layoutManager != null ? "not null" : "null"));
+            Log.d(TAG, "[POSITION_SAVE] - firstVisiblePosition: " + firstVisiblePosition);
+            Log.d(TAG, "[POSITION_SAVE] - lastVisiblePosition: " + lastVisiblePosition);
+            Log.d(TAG, "[POSITION_SAVE] - total pages: " + pages.size());
+            
+            if (firstVisiblePosition != RecyclerView.NO_POSITION) {
+                // Determine which page is more prominently visible
+                // If there are multiple pages visible, check which one is more centered
+                int targetPosition = firstVisiblePosition;
+                
+                if (lastVisiblePosition > firstVisiblePosition) {
+                    // Multiple pages are visible, determine which one is more centered
+                    View firstView = layoutManager.findViewByPosition(firstVisiblePosition);
+                    View lastView = layoutManager.findViewByPosition(lastVisiblePosition);
+                    
+                    if (firstView != null && lastView != null) {
+                        int firstViewTop = firstView.getTop();
+                        int lastViewBottom = lastView.getBottom();
+                        int recyclerViewHeight = pdfRecyclerView.getHeight();
+                        
+                        // If the first view is mostly off-screen (negative top), prefer the next page
+                        if (firstViewTop < -recyclerViewHeight / 3) {
+                            targetPosition = firstVisiblePosition + 1;
+                            Log.d(TAG, "[POSITION_SAVE] First page mostly off-screen, targeting next page: " + targetPosition);
+                        } else {
+                            Log.d(TAG, "[POSITION_SAVE] First page prominently visible, targeting: " + targetPosition);
+                        }
+                    }
+                }
+                
+                int oldPosition = currentBook.getReadingPosition();
+                currentBook.setReadingPosition(targetPosition);
+                currentBook.setLastOpened(new java.util.Date());
+                bookRepository.update(currentBook);
+                Log.d(TAG, "[POSITION_SAVE] Successfully saved position: " + targetPosition + " (was: " + oldPosition + ") for book: " + currentBook.getTitle());
+            } else {
+                Log.w(TAG, "[POSITION_SAVE] Failed to save position - NO_POSITION returned");
+            }
+        } else {
+            Log.w(TAG, "[POSITION_SAVE] Cannot save position:");
+            Log.w(TAG, "[POSITION_SAVE] - currentBook: " + (currentBook != null ? "not null" : "null"));
+            Log.w(TAG, "[POSITION_SAVE] - pdfRecyclerView: " + (pdfRecyclerView != null ? "not null" : "null"));
+            Log.w(TAG, "[POSITION_SAVE] - layoutManager: " + (pdfRecyclerView != null && pdfRecyclerView.getLayoutManager() != null ? "not null" : "null"));
+        }
+    }
+
+    private void restoreReadingPosition() {
+        Log.d(TAG, "[POSITION_RESTORE] Attempting to restore position:");
+        Log.d(TAG, "[POSITION_RESTORE] - currentBook: " + (currentBook != null ? currentBook.getTitle() : "null"));
+        Log.d(TAG, "[POSITION_RESTORE] - isPositionRestored: " + isPositionRestored);
+        Log.d(TAG, "[POSITION_RESTORE] - pdfRecyclerView: " + (pdfRecyclerView != null ? "not null" : "null"));
+        Log.d(TAG, "[POSITION_RESTORE] - pages.size: " + (pages != null ? pages.size() : "null"));
+        
+        if (currentBook != null && !isPositionRestored && pdfRecyclerView != null) {
+            int savedPosition = currentBook.getReadingPosition();
+            Log.d(TAG, "[POSITION_RESTORE] - savedPosition: " + savedPosition);
+            Log.d(TAG, "[POSITION_RESTORE] - pages.size: " + pages.size());
+            
+            if (savedPosition > 0 && savedPosition < pages.size()) {
+                Log.d(TAG, "[POSITION_RESTORE] Position is valid, waiting for pages to render around position: " + savedPosition);
+                
+                // Calculate the range of pages to wait for (3 above and 3 below)
+                int startPage = Math.max(0, savedPosition - 3);
+                int endPage = Math.min(pages.size() - 1, savedPosition + 3);
+                
+                Log.d(TAG, "[POSITION_RESTORE] Waiting for pages " + startPage + " to " + endPage + " to be rendered");
+                
+                // Force render the pages around the target position
+                forceRenderPages(startPage, endPage, savedPosition);
+            } else {
+                Log.w(TAG, "[POSITION_RESTORE] Position is not valid: " + savedPosition + " (pages.size: " + pages.size() + ")");
+                isPositionRestored = true;
+            }
+        } else {
+            Log.w(TAG, "[POSITION_RESTORE] Cannot restore position:");
+            Log.w(TAG, "[POSITION_RESTORE] - currentBook: " + (currentBook != null ? "not null" : "null"));
+            Log.w(TAG, "[POSITION_RESTORE] - isPositionRestored: " + isPositionRestored);
+            Log.w(TAG, "[POSITION_RESTORE] - pdfRecyclerView: " + (pdfRecyclerView != null ? "not null" : "null"));
+        }
+    }
+
+    private void forceRenderPages(int startPage, int endPage, int targetPosition) {
+        Log.d(TAG, "[FORCE_RENDER] Starting forced rendering of pages " + startPage + " to " + endPage);
+        
+        // For PDF, we need to trigger parsing of the pages around the target position
+        if (documentType == PDFPageAdapter.DocumentType.PDF && pdfParser != null) {
+            executorService.submit(() -> {
+                try {
+                    Log.d(TAG, "[FORCE_RENDER] Parsing PDF pages " + startPage + " to " + endPage);
+                    
+                    // Parse pages in parallel
+                    for (int i = startPage; i <= endPage; i++) {
+                        final int pageIndex = i;
+                        if (pageIndex < pages.size() && (pages.get(pageIndex).text == null || pages.get(pageIndex).text.isEmpty())) {
+                            Log.d(TAG, "[FORCE_RENDER] Parsing page " + (pageIndex + 1));
+                            PDFParser.ParsedPage parsed;
+                            synchronized (pdfParser) {
+                                parsed = pdfParser.parsePage(pageIndex + 1, currentSettings);
+                            }
+                            if (parsed != null) {
+                                pages.set(pageIndex, parsed);
+                                Log.d(TAG, "[FORCE_RENDER] Successfully parsed page " + (pageIndex + 1));
+                            }
+                        }
+                    }
+                    
+                    // After all pages are parsed, restore position on main thread
+                    mainHandler.post(() -> {
+                        Log.d(TAG, "[FORCE_RENDER] All pages parsed, now restoring position to: " + targetPosition);
+                        scrollToPosition(targetPosition);
+                    });
+                    
+                } catch (Exception e) {
+                    Log.e(TAG, "[FORCE_RENDER] Error parsing pages: " + e.getMessage(), e);
+                    // Fallback to immediate position restoration
+                    mainHandler.post(() -> scrollToPosition(targetPosition));
+                }
+            });
+        } else {
+            // For EPUB and TXT, pages are pre-rendered, so we can restore immediately
+            Log.d(TAG, "[FORCE_RENDER] EPUB/TXT detected, restoring position immediately");
+            scrollToPosition(targetPosition);
+        }
+    }
+
+    private void scrollToPosition(int position) {
+        Log.d(TAG, "[SCROLL_TO] Attempting to scroll to position: " + position);
+        
+        if (pdfRecyclerView != null) {
+            pdfRecyclerView.post(() -> {
+                LinearLayoutManager layoutManager = (LinearLayoutManager) pdfRecyclerView.getLayoutManager();
+                Log.d(TAG, "[SCROLL_TO] In post() callback:");
+                Log.d(TAG, "[SCROLL_TO] - layoutManager: " + (layoutManager != null ? "not null" : "null"));
+                Log.d(TAG, "[SCROLL_TO] - adapter: " + (pdfRecyclerView.getAdapter() != null ? "not null" : "null"));
+                Log.d(TAG, "[SCROLL_TO] - adapter item count: " + (pdfRecyclerView.getAdapter() != null ? pdfRecyclerView.getAdapter().getItemCount() : "N/A"));
+                
+                if (layoutManager != null) {
+                    Log.d(TAG, "[SCROLL_TO] Calling scrollToPositionWithOffset(" + position + ", 0)");
+                    layoutManager.scrollToPositionWithOffset(position, 0);
+                    Log.d(TAG, "[SCROLL_TO] Successfully scrolled to position: " + position + " for book: " + currentBook.getTitle());
+                    isPositionRestored = true;
+                } else {
+                    Log.e(TAG, "[SCROLL_TO] LayoutManager is null in post() callback");
+                }
+            });
+        } else {
+            Log.e(TAG, "[SCROLL_TO] pdfRecyclerView is null");
         }
     }
 

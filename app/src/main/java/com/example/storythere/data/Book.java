@@ -21,6 +21,7 @@ public class Book {
     private boolean isAlreadyRead;
     private String parsedTextPath;
     private String image; // for server-side field
+    private int readingPosition; // Store reading position for all document types
     
     public Book(String title, String author, String filePath, String fileType) {
         this.title = title;
@@ -31,6 +32,7 @@ public class Book {
         this.currentPage = 0;
         this.isFavourite = false;
         this.isAlreadyRead = false;
+        this.readingPosition = 0;
     }
     
     public Book() {
@@ -73,6 +75,9 @@ public class Book {
 
     public String getParsedTextPath() { return parsedTextPath; }
     public void setParsedTextPath(String parsedTextPath) { this.parsedTextPath = parsedTextPath; }
+
+    public int getReadingPosition() { return readingPosition; }
+    public void setReadingPosition(int readingPosition) { this.readingPosition = readingPosition; }
 
     // For server books, use previewImagePath as the image
     public String getImage() { return image != null ? image : previewImagePath; }

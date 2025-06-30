@@ -159,19 +159,19 @@ public class PDFParser {
                                             
                                             try {
                                                 // First attempt: Try with default settings
-                                                BitmapFactory.Options options = new BitmapFactory.Options();
+                                            BitmapFactory.Options options = new BitmapFactory.Options();
                                                 options.inSampleSize = 1;
                                                 options.inScaled = false;
-                                                options.inDensity = 0;
+                                            options.inDensity = 0;
                                                 options.inTargetDensity = 0;
                                                 options.inMutable = true;
                                                 options.inPreferredConfig = Bitmap.Config.ARGB_8888;
-                                                
+
                                                 // Check bounds first
-                                                options.inJustDecodeBounds = true;
-                                                BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
-                                                
-                                                if (options.outWidth > 0 && options.outHeight > 0) {
+                                            options.inJustDecodeBounds = true;
+                                            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
+
+                                            if (options.outWidth > 0 && options.outHeight > 0) {
                                                     // Check if image is too large and needs downsampling
                                                     int maxDimension = 2048; // Max dimension to prevent memory issues
                                                     int sampleSize = 1;
@@ -186,10 +186,10 @@ public class PDFParser {
                                                     }
                                                     
                                                     // Valid dimensions, try to decode
-                                                    options.inJustDecodeBounds = false;
+                                                options.inJustDecodeBounds = false;
                                                     options.inSampleSize = sampleSize;
                                                     originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
-                                                    
+
                                                     if (originalBitmap == null) {
                                                         errorMessage = "Failed to decode image with default settings";
                                                     }

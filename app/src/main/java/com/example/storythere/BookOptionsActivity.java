@@ -135,10 +135,12 @@ public class BookOptionsActivity extends AppCompatActivity {
         footerButton.setOnClickListener(v -> {
             if (isReadModeSelected) {
                 if ("pdf".equals(fileType)) {
-                    // Open PDF viewer activity
+                    // Open PDF in PDFViewerActivity
                     Intent pdfIntent = new Intent(this, PDFViewerActivity.class);
                     pdfIntent.setData(contentUri);
                     pdfIntent.putExtra("fileType", fileType);
+                    pdfIntent.putExtra("filePath", filePath);
+                    pdfIntent.putExtra("title", title);
                     startActivity(pdfIntent);
                 } else if ("txt".equals(fileType)) {
                     // Cache parsed .txt content to a file and pass file path to PDFViewerActivity
@@ -158,6 +160,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     pdfIntent.setData(Uri.fromFile(cacheFile));
                     pdfIntent.putExtra("isRussian", parsed.isRussian);
                     pdfIntent.putExtra("fileType", fileType);
+                    pdfIntent.putExtra("filePath", filePath);
                     pdfIntent.putExtra("title", title);
                     startActivity(pdfIntent);
                 } else if ("epub".equals(fileType)) {
@@ -165,6 +168,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     Intent epubIntent = new Intent(this, PDFViewerActivity.class);
                     epubIntent.setData(contentUri);
                     epubIntent.putExtra("fileType", fileType);
+                    epubIntent.putExtra("filePath", filePath);
                     epubIntent.putExtra("title", title);
                     startActivity(epubIntent);
                 } else {
@@ -172,6 +176,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     Intent readerIntent = new Intent(this, ReaderActivity.class);
                     readerIntent.setData(contentUri);
                     readerIntent.putExtra("fileType", fileType);
+                    readerIntent.putExtra("filePath", filePath);
                     readerIntent.putExtra("title", title);
                     startActivity(readerIntent);
                 }

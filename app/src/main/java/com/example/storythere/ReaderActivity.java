@@ -47,6 +47,7 @@ public class ReaderActivity extends AppCompatActivity {
                 contentUri = intent.getData();
                 String fileType = intent.getStringExtra("fileType");
                 String title = intent.getStringExtra("title");
+                String filePath = intent.getStringExtra("filePath");
                 
                 Log.d(TAG, "Opening file: " + contentUri.toString() + " of type: " + fileType);
                 
@@ -71,7 +72,7 @@ public class ReaderActivity extends AppCompatActivity {
                 });
 
                 // Load content based on file type
-                loadContent(contentUri, fileType);
+                loadContent(contentUri, fileType, filePath);
             } else {
                 Log.e(TAG, "No file URI provided in intent");
                 Toast.makeText(this, R.string.no_file_selected, Toast.LENGTH_SHORT).show();
@@ -84,7 +85,7 @@ public class ReaderActivity extends AppCompatActivity {
         }
     }
 
-    private void loadContent(Uri uri, String fileType) {
+    private void loadContent(Uri uri, String fileType, String filePath) {
         progressBar.setVisibility(View.VISIBLE);
         
         try {
@@ -96,6 +97,7 @@ public class ReaderActivity extends AppCompatActivity {
                     try {
                         Intent intent = new Intent(this, PDFViewerActivity.class);
                         intent.setData(uri);
+                        intent.putExtra("filePath", filePath);
                         startActivity(intent);
                         finish(); // Close the reader activity since we're using PDFViewerActivity
                     } catch (Exception e) {
@@ -111,6 +113,7 @@ public class ReaderActivity extends AppCompatActivity {
                     pdfIntent.setData(uri);
                     pdfIntent.putExtra("fileType", fileType);
                     pdfIntent.putExtra("title", getIntent().getStringExtra("title"));
+                    pdfIntent.putExtra("filePath", filePath);
                     startActivity(pdfIntent);
                     finish();
                     break;
@@ -145,6 +148,7 @@ public class ReaderActivity extends AppCompatActivity {
                         // Launch PDFViewerActivity with the EPUB URI
                         Intent intent = new Intent(this, PDFViewerActivity.class);
                         intent.setData(uri);
+                        intent.putExtra("filePath", filePath);
                         startActivity(intent);
                         finish(); // Close the reader activity
                     } catch (Exception e) {

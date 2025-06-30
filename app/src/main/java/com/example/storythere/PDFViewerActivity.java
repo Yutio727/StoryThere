@@ -482,30 +482,33 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             Log.d(TAG, "[POSITION_SAVE] - total pages: " + pages.size());
             
             if (firstVisiblePosition != RecyclerView.NO_POSITION) {
-                // Determine which page is more prominently visible
-                // If there are multiple pages visible, check which one is more centered
                 int targetPosition = firstVisiblePosition;
-                
-                if (lastVisiblePosition > firstVisiblePosition) {
-                    // Multiple pages are visible, determine which one is more centered
-                    View firstView = layoutManager.findViewByPosition(firstVisiblePosition);
-                    View lastView = layoutManager.findViewByPosition(lastVisiblePosition);
-                    
-                    if (firstView != null && lastView != null) {
-                        int firstViewTop = firstView.getTop();
-                        int lastViewBottom = lastView.getBottom();
-                        int recyclerViewHeight = pdfRecyclerView.getHeight();
-                        
-                        // If the first view is mostly off-screen (negative top), prefer the next page
-                        if (firstViewTop < -recyclerViewHeight / 3) {
+                View firstView = layoutManager.findViewByPosition(firstVisiblePosition);
+                if (firstView != null) {
+                    int viewHeight = firstView.getHeight();
+                    int offset = Math.abs(firstView.getTop());
+                    float ratio = (float) offset / (float) viewHeight;
+                    Log.d(TAG, "[POSITION_SAVE] - firstView.getTop(): " + firstView.getTop() + ", viewHeight: " + viewHeight + ", offset: " + offset + ", ratio: " + ratio);
+                    if (documentType == PDFPageAdapter.DocumentType.TXT) {
+                        // For TXT, use 1/2 page height as threshold
+                        if (ratio > 0.5f && firstVisiblePosition + 1 < pages.size()) {
                             targetPosition = firstVisiblePosition + 1;
-                            Log.d(TAG, "[POSITION_SAVE] First page mostly off-screen, targeting next page: " + targetPosition);
+                            Log.d(TAG, "[POSITION_SAVE][TXT] User scrolled more than 1/4 into next page, targeting: " + targetPosition);
                         } else {
-                            Log.d(TAG, "[POSITION_SAVE] First page prominently visible, targeting: " + targetPosition);
+                            Log.d(TAG, "[POSITION_SAVE][TXT] User not far enough into next page, targeting: " + targetPosition);
+                        }
+                    } else {
+                        // For PDF/EPUB, use half-visible logic
+                        int visibleHeight = Math.min(firstView.getBottom(), pdfRecyclerView.getHeight()) - Math.max(firstView.getTop(), 0);
+                        float visibleRatio = (float) visibleHeight / (float) viewHeight;
+                        if (visibleRatio < 0.5f && firstVisiblePosition + 1 < pages.size()) {
+                            targetPosition = firstVisiblePosition + 1;
+                            Log.d(TAG, "[POSITION_SAVE] Less than half of first page visible, targeting next page: " + targetPosition);
+                        } else {
+                            Log.d(TAG, "[POSITION_SAVE] More than half of first page visible, targeting: " + targetPosition);
                         }
                     }
                 }
-                
                 int oldPosition = currentBook.getReadingPosition();
                 currentBook.setReadingPosition(targetPosition);
                 currentBook.setLastOpened(new java.util.Date());

@@ -19,6 +19,8 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.HorizontalScrollView;
 import android.widget.ScrollView;
+import android.widget.TextView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -33,6 +35,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import com.example.storythere.data.Book;
 import com.example.storythere.data.BookRepository;
+import android.animation.ObjectAnimator;
 
 public class PDFViewerActivity extends AppCompatActivity implements TextSettingsDialog.TextSettingsListener {
     private static final String TAG = "PDFViewerActivity";
@@ -65,6 +68,23 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     private Handler positionSaveHandler = new Handler(Looper.getMainLooper());
     private Runnable positionSaveRunnable;
     private boolean isPositionRestored = false;
+    
+    // Scroll progress UI elements
+    private View scrollProgressContainer;
+    private TextView pageNumberText;
+    private ProgressBar scrollProgressBar;
+    private Handler scrollProgressHandler = new Handler(Looper.getMainLooper());
+    private Runnable hideProgressRunnable;
+
+    // Only show progress bar if user interacts near the bottom
+    private boolean showProgressOnScroll = false;
+
+    // For smooth progress animation
+    private int lastProgressValue = 0;
+
+    // Animation duration for progress bar
+    private static final int PROGRESS_ANIMATION_DURATION = 250;
+    private static final int PROGRESS_BAR_ANIMATION_DURATION = 200;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,7 +117,34 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         pdfRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         pdfRecyclerView.setItemViewCacheSize(10);
         
-        // Set up scroll listener for position tracking
+        // Initialize scroll progress UI elements
+        scrollProgressContainer = findViewById(R.id.scrollProgressContainer);
+        pageNumberText = findViewById(R.id.pageNumberText);
+        scrollProgressBar = findViewById(R.id.scrollProgressBar);
+        
+        // Hide progress bar if user taps it again
+        scrollProgressContainer.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (scrollProgressContainer.getVisibility() == View.VISIBLE) {
+                    showProgressOnScroll = false;
+                    animateHideProgressBar();
+                }
+            }
+        });
+        
+        // Initialize hide progress runnable
+        hideProgressRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (scrollProgressContainer != null) {
+                    animateHideProgressBar();
+                }
+                showProgressOnScroll = false;
+            }
+        };
+        
+        // Set up scroll listener for position tracking and progress display
         pdfRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
@@ -106,11 +153,22 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     // Save position after scrolling stops
                     Log.d(TAG, "[SCROLL] Scrolling stopped, scheduling position save in " + POSITION_SAVE_DELAY + "ms");
                     positionSaveHandler.postDelayed(positionSaveRunnable, POSITION_SAVE_DELAY);
+                    
+                    // Hide progress indicator after scrolling stops
+                    scrollProgressHandler.postDelayed(hideProgressRunnable, 1500);
                 } else {
                     // Cancel pending save if user starts scrolling again
                     Log.d(TAG, "[SCROLL] Scrolling started, canceling pending position save");
                     positionSaveHandler.removeCallbacks(positionSaveRunnable);
+                    
+                    // Cancel pending hide if user starts scrolling again
+                    scrollProgressHandler.removeCallbacks(hideProgressRunnable);
                 }
+            }
+            
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                updateScrollProgress();
             }
         });
         
@@ -192,12 +250,70 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             Toast.makeText(this, R.string.no_content_provided, Toast.LENGTH_SHORT).show();
             finish();
         }
+
+        // Set up touch listener to detect taps/swipes near the bottom
+        pdfRecyclerView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_MOVE) {
+                    int height = v.getHeight();
+                    float y = event.getY();
+                    if (y > height * 0.92f) { // bottom 8% of the screen
+                        showProgressOnScroll = true;
+                        updateScrollProgress();
+                    }
+                }
+                return false; // Let RecyclerView handle the event as usual
+            }
+        });
+    }
+    
+    /**
+     * Updates the scroll progress indicator with current page information
+     */
+    private void updateScrollProgress() {
+        if (!showProgressOnScroll) {
+            if (scrollProgressContainer != null) animateHideProgressBar();
+            return;
+        }
+        if (scrollProgressContainer == null || pageNumberText == null || scrollProgressBar == null || pages == null || pages.isEmpty()) {
+            return;
+        }
+        LinearLayoutManager layoutManager = (LinearLayoutManager) pdfRecyclerView.getLayoutManager();
+        if (layoutManager == null) {
+            return;
+        }
+        int firstVisiblePosition = layoutManager.findFirstVisibleItemPosition();
+        if (firstVisiblePosition == RecyclerView.NO_POSITION) {
+            return;
+        }
+        int totalPages = pages.size();
+        int currentPage = firstVisiblePosition + 1; // Convert to 1-based page numbering
+        int progressPercentage = (int) ((float) currentPage / totalPages * 100);
+        runOnUiThread(() -> {
+            animateShowProgressBar();
+            String pageText = String.format("Page %d of %d", currentPage, totalPages);
+            pageNumberText.setText(pageText);
+            // Animate progress bar smoothly
+            if (progressPercentage != lastProgressValue) {
+                ObjectAnimator animator = ObjectAnimator.ofInt(scrollProgressBar, "progress", lastProgressValue, progressPercentage);
+                animator.setDuration(PROGRESS_BAR_ANIMATION_DURATION);
+                animator.start();
+                lastProgressValue = progressPercentage;
+            }
+            scrollProgressHandler.removeCallbacks(hideProgressRunnable);
+        });
     }
 
     @Override
     protected void onDestroy() {
         // Save position before destroying
         saveCurrentPosition();
+        
+        // Clean up handlers
+        if (scrollProgressHandler != null) {
+            scrollProgressHandler.removeCallbacks(hideProgressRunnable);
+        }
         
         if (pdfParser != null) {
             pdfParser.close();
@@ -717,6 +833,36 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 }
                 pdfPageAdapter.notifyItemChanged(i);
             }
+        }
+    }
+
+    /**
+     * Animate the progress bar appearing from the bottom
+     */
+    private void animateShowProgressBar() {
+        if (scrollProgressContainer.getVisibility() != View.VISIBLE) {
+            scrollProgressContainer.setVisibility(View.VISIBLE);
+            scrollProgressContainer.setAlpha(0f);
+            scrollProgressContainer.setTranslationY(scrollProgressContainer.getHeight());
+            scrollProgressContainer.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(PROGRESS_ANIMATION_DURATION)
+                    .start();
+        }
+    }
+
+    /**
+     * Animate the progress bar disappearing to the bottom
+     */
+    private void animateHideProgressBar() {
+        if (scrollProgressContainer.getVisibility() == View.VISIBLE) {
+            scrollProgressContainer.animate()
+                    .alpha(0f)
+                    .translationY(scrollProgressContainer.getHeight())
+                    .setDuration(PROGRESS_ANIMATION_DURATION)
+                    .withEndAction(() -> scrollProgressContainer.setVisibility(View.GONE))
+                    .start();
         }
     }
 } 

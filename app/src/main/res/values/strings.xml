@@ -155,4 +155,10 @@
     <string name="generate_annotation">Generate Annotation</string>
     <string name="generating_annotation">Generating annotation...</string>
     <string name="generated_annotation">Generated Annotation</string>
+    <string name="generate_book_cover">Generate Book Cover</string>
+    <string name="pick_image">Pick Image</string>
+    <string name="generating_book_cover">Generating book cover...</string>
+    <string name="book_cover_generated">Book cover generated successfully</string>
+    <string name="failed_to_generate_book_cover">Failed to generate book cover</string>
+    <string name="book_cover_prompt">Book cover for: %1$s</string>
 </resources>

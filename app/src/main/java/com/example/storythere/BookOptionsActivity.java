@@ -53,6 +53,11 @@ import android.net.Network;
 import android.content.Context;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class BookOptionsActivity extends AppCompatActivity {
 
@@ -81,6 +86,7 @@ public class BookOptionsActivity extends AppCompatActivity {
     private boolean isReadModeSelected = true; // Track the selected mode, default to read
     private Animation scaleAnimation;
     private GigaChatService gigaChatService;
+    private HuggingFaceService huggingFaceService;
     private ProgressDialog progressDialog;
     private ConnectivityManager.NetworkCallback networkCallback;
 
@@ -180,8 +186,9 @@ public class BookOptionsActivity extends AppCompatActivity {
         updateButtonStates(isReadModeSelected);
         setupButtonAnimations();
 
-        // Initialize GigaChat service
+        // Initialize services
         gigaChatService = new GigaChatService();
+        huggingFaceService = new HuggingFaceService();
         progressDialog = new ProgressDialog(this);
         progressDialog.setMessage(getString(R.string.generating_annotation));
         progressDialog.setCancelable(false);
@@ -468,8 +475,8 @@ public class BookOptionsActivity extends AppCompatActivity {
                 }
         );
 
-        // Setup book cover click listenerAdd commentMore actions
-        bookCoverImage.setOnClickListener(v -> openImagePicker());
+        // Setup book cover click listener
+        bookCoverImage.setOnClickListener(v -> showCoverOptionsDialog());
 
         // Initial update of book info text based on default mode
         updateBookReadingTimeText();
@@ -501,6 +508,28 @@ public class BookOptionsActivity extends AppCompatActivity {
             isReadModeSelected = false;
             updateButtonStates(false);
         });
+    }
+
+    private void showCoverOptionsDialog() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_cover_options, null);
+        builder.setView(dialogView);
+        android.app.AlertDialog dialog = builder.create();
+        dialog.setCanceledOnTouchOutside(true);
+
+        MaterialButton btnDialogGenerateCover = dialogView.findViewById(R.id.btnDialogGenerateCover);
+        MaterialButton btnDialogPickImage = dialogView.findViewById(R.id.btnDialogPickImage);
+
+        btnDialogGenerateCover.setOnClickListener(v -> {
+            dialog.dismiss();
+            performBookCoverGeneration();
+        });
+        btnDialogPickImage.setOnClickListener(v -> {
+            dialog.dismiss();
+            openImagePicker();
+        });
+
+        dialog.show();
     }
 
     private void openImagePicker() {
@@ -800,6 +829,69 @@ public class BookOptionsActivity extends AppCompatActivity {
                 });
             }
         }).start();
+    }
+
+    private void performBookCoverGeneration() {
+        if (title == null || title.trim().isEmpty()) {
+            Toast.makeText(this, "Book title is required to generate cover", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Show progress dialog
+        progressDialog.setMessage(getString(R.string.generating_book_cover));
+        progressDialog.show();
+
+        // Get annotation from current book if available
+        String annotation = null;
+        if (currentBook != null) {
+            annotation = currentBook.getAnnotation();
+        }
+        
+        // Generate book cover using Hugging Face API
+        huggingFaceService.generateBookCover(title, annotation, new HuggingFaceService.BookCoverCallback() {
+            @Override
+            public void onSuccess(Bitmap coverImage) {
+                runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    saveGeneratedBookCover(coverImage);
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    Toast.makeText(BookOptionsActivity.this, 
+                        getString(R.string.failed_to_generate_book_cover) + ": " + error, 
+                        Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    private void saveGeneratedBookCover(Bitmap coverImage) {
+        try {
+            // Create a file in the app's private directory
+            File coverFile = new File(getFilesDir(), "generated_cover_" + System.currentTimeMillis() + ".jpg");
+            
+            // Compress and save the bitmap
+            FileOutputStream fos = new FileOutputStream(coverFile);
+            coverImage.compress(Bitmap.CompressFormat.JPEG, 90, fos);
+            fos.close();
+
+            // Convert file to URI
+            Uri coverUri = Uri.fromFile(coverFile);
+            
+            // Save the cover to the book
+            saveBookCover(coverUri);
+            
+            // Show success message
+            Toast.makeText(this, getString(R.string.book_cover_generated), Toast.LENGTH_SHORT).show();
+            
+        } catch (IOException e) {
+            Log.e("BookOptionsActivity", "Error saving generated cover", e);
+            Toast.makeText(this, "Error saving cover: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private String extractTextContent() {

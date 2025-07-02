@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/rounded_background"
+    android:gravity="center_horizontal">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnDialogGenerateCover"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/generate_book_cover"
+        android:textColor="@color/progress_blue"
+        app:cornerRadius="12dp"
+        app:icon="@drawable/ic_book_placeholder"
+        app:iconPadding="8dp"
+        app:iconSize="20dp"
+        app:iconTint="@color/progress_blue"
+        app:strokeColor="@color/progress_blue"
+        android:fontFamily="@font/montserrat"
+        android:textAllCaps="false"
+        android:stateListAnimator="@null"
+        android:layout_marginBottom="12dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnDialogPickImage"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/pick_image"
+        android:textColor="@color/progress_blue"
+        app:cornerRadius="12dp"
+        app:icon="@drawable/ic_book_placeholder"
+        app:iconPadding="8dp"
+        app:iconSize="20dp"
+        app:iconTint="@color/progress_blue"
+        app:strokeColor="@color/progress_blue"
+        android:fontFamily="@font/montserrat"
+        android:textAllCaps="false"
+        android:stateListAnimator="@null" />
+
+</LinearLayout> 

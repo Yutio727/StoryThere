@@ -155,4 +155,5 @@
     <string name="generate_annotation">Generate Annotation</string>
     <string name="generating_annotation">Generating annotation...</string>
     <string name="generated_annotation">Generated Annotation</string>
+    <string name="book_already_exists">Book already exists in your library</string>
 </resources>

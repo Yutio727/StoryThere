@@ -12,7 +12,8 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="?android:attr/colorBackground"
+        android:background="@color/progress_blue"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
         android:elevation="4dp"
         app:layout_constraintTop_toTopOf="parent"
         />
@@ -185,6 +186,31 @@
                         android:textAllCaps="false"
                         android:stateListAnimator="@null" />
                 </LinearLayout>
+
+                <ProgressBar
+                    android:id="@+id/bookAnnotationProgressBar"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="8dp"
+                    android:indeterminate="false"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressTint="@color/progress_blue"
+                    android:backgroundTint="@color/background_blue"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/bookAnnotationProgressStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="14sp"
+                    android:textColor="@color/text_primary_light"
+                    android:gravity="center_horizontal"
+                    android:fontFamily="@font/montserrat"
+                    android:visibility="gone" />
 
                 <TextView
                     android:id="@+id/bookAnnotationText"

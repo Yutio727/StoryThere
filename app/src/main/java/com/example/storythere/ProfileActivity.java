@@ -56,7 +56,6 @@ public class ProfileActivity extends AppCompatActivity {
     
     private static final String PREFS_NAME = "ProfilePrefs";
     private static final String PREF_NOTIFICATIONS_ENABLED = "notifications_enabled";
-    private static final String PREF_LANGUAGE = "selected_language";
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,8 +88,8 @@ public class ProfileActivity extends AppCompatActivity {
     }
     
     private void applySavedTheme() {
-        // Apply saved language before theme
-        String savedLang = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(PREF_LANGUAGE, null);
+        // Apply saved language and theme from centralized preferences
+        String savedLang = StoryThereApplication.getSavedLanguage(getApplication());
         if (savedLang != null) {
             setLocale(savedLang);
         }
@@ -234,7 +233,7 @@ public class ProfileActivity extends AppCompatActivity {
     private void animateThemeChangeAndApply() {
         if (themeChangeOverlay == null || isThemeAnimating) return;
         isThemeAnimating = true;
-        int currentMode = AppCompatDelegate.getDefaultNightMode();
+        int currentMode = StoryThereApplication.getSavedThemeMode(getApplication());
         int newMode = (currentMode == AppCompatDelegate.MODE_NIGHT_YES) ? AppCompatDelegate.MODE_NIGHT_NO : AppCompatDelegate.MODE_NIGHT_YES;
         boolean toLight = (newMode == AppCompatDelegate.MODE_NIGHT_NO);
         int targetColor = toLight ? 0xFFFFFFFF : 0xFF1A1A1A;
@@ -288,10 +287,10 @@ public class ProfileActivity extends AppCompatActivity {
             themeChangeOverlay.setFocusable(true);
         }
         // Prepare old and new texts
-        String currentLang = getCurrentLanguage();
+        String currentLang = StoryThereApplication.getSavedLanguage(getApplication());
         String nextLang = "en".equals(currentLang) ? "ru" : "en";
-        // Save selected language
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString(PREF_LANGUAGE, nextLang).apply();
+        // Save selected language to centralized storage
+        StoryThereApplication.saveLanguage(getApplication(), nextLang);
         Resources res = getResources();
         Locale oldLocale = res.getConfiguration().locale;
         Locale newLocale = new Locale(nextLang);
@@ -420,7 +419,7 @@ public class ProfileActivity extends AppCompatActivity {
     }
     
     private void updateThemeDisplay() {
-        int currentMode = AppCompatDelegate.getDefaultNightMode();
+        int currentMode = StoryThereApplication.getSavedThemeMode(getApplication());
         String themeText;
         
         if (currentMode == AppCompatDelegate.MODE_NIGHT_YES) {
@@ -439,7 +438,7 @@ public class ProfileActivity extends AppCompatActivity {
     }
     
     private void updateLanguageDisplay() {
-        String currentLang = getCurrentLanguage();
+        String currentLang = StoryThereApplication.getSavedLanguage(getApplication());
         if ("ru".equals(currentLang)) {
             currentLanguage.setText(getString(R.string.russian));
         } else {
@@ -448,7 +447,7 @@ public class ProfileActivity extends AppCompatActivity {
     }
     
     private String getCurrentLanguage() {
-        return getResources().getConfiguration().locale.getLanguage();
+        return StoryThereApplication.getSavedLanguage(getApplication());
     }
     
     private void setLocale(String languageCode) {
@@ -569,9 +568,17 @@ public class ProfileActivity extends AppCompatActivity {
     }
     
     private boolean isDarkTheme() {
-        return (getResources().getConfiguration().uiMode & 
-                android.content.res.Configuration.UI_MODE_NIGHT_MASK) == 
-                android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        int currentMode = StoryThereApplication.getSavedThemeMode(getApplication());
+        if (currentMode == AppCompatDelegate.MODE_NIGHT_YES) {
+            return true;
+        } else if (currentMode == AppCompatDelegate.MODE_NIGHT_NO) {
+            return false;
+        } else {
+            // Follow system
+            return (getResources().getConfiguration().uiMode & 
+                    android.content.res.Configuration.UI_MODE_NIGHT_MASK) == 
+                    android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        }
     }
     
     private void applyThemeAdaptiveBackgrounds() {

@@ -41,6 +41,9 @@ public class RecommendBookAdapter extends RecyclerView.Adapter<RecommendBookAdap
         Glide.with(holder.itemView.getContext())
                 .load(book.image)
                 .placeholder(R.drawable.ic_book_placeholder)
+                .error(R.drawable.ic_book_placeholder)
+                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
+                .skipMemoryCache(false)
                 .into(holder.cover);
         holder.itemView.setOnClickListener(v -> listener.onBookClick(book));
     }

@@ -32,4 +32,8 @@ public class BookListViewModel extends AndroidViewModel {
     public void delete(Book book) {
         repository.delete(book);
     }
+    
+    public LiveData<Book> getBookByPath(String filePath) {
+        return repository.getBookByPath(filePath);
+    }
 } 

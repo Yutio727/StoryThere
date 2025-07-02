@@ -141,6 +141,9 @@ public class AudioReaderActivity extends AppCompatActivity {
                 Glide.with(this)
                     .load(previewImagePath)
                     .placeholder(R.drawable.ic_book_placeholder)
+                    .error(R.drawable.ic_book_placeholder)
+                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
+                    .skipMemoryCache(false)
                     .into(bookCoverImage);
             }
             

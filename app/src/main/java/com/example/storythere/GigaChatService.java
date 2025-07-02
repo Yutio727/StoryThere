@@ -162,7 +162,7 @@ public class GigaChatService {
     
     private String truncateText(String text) {
         // Reduce to ~1000 tokens (approximately 4000 characters for Russian text)
-        int maxLength = 4000; // Reduced from 15K to 4K characters
+        int maxLength = 500; // Reduced from 15K to 4K characters
         
         if (text.length() <= maxLength) {
             return text;

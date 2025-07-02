@@ -161,4 +161,5 @@
     <string name="book_cover_generated">Book cover generated successfully</string>
     <string name="failed_to_generate_book_cover">Failed to generate book cover</string>
     <string name="book_cover_prompt">Book cover for: %1$s</string>
+    <string name="book_already_exists">Book already exists in your library</string>
 </resources>

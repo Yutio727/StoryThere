@@ -53,6 +53,8 @@ import android.net.Network;
 import android.content.Context;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.ProgressBar;
+import android.widget.ProgressBar;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import java.io.File;
@@ -89,6 +91,8 @@ public class BookOptionsActivity extends AppCompatActivity {
     private HuggingFaceService huggingFaceService;
     private ProgressDialog progressDialog;
     private ConnectivityManager.NetworkCallback networkCallback;
+    private ProgressBar bookAnnotationProgressBar;
+    private TextView bookAnnotationProgressStatus;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -131,6 +135,8 @@ public class BookOptionsActivity extends AppCompatActivity {
         stickyReadingModeButtons = findViewById(R.id.stickyReadingModeButtons);
         scrollView = findViewById(R.id.scrollView);
         scaleAnimation = AnimationUtils.loadAnimation(this, R.anim.button_scale);
+        bookAnnotationProgressBar = findViewById(R.id.bookAnnotationProgressBar);
+        bookAnnotationProgressStatus = findViewById(R.id.bookAnnotationProgressStatus);
 
         // Display annotation from intent if available (after views are initialized)
         if (intent != null) {
@@ -173,6 +179,9 @@ public class BookOptionsActivity extends AppCompatActivity {
                             Glide.with(BookOptionsActivity.this)
                                     .load(book.getPreviewImagePath())
                                     .placeholder(R.drawable.ic_book_placeholder)
+                                    .error(R.drawable.ic_book_placeholder)
+                                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
+                                    .skipMemoryCache(false)
                                     .into(bookCoverImage);
                         }
                         // Update reading time text with initial stateAdd commentMore actions
@@ -196,7 +205,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         // Set up summarize button click listener
         btnSummarize.setOnClickListener(v -> {
             v.startAnimation(scaleAnimation);
-            performTextSummarization();
+            startAnnotationGeneration();
         });
 
         // Set up footer button click listener
@@ -582,8 +591,10 @@ public class BookOptionsActivity extends AppCompatActivity {
                 // Force reload the image
                 Glide.with(this)
                     .load(newPath)
-                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
-                    .skipMemoryCache(true)
+                    .placeholder(R.drawable.ic_book_placeholder)
+                    .error(R.drawable.ic_book_placeholder)
+                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
+                    .skipMemoryCache(false)
                     .into(bookCoverImage);
                 
                 Toast.makeText(this, "Cover saved", Toast.LENGTH_SHORT).show();
@@ -780,51 +791,123 @@ public class BookOptionsActivity extends AppCompatActivity {
         });
     }
 
-    private void performTextSummarization() {
-        if (contentUri == null) {
-            Toast.makeText(this, getString(R.string.no_book_content_available), Toast.LENGTH_SHORT).show();
-            return;
-        }
+    private void startAnnotationGeneration() {
+        // Show progress bar and status
+        runOnUiThread(() -> {
+            bookAnnotationProgressBar.setVisibility(View.VISIBLE);
+            bookAnnotationProgressStatus.setVisibility(View.VISIBLE);
+            bookAnnotationProgressBar.setProgress(0);
+            bookAnnotationProgressStatus.setText("Receiving book data...");
+            btnSummarize.setEnabled(false);
+        });
 
-        progressDialog.show();
-
-        // Extract text content based on file type
         new Thread(() -> {
             try {
+                // 1. Receiving book data
+                Thread.sleep(400); // Simulate delay
+                runOnUiThread(() -> {
+                    bookAnnotationProgressBar.setProgress(15);
+                    bookAnnotationProgressStatus.setText("Receiving book data...");
+                });
+
+                // 2. Preparing request for AI
                 String textContent = extractTextContent();
-                
+                Thread.sleep(400); // Simulate delay
+                runOnUiThread(() -> {
+                    bookAnnotationProgressBar.setProgress(35);
+                    bookAnnotationProgressStatus.setText("Preparing request for AI...");
+                });
+
                 if (textContent == null || textContent.trim().isEmpty()) {
                     runOnUiThread(() -> {
-                        progressDialog.dismiss();
+                        bookAnnotationProgressBar.setVisibility(View.GONE);
+                        bookAnnotationProgressStatus.setVisibility(View.GONE);
+                        btnSummarize.setEnabled(true);
                         Toast.makeText(this, getString(R.string.failed_to_extract_text_content), Toast.LENGTH_SHORT).show();
                     });
                     return;
                 }
 
-                // Call GigaChat API for summarization
+                // 3. Connecting to neural network
+                runOnUiThread(() -> {
+                    bookAnnotationProgressBar.setProgress(60);
+                    bookAnnotationProgressStatus.setText("Connecting to neural network...");
+                });
+
+                final String[] summaryHolder = new String[1];
+                final boolean[] errorOccurred = {false};
+                final Object lock = new Object();
+
                 gigaChatService.summarizeText(textContent, new GigaChatService.SummarizationCallback() {
                     @Override
                     public void onSuccess(String summary) {
-                        runOnUiThread(() -> {
-                            progressDialog.dismiss();
-                            showSummaryDialog(summary);
-                        });
+                        summaryHolder[0] = summary;
+                        synchronized (lock) { lock.notify(); }
                     }
 
                     @Override
                     public void onError(String error) {
-                        runOnUiThread(() -> {
-                            progressDialog.dismiss();
-                            Toast.makeText(BookOptionsActivity.this, 
-                                getString(R.string.failed_to_generate_summary) + ": " + error, 
-                                Toast.LENGTH_LONG).show();
-                        });
+                        errorOccurred[0] = true;
+                        summaryHolder[0] = error;
+                        synchronized (lock) { lock.notify(); }
                     }
                 });
 
+                // Wait for callback
+                synchronized (lock) { lock.wait(); }
+
+                if (errorOccurred[0]) {
+                    runOnUiThread(() -> {
+                        bookAnnotationProgressBar.setVisibility(View.GONE);
+                        bookAnnotationProgressStatus.setVisibility(View.GONE);
+                        btnSummarize.setEnabled(true);
+                        Toast.makeText(this, getString(R.string.failed_to_generate_summary) + ": " + summaryHolder[0], Toast.LENGTH_LONG).show();
+                    });
+                    return;
+                }
+
+                // 4. Receiving annotation
+                runOnUiThread(() -> {
+                    bookAnnotationProgressBar.setProgress(90);
+                    bookAnnotationProgressStatus.setText("Receiving annotation...");
+                });
+                Thread.sleep(600); // Simulate receiving
+
+                // Animate to 100% and show annotation
+                runOnUiThread(() -> {
+                    bookAnnotationProgressBar.setProgress(100);
+                    bookAnnotationProgressStatus.setText("Done!");
+                });
+                Thread.sleep(1000);
+
+                runOnUiThread(() -> {
+                    // Hide progress bar and status
+                    bookAnnotationProgressBar.animate().alpha(0f).setDuration(400).withEndAction(() -> {
+                        bookAnnotationProgressBar.setVisibility(View.GONE);
+                        bookAnnotationProgressBar.setAlpha(1f);
+                    }).start();
+                    bookAnnotationProgressStatus.animate().alpha(0f).setDuration(400).withEndAction(() -> {
+                        bookAnnotationProgressStatus.setVisibility(View.GONE);
+                        bookAnnotationProgressStatus.setAlpha(1f);
+                    }).start();
+
+                    // Animate annotation text in
+                    bookAnnotationText.setAlpha(0f);
+                    bookAnnotationText.setText(summaryHolder[0]);
+                    bookAnnotationText.animate().alpha(1f).setDuration(500).start();
+
+                    // Save annotation to DB, hide button
+                    if (currentBook != null) {
+                        currentBook.setAnnotation(summaryHolder[0]);
+                        bookRepository.update(currentBook);
+                        btnSummarize.setVisibility(View.GONE);
+                    }
+                });
             } catch (Exception e) {
                 runOnUiThread(() -> {
-                    progressDialog.dismiss();
+                    bookAnnotationProgressBar.setVisibility(View.GONE);
+                    bookAnnotationProgressStatus.setVisibility(View.GONE);
+                    btnSummarize.setEnabled(true);
                     Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
             }
@@ -846,7 +929,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         if (currentBook != null) {
             annotation = currentBook.getAnnotation();
         }
-        
+
         // Generate book cover using Hugging Face API
         huggingFaceService.generateBookCover(title, annotation, new HuggingFaceService.BookCoverCallback() {
             @Override
@@ -861,8 +944,8 @@ public class BookOptionsActivity extends AppCompatActivity {
             public void onError(String error) {
                 runOnUiThread(() -> {
                     progressDialog.dismiss();
-                    Toast.makeText(BookOptionsActivity.this, 
-                        getString(R.string.failed_to_generate_book_cover) + ": " + error, 
+                    Toast.makeText(BookOptionsActivity.this,
+                        getString(R.string.failed_to_generate_book_cover) + ": " + error,
                         Toast.LENGTH_LONG).show();
                 });
             }
@@ -873,7 +956,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         try {
             // Create a file in the app's private directory
             File coverFile = new File(getFilesDir(), "generated_cover_" + System.currentTimeMillis() + ".jpg");
-            
+
             // Compress and save the bitmap
             FileOutputStream fos = new FileOutputStream(coverFile);
             coverImage.compress(Bitmap.CompressFormat.JPEG, 90, fos);
@@ -881,13 +964,13 @@ public class BookOptionsActivity extends AppCompatActivity {
 
             // Convert file to URI
             Uri coverUri = Uri.fromFile(coverFile);
-            
+
             // Save the cover to the book
             saveBookCover(coverUri);
-            
+
             // Show success message
             Toast.makeText(this, getString(R.string.book_cover_generated), Toast.LENGTH_SHORT).show();
-            
+
         } catch (IOException e) {
             Log.e("BookOptionsActivity", "Error saving generated cover", e);
             Toast.makeText(this, "Error saving cover: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -939,32 +1022,6 @@ public class BookOptionsActivity extends AppCompatActivity {
         return null;
     }
 
-    private void showSummaryDialog(String summary) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(getString(R.string.generated_annotation))
-               .setMessage(summary)
-               .setPositiveButton("OK", (dialog, which) -> {
-                   // Update the annotation display with the generated summary
-                   updateAnnotationDisplay(summary);
-                   // Save the summary to the database as annotation
-                   if (currentBook != null) {
-                       currentBook.setAnnotation(summary);
-                       bookRepository.update(currentBook);
-                       // Hide the button permanently - user can only generate once
-                       btnSummarize.setVisibility(View.GONE);
-                   }
-               })
-               .setNegativeButton(getString(R.string.copy), (dialog, which) -> {
-                   ClipboardManager clipboard = 
-                       (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                   ClipData clip = 
-                       ClipData.newPlainText(getString(R.string.generated_annotation), summary);
-                   clipboard.setPrimaryClip(clip);
-                   Toast.makeText(this, getString(R.string.summary_copied_to_clipboard), Toast.LENGTH_SHORT).show();
-               })
-               .show();
-    }
-    
     @Override
     protected void onDestroy() {
         super.onDestroy();

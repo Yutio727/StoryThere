@@ -146,4 +146,5 @@
     <string name="generate_annotation">Сгенерировать описание!</string>
     <string name="generating_annotation">Генерируем описание...</string>
     <string name="generated_annotation">Сгенерированное описание</string>
+    <string name="book_already_exists">Книга уже есть в вашей библиотеке!</string>
 </resources>

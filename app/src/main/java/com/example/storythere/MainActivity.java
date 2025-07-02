@@ -123,6 +123,8 @@ public class MainActivity extends AppCompatActivity {
         
         viewModel = new ViewModelProvider(this).get(BookListViewModel.class);
         viewModel.getAllBooks().observe(this, books -> {
+            Log.d("MainActivity", "Book list updated - Total books: " + books.size());
+            
             // Check permissions for each book and remove invalid ones
             List<Book> validBooks = new ArrayList<>();
             for (Book book : books) {
@@ -174,6 +176,10 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             allBooks = validBooks;
+            Log.d("MainActivity", "Valid books after filtering: " + validBooks.size() + " (sorted by lastOpened DESC)");
+            if (!validBooks.isEmpty()) {
+                Log.d("MainActivity", "First book in list: " + validBooks.get(0).getTitle() + " (lastOpened: " + validBooks.get(0).getLastOpened() + ")");
+            }
             filterBooksByTab(currentTab);
         });
         
@@ -302,19 +308,54 @@ public class MainActivity extends AppCompatActivity {
     private void importBook(Uri uri) {
         String fileName = getFileName(uri);
         String fileType = getFileType(fileName);
+        String filePath = uri.toString();
 
-        // Create a new Book object with minimal info
-        Book book = new Book(
-            fileName,
-            getString(R.string.unknown_author),
-            uri.toString(),
-            fileType
-        );
-        // Do not set annotation or parse anything
+        Log.d("MainActivity", "Checking for existing book with path: " + filePath);
 
-        // Save the book to the database
-        viewModel.insert(book);
-        Toast.makeText(this, getString(R.string.book_imported) + fileName, Toast.LENGTH_SHORT).show();
+        // Check if book already exists in the current list of books
+        Book existingBook = null;
+        for (Book book : allBooks) {
+            if (filePath.equals(book.getFilePath())) {
+                existingBook = book;
+                break;
+            }
+        }
+        
+        if (existingBook != null) {
+            // Book already exists, open it instead of creating duplicate
+            Log.d("MainActivity", "Book already exists: " + fileName + " (ID: " + existingBook.getId() + "), opening existing book");
+            Toast.makeText(this, getString(R.string.book_already_exists), Toast.LENGTH_SHORT).show();
+            openExistingBook(existingBook);
+        } else {
+            // Book doesn't exist, create new one
+            Log.d("MainActivity", "Adding new book: " + fileName + " with path: " + filePath);
+            Book book = new Book(
+                fileName,
+                getString(R.string.unknown_author),
+                filePath,
+                fileType
+            );
+            // Do not set annotation or parse anything
+
+            // Save the book to the database
+            viewModel.insert(book);
+            Toast.makeText(this, getString(R.string.book_imported) + fileName, Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    private void openExistingBook(Book book) {
+        // Update the lastOpened timestamp to move this book to the top of the list
+        book.setLastOpened(new java.util.Date());
+        viewModel.update(book);
+        Log.d("MainActivity", "Updated lastOpened for existing book: " + book.getTitle() + " (ID: " + book.getId() + ")");
+        
+        Intent intent = new Intent(this, BookOptionsActivity.class);
+        intent.setData(Uri.parse(book.getFilePath()));
+        intent.putExtra("fileType", book.getFileType());
+        intent.putExtra("title", book.getTitle());
+        intent.putExtra("annotation", book.getAnnotation());
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(intent);
     }
     
     @SuppressLint("Range")
@@ -343,6 +384,11 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void onBookClick(Book book) {
+        // Update the lastOpened timestamp to move this book to the top of the list
+        book.setLastOpened(new java.util.Date());
+        viewModel.update(book);
+        Log.d("MainActivity", "Updated lastOpened for book: " + book.getTitle() + " (ID: " + book.getId() + ")");
+        
         Intent intent = new Intent(this, BookOptionsActivity.class);
         intent.setData(Uri.parse(book.getFilePath()));
         intent.putExtra("fileType", book.getFileType());

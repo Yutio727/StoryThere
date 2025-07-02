@@ -584,6 +584,24 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void openBookOptionsActivity(Uri fileUri, String fileType, String title, String annotation) {
+        // Update the lastOpened timestamp if this book exists in the database
+        String filePath = fileUri.toString();
+        androidx.lifecycle.Observer<Book> observer = new androidx.lifecycle.Observer<Book>() {
+            @Override
+            public void onChanged(Book existingBook) {
+                // Remove this observer to prevent memory leaks
+                viewModel.getBookByPath(filePath).removeObserver(this);
+                
+                if (existingBook != null) {
+                    // Book exists in database, update lastOpened timestamp
+                    existingBook.setLastOpened(new java.util.Date());
+                    viewModel.update(existingBook);
+                    Log.d("HomeActivity", "Updated lastOpened for book: " + title);
+                }
+            }
+        };
+        viewModel.getBookByPath(filePath).observe(this, observer);
+        
         // Grant permissions for the URI
         try {
             getContentResolver().takePersistableUriPermission(fileUri, 

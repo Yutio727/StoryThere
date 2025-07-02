@@ -539,6 +539,10 @@ public class BookOptionsActivity extends AppCompatActivity {
         });
 
         dialog.show();
+        // Ensure the dialog window background is transparent for rounded corners
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
     }
 
     private void openImagePicker() {

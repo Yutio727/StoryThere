@@ -17,8 +17,6 @@ import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.HorizontalScrollView;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -83,6 +81,8 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
 
     // Only show progress bar if user interacts near the bottom
     private boolean showProgressOnScroll = false;
+    
+
 
     // For smooth progress animation
     private int lastProgressValue = 0;
@@ -125,6 +125,29 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         // Initialize MaterialScrollBar
         materialScrollBar = findViewById(R.id.materialScrollBar);
         
+        // Add touch listener to MaterialScrollBar for progress bar cooperation
+        if (materialScrollBar != null) {
+            // Try to detect dragbar usage through touch events
+            materialScrollBar.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    Log.d(TAG, "[DRAGBAR] Touch event on dragbar: " + event.getAction());
+                    if (event.getAction() == MotionEvent.ACTION_DOWN || 
+                        event.getAction() == MotionEvent.ACTION_MOVE) {
+                        // Show progress bar when dragbar is touched
+                        showProgressOnScroll = true;
+                        updateScrollProgress();
+                        // Reset the hide timer
+                        scrollProgressHandler.removeCallbacks(hideProgressRunnable);
+                    } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                        // Start timer to hide progress bar after dragbar interaction ends
+                        scrollProgressHandler.postDelayed(hideProgressRunnable, 1000);
+                    }
+                    return false; // Let the dragbar handle the event normally
+                }
+            });
+        }
+        
         // Initialize scroll progress UI elements
         scrollProgressContainer = findViewById(R.id.scrollProgressContainer);
         pageNumberText = findViewById(R.id.pageNumberText);
@@ -161,8 +184,10 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     // Save position after scrolling stops
                     Log.d(TAG, "[SCROLL] Scrolling stopped, scheduling position save in " + POSITION_SAVE_DELAY + "ms");
                     positionSaveHandler.postDelayed(positionSaveRunnable, POSITION_SAVE_DELAY);
-                    // Hide progress indicator after scrolling stops
-                    scrollProgressHandler.postDelayed(hideProgressRunnable, 1500);
+                    // Hide progress indicator after scrolling stops (2 seconds to match dragbar behavior)
+                    scrollProgressHandler.postDelayed(hideProgressRunnable, 1000);
+                    
+
 
                     // --- Pre-parse PDF pages after fast scroll/drag ---
                     if (documentType == PDFPageAdapter.DocumentType.PDF && pdfRecyclerView != null) {
@@ -189,7 +214,10 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             }
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                updateScrollProgress();
+                // Only update progress if it's already showing (from dragbar or bottom touch)
+                if (showProgressOnScroll) {
+                    updateScrollProgress();
+                }
             }
         });
         
@@ -282,16 +310,18 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     if (y > height * 0.92f) { // bottom 8% of the screen
                         showProgressOnScroll = true;
                         updateScrollProgress();
+                        // Reset the hide timer when touching near bottom
+                        scrollProgressHandler.removeCallbacks(hideProgressRunnable);
                     }
+                } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                    // Start 2-second timer to hide progress bar after touch interaction ends
+                    scrollProgressHandler.postDelayed(hideProgressRunnable, 1000);
                 }
                 return false; // Let RecyclerView handle the event as usual
             }
         });
     }
-    
-    /**
-     * Updates the scroll progress indicator with current page information
-     */
+
     private void updateScrollProgress() {
         if (!showProgressOnScroll) {
             if (scrollProgressContainer != null) animateHideProgressBar();
@@ -431,14 +461,15 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                                 materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
                                 materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
                                 materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
                             } else {
                                 materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
                                 materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
                                 materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
                             }
-                        materialScrollBar.setIndicator(new CustomIndicator(this), true);
+//                          --  uncomment to get the indicator of the pages
+//                        materialScrollBar.setIndicator(new CustomIndicator(this), true);
                         adaptMaterialScrollBarTheme();
                         updateMaterialScrollBarVisibility();
                     }
@@ -537,14 +568,15 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                                     materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
                                     materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
                                     materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
                                 } else {
                                     materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
                                     materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
                                     materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
                                 }
-                            materialScrollBar.setIndicator(new CustomIndicator(this), true);
+//                                -- uncomment to get the indicator of the pages
+//                            materialScrollBar.setIndicator(new CustomIndicator(this), true);
                             adaptMaterialScrollBarTheme();
                             updateMaterialScrollBarVisibility();
                         }
@@ -626,12 +658,12 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
                     materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
                     materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
                 } else {
                     materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
                     materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
                     materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
                 }
             }
             
@@ -853,6 +885,28 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     }
 
     @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        // Check if touch is in the dragbar area (right edge of screen)
+        float screenWidth = getResources().getDisplayMetrics().widthPixels;
+        if (event.getX() > screenWidth * 0.9f) { // Right 10% of screen
+            Log.d(TAG, "[DRAGBAR] Touch in dragbar area: " + event.getAction() + " at x=" + event.getX());
+            if (event.getAction() == MotionEvent.ACTION_DOWN || 
+                event.getAction() == MotionEvent.ACTION_MOVE) {
+                // Show progress bar when touching dragbar area
+                showProgressOnScroll = true;
+                updateScrollProgress();
+                // Reset the hide timer
+                scrollProgressHandler.removeCallbacks(hideProgressRunnable);
+            } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                // Start timer to hide progress bar after dragbar interaction ends
+                scrollProgressHandler.postDelayed(hideProgressRunnable, 1000);
+            }
+        }
+        
+        return super.dispatchTouchEvent(event);
+    }
+
+    @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (pdfParser == null) return false;
         
@@ -943,9 +997,6 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         }
     }
 
-    /**
-     * Animate the progress bar appearing from the bottom
-     */
     private void animateShowProgressBar() {
         if (scrollProgressContainer.getVisibility() != View.VISIBLE) {
             scrollProgressContainer.setVisibility(View.VISIBLE);
@@ -959,9 +1010,6 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         }
     }
 
-    /**
-     * Animate the progress bar disappearing to the bottom
-     */
     private void animateHideProgressBar() {
         if (scrollProgressContainer.getVisibility() == View.VISIBLE) {
             scrollProgressContainer.animate()
@@ -985,12 +1033,12 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
                 materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
                 materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
             } else {
                 materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
                 materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
                 materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
             }
         }
     }

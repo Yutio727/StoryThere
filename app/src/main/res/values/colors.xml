@@ -38,4 +38,6 @@
     <color name="text_primary_light">@color/text_activity_primary</color>
     <color name="search_bar_text">#4A739C</color>
     <color name="search_bar_bg">#E8EDF5</color>
+
+    <color name="handle_off_color">#4A739C</color>
 </resources>

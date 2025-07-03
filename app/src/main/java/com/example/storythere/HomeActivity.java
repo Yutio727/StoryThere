@@ -36,6 +36,7 @@ import java.util.List;
 import androidx.lifecycle.Observer;
 import java.io.File;
 import java.io.InputStream;
+import java.util.Date;
 
 public class HomeActivity extends AppCompatActivity {
     
@@ -591,17 +592,20 @@ public class HomeActivity extends AppCompatActivity {
             public void onChanged(Book existingBook) {
                 // Remove this observer to prevent memory leaks
                 viewModel.getBookByPath(filePath).removeObserver(this);
-                
                 if (existingBook != null) {
-                    // Book exists in database, update lastOpened timestamp
-                    existingBook.setLastOpened(new java.util.Date());
-                    viewModel.update(existingBook);
-                    Log.d("HomeActivity", "Updated lastOpened for book: " + title);
+                    // Only update lastOpened if more than 1 second has passed
+                    Date now = new Date();
+                    if (existingBook.getLastOpened() == null || Math.abs(now.getTime() - existingBook.getLastOpened().getTime()) > 1000) {
+                        existingBook.setLastOpened(now);
+                        viewModel.update(existingBook);
+                        Log.d("HomeActivity", "Updated lastOpened for book: " + title);
+                    } else {
+                        Log.d("HomeActivity", "Skipped updating lastOpened for book: " + title);
+                    }
                 }
             }
         };
         viewModel.getBookByPath(filePath).observe(this, observer);
-        
         // Grant permissions for the URI
         try {
             getContentResolver().takePersistableUriPermission(fileUri, 
@@ -609,7 +613,6 @@ public class HomeActivity extends AppCompatActivity {
         } catch (Exception e) {
             Log.w("HomeActivity", "Could not take persistable permission for URI: " + e.getMessage());
         }
-        
         Intent intent = new Intent(this, BookOptionsActivity.class);
         intent.setData(fileUri);
         intent.putExtra("fileType", fileType);

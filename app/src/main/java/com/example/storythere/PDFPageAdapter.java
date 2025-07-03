@@ -15,8 +15,9 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import com.turingtechnologies.materialscrollbar.ICustomAdapter;
 
-public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageViewHolder> {
+public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageViewHolder> implements ICustomAdapter {
     public enum DocumentType { PDF, EPUB, TXT }
 
     private final Context context;
@@ -203,5 +204,15 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
                 textView.setTextColor(color);
             }
         }
+    }
+
+    // ICustomAdapter implementation for MaterialScrollBar
+    @Override
+    public String getCustomStringForElement(int element) {
+        if (element >= 0 && element < pages.size()) {
+            // Return page number as string for the scrollbar indicator
+            return String.valueOf(element + 1);
+        }
+        return "";
     }
 } 

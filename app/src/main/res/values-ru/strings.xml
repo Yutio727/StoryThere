@@ -141,10 +141,26 @@
     <string name="add_new_book_admin">Добавить новую книгу (Админ)</string>
     <string name="search_page_content_will_be_here">Поиск скоро будет здесь</string>
     <string name="book_title">Название книги</string>
+    <string name="failed_to_extract_text_content">Не удалось извлечь текст из книги</string>
     <string name="no_annotation_found">Для этой книги нет описания, но вы можете сгенерировать его!</string>
     <string name="no_annotation_no_internet">Описание: Описание не найдено, подключитесь к сети и попробуйте сгенерировать его</string>
     <string name="generate_annotation">Сгенерировать описание!</string>
     <string name="generating_annotation">Генерируем описание...</string>
     <string name="generated_annotation">Сгенерированное описание</string>
+    <string name="book_cover_prompt">Обложка книги для: %1$s</string>
     <string name="book_already_exists">Книга уже есть в вашей библиотеке!</string>
+    <string name="summarize">Сгенерировать описание</string>
+    <string name="summarizing_text">Генерируем описание текста...</string>
+    <string name="summary_generated">Генерация прошла успешно</string>
+    <string name="failed_to_generate_summary">Ошибка при генерации описания</string>
+    <string name="text_too_long_for_summary">Текст слишком большой для генерации описания. Пожалуйста, попробуйте засунуть текст меньшим объемом.</string>
+    <string name="book_summary">Описание книги</string>
+    <string name="copy">Скопировать</string>
+    <string name="summary_copied_to_clipboard">Описание было скопировано</string>
+    <string name="no_book_content_available">Отсутствует текст в книге</string>
+    <string name="generate_book_cover">Сгенерировать обложку</string>
+    <string name="pick_image">Выбрать изображение с устройства</string>
+    <string name="generating_book_cover">Генерируем обложку...</string>
+    <string name="book_cover_generated">Обложка успешно сгенерирована</string>
+    <string name="failed_to_generate_book_cover">Не удалось сгенерировать обложку</string>
 </resources>

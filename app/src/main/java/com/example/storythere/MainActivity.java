@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Objects;
 import java.io.File;
 import java.io.InputStream;
+import java.util.Date;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -344,11 +345,15 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void openExistingBook(Book book) {
-        // Update the lastOpened timestamp to move this book to the top of the list
-        book.setLastOpened(new java.util.Date());
-        viewModel.update(book);
-        Log.d("MainActivity", "Updated lastOpened for existing book: " + book.getTitle() + " (ID: " + book.getId() + ")");
-        
+        // Only update lastOpened if more than 1 second has passed
+        Date now = new Date();
+        if (book.getLastOpened() == null || Math.abs(now.getTime() - book.getLastOpened().getTime()) > 1000) {
+            book.setLastOpened(now);
+            viewModel.update(book);
+            Log.d("MainActivity", "Updated lastOpened for existing book: " + book.getTitle() + " (ID: " + book.getId() + ")");
+        } else {
+            Log.d("MainActivity", "Skipped updating lastOpened for existing book: " + book.getTitle() + " (ID: " + book.getId() + ")");
+        }
         Intent intent = new Intent(this, BookOptionsActivity.class);
         intent.setData(Uri.parse(book.getFilePath()));
         intent.putExtra("fileType", book.getFileType());
@@ -384,11 +389,15 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void onBookClick(Book book) {
-        // Update the lastOpened timestamp to move this book to the top of the list
-        book.setLastOpened(new java.util.Date());
-        viewModel.update(book);
-        Log.d("MainActivity", "Updated lastOpened for book: " + book.getTitle() + " (ID: " + book.getId() + ")");
-        
+        // Only update lastOpened if more than 1 second has passed
+        Date now = new Date();
+        if (book.getLastOpened() == null || Math.abs(now.getTime() - book.getLastOpened().getTime()) > 1000) {
+            book.setLastOpened(now);
+            viewModel.update(book);
+            Log.d("MainActivity", "Updated lastOpened for book: " + book.getTitle() + " (ID: " + book.getId() + ")");
+        } else {
+            Log.d("MainActivity", "Skipped updating lastOpened for book: " + book.getTitle() + " (ID: " + book.getId() + ")");
+        }
         Intent intent = new Intent(this, BookOptionsActivity.class);
         intent.setData(Uri.parse(book.getFilePath()));
         intent.putExtra("fileType", book.getFileType());

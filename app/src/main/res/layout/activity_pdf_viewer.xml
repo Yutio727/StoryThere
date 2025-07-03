@@ -18,7 +18,7 @@
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 
-    <FrameLayout
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
@@ -31,12 +31,22 @@
             android:clipToPadding="false"
             android:padding="16dp"/>
 
+        <!-- MaterialScrollBar -->
+        <com.turingtechnologies.materialscrollbar.DragScrollBar
+            android:id="@+id/materialScrollBar"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_alignParentEnd="true"
+            app:msb_barThickness="16dp"
+            app:msb_lightOnTouch="true"
+            app:msb_recyclerView="@id/pdfRecyclerView" />
+
         <!-- Scroll Progress Indicator -->
         <LinearLayout
             android:id="@+id/scrollProgressContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
+            android:layout_alignParentBottom="true"
             android:orientation="vertical"
             android:background="@color/cardview_light_background"
             android:padding="16dp"
@@ -68,6 +78,6 @@
 
         </LinearLayout>
 
-    </FrameLayout>
+    </RelativeLayout>
 
 </LinearLayout>

@@ -36,6 +36,8 @@ import java.util.concurrent.Executors;
 import com.example.storythere.data.Book;
 import com.example.storythere.data.BookRepository;
 import android.animation.ObjectAnimator;
+import com.turingtechnologies.materialscrollbar.DragScrollBar;
+import com.turingtechnologies.materialscrollbar.CustomIndicator;
 
 public class PDFViewerActivity extends AppCompatActivity implements TextSettingsDialog.TextSettingsListener {
     private static final String TAG = "PDFViewerActivity";
@@ -61,6 +63,9 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     private boolean isEPUB = false;
     private PDFPageAdapter pdfPageAdapter;
     private PDFPageAdapter.DocumentType documentType;
+    
+    // MaterialScrollBar
+    private DragScrollBar materialScrollBar;
     
     // Position tracking variables
     private Book currentBook;
@@ -117,6 +122,9 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         pdfRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         pdfRecyclerView.setItemViewCacheSize(10);
         
+        // Initialize MaterialScrollBar
+        materialScrollBar = findViewById(R.id.materialScrollBar);
+        
         // Initialize scroll progress UI elements
         scrollProgressContainer = findViewById(R.id.scrollProgressContainer);
         pageNumberText = findViewById(R.id.pageNumberText);
@@ -153,19 +161,32 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     // Save position after scrolling stops
                     Log.d(TAG, "[SCROLL] Scrolling stopped, scheduling position save in " + POSITION_SAVE_DELAY + "ms");
                     positionSaveHandler.postDelayed(positionSaveRunnable, POSITION_SAVE_DELAY);
-                    
                     // Hide progress indicator after scrolling stops
                     scrollProgressHandler.postDelayed(hideProgressRunnable, 1500);
+
+                    // --- Pre-parse PDF pages after fast scroll/drag ---
+                    if (documentType == PDFPageAdapter.DocumentType.PDF && pdfRecyclerView != null) {
+                        LinearLayoutManager layoutManager = (LinearLayoutManager) pdfRecyclerView.getLayoutManager();
+                        if (layoutManager != null) {
+                            int first = layoutManager.findFirstVisibleItemPosition();
+                            int last = layoutManager.findLastVisibleItemPosition();
+                            if (first != RecyclerView.NO_POSITION && last != RecyclerView.NO_POSITION) {
+                                int window = 2; // Pre-parse 2 pages before and after
+                                int start = Math.max(0, first - window);
+                                int end = Math.min(totalPages - 1, last + window);
+                                forceRenderPages(start, end, first); // targetPosition is first visible
+                            }
+                        }
+                    }
+                    // --- End pre-parse logic ---
                 } else {
                     // Cancel pending save if user starts scrolling again
                     Log.d(TAG, "[SCROLL] Scrolling started, canceling pending position save");
                     positionSaveHandler.removeCallbacks(positionSaveRunnable);
-                    
                     // Cancel pending hide if user starts scrolling again
                     scrollProgressHandler.removeCallbacks(hideProgressRunnable);
                 }
             }
-            
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
                 updateScrollProgress();
@@ -403,6 +424,25 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     pdfRecyclerView.getRecycledViewPool().clear();
                     pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
                     
+                    // Configure MaterialScrollBar
+                    if (materialScrollBar != null) {
+                            materialScrollBar.setVisibility(View.GONE); // Change to VISIBLE if needed invisible
+                            if (isDarkTheme()) {
+                                materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
+                                materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
+                                materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
+                                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                            } else {
+                                materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
+                                materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
+                                materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
+                                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                            }
+                        materialScrollBar.setIndicator(new CustomIndicator(this), true);
+                        adaptMaterialScrollBarTheme();
+                        updateMaterialScrollBarVisibility();
+                    }
+                    
                     // Set document type for position restoration
                     documentType = PDFPageAdapter.DocumentType.TXT;
                     
@@ -490,6 +530,25 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                         pdfRecyclerView.getRecycledViewPool().clear();
                         pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
                         
+                        // Configure MaterialScrollBar
+                        if (materialScrollBar != null) {
+                                materialScrollBar.setVisibility(View.GONE); // Change to VISIBLE if needed invisible
+                                if (isDarkTheme()) {
+                                    materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
+                                    materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
+                                    materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
+                                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                                } else {
+                                    materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
+                                    materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
+                                    materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
+                                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                                }
+                            materialScrollBar.setIndicator(new CustomIndicator(this), true);
+                            adaptMaterialScrollBarTheme();
+                            updateMaterialScrollBarVisibility();
+                        }
+                        
                         // Set document type for position restoration
                         documentType = PDFPageAdapter.DocumentType.EPUB;
                         
@@ -560,6 +619,22 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             pdfRecyclerView.getRecycledViewPool().clear();
             pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
             
+            // Configure MaterialScrollBar
+            if (materialScrollBar != null) {
+                materialScrollBar.setVisibility(View.VISIBLE); // Change to GONE if needed invisible
+                if (isDarkTheme()) {
+                    materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
+                    materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
+                    materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
+                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                } else {
+                    materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
+                    materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
+                    materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
+                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+                }
+            }
+            
             // Set document type for position restoration
             documentType = PDFPageAdapter.DocumentType.PDF;
             
@@ -588,7 +663,6 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             LinearLayoutManager layoutManager = (LinearLayoutManager) pdfRecyclerView.getLayoutManager();
             int firstVisiblePosition = layoutManager.findFirstVisibleItemPosition();
             int lastVisiblePosition = layoutManager.findLastVisibleItemPosition();
-            
             Log.d(TAG, "[POSITION_SAVE] Attempting to save position:");
             Log.d(TAG, "[POSITION_SAVE] - currentBook: " + (currentBook != null ? currentBook.getTitle() : "null"));
             Log.d(TAG, "[POSITION_SAVE] - pdfRecyclerView: " + (pdfRecyclerView != null ? "not null" : "null"));
@@ -596,7 +670,6 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             Log.d(TAG, "[POSITION_SAVE] - firstVisiblePosition: " + firstVisiblePosition);
             Log.d(TAG, "[POSITION_SAVE] - lastVisiblePosition: " + lastVisiblePosition);
             Log.d(TAG, "[POSITION_SAVE] - total pages: " + pages.size());
-            
             if (firstVisiblePosition != RecyclerView.NO_POSITION) {
                 int targetPosition = firstVisiblePosition;
                 View firstView = layoutManager.findViewByPosition(firstVisiblePosition);
@@ -626,10 +699,15 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     }
                 }
                 int oldPosition = currentBook.getReadingPosition();
-                currentBook.setReadingPosition(targetPosition);
-                currentBook.setLastOpened(new java.util.Date());
-                bookRepository.update(currentBook);
-                Log.d(TAG, "[POSITION_SAVE] Successfully saved position: " + targetPosition + " (was: " + oldPosition + ") for book: " + currentBook.getTitle());
+                // Only update if the position has changed
+                if (targetPosition != oldPosition) {
+                    currentBook.setReadingPosition(targetPosition);
+                    currentBook.setLastOpened(new java.util.Date());
+                    bookRepository.update(currentBook);
+                    Log.d(TAG, "[POSITION_SAVE] Successfully saved position: " + targetPosition + " (was: " + oldPosition + ") for book: " + currentBook.getTitle());
+                } else {
+                    Log.d(TAG, "[POSITION_SAVE] Position unchanged (" + targetPosition + "), not updating book.");
+                }
             } else {
                 Log.w(TAG, "[POSITION_SAVE] Failed to save position - NO_POSITION returned");
             }
@@ -678,39 +756,68 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
 
     private void forceRenderPages(int startPage, int endPage, int targetPosition) {
         Log.d(TAG, "[FORCE_RENDER] Starting forced rendering of pages " + startPage + " to " + endPage);
-        
-        // For PDF, we need to trigger parsing of the pages around the target position
         if (documentType == PDFPageAdapter.DocumentType.PDF && pdfParser != null) {
+            // Only scroll to the target position if not yet restored
+            mainHandler.post(() -> {
+                if (!isPositionRestored) {
+                    Log.d(TAG, "[FORCE_RENDER] Scrolling to position: " + targetPosition);
+                    scrollToPosition(targetPosition);
+                    isPositionRestored = true;
+                } else {
+                    Log.d(TAG, "[FORCE_RENDER] Not scrolling, already restored position.");
+                }
+            });
+            // 2. Parse the target page first, then the rest in background
             executorService.submit(() -> {
                 try {
-                    Log.d(TAG, "[FORCE_RENDER] Parsing PDF pages " + startPage + " to " + endPage);
-                    
-                    // Parse pages in parallel
-                    for (int i = startPage; i <= endPage; i++) {
-                        final int pageIndex = i;
-                        if (pageIndex < pages.size() && (pages.get(pageIndex).text == null || pages.get(pageIndex).text.isEmpty())) {
-                            Log.d(TAG, "[FORCE_RENDER] Parsing page " + (pageIndex + 1));
+                    // Parse target page first
+                    if (targetPosition >= 0 && targetPosition < pages.size() && (pages.get(targetPosition).text == null || pages.get(targetPosition).text.isEmpty())) {
+                        Log.d(TAG, "[FORCE_RENDER] Parsing target page " + (targetPosition + 1));
+                        PDFParser.ParsedPage parsed;
+                        synchronized (pdfParser) {
+                            parsed = pdfParser.parsePage(targetPosition + 1, currentSettings);
+                        }
+                        if (parsed != null) {
+                            pages.set(targetPosition, parsed);
+                            Log.d(TAG, "[FORCE_RENDER] Successfully parsed target page " + (targetPosition + 1));
+                            mainHandler.post(() -> pdfPageAdapter.notifyItemChanged(targetPosition));
+                        }
+                    }
+                    // Parse before/after pages in background, skipping target
+                    // First, before pages
+                    for (int i = targetPosition - 1; i >= startPage; i--) {
+                        if (i >= 0 && i < pages.size() && (pages.get(i).text == null || pages.get(i).text.isEmpty())) {
+                            Log.d(TAG, "[FORCE_RENDER] Parsing before page " + (i + 1));
                             PDFParser.ParsedPage parsed;
                             synchronized (pdfParser) {
-                                parsed = pdfParser.parsePage(pageIndex + 1, currentSettings);
+                                parsed = pdfParser.parsePage(i + 1, currentSettings);
                             }
                             if (parsed != null) {
-                                pages.set(pageIndex, parsed);
-                                Log.d(TAG, "[FORCE_RENDER] Successfully parsed page " + (pageIndex + 1));
+                                pages.set(i, parsed);
+                                Log.d(TAG, "[FORCE_RENDER] Successfully parsed before page " + (i + 1));
+                                int notifyIndex = i;
+                                mainHandler.post(() -> pdfPageAdapter.notifyItemChanged(notifyIndex));
                             }
                         }
                     }
-                    
-                    // After all pages are parsed, restore position on main thread
-                    mainHandler.post(() -> {
-                        Log.d(TAG, "[FORCE_RENDER] All pages parsed, now restoring position to: " + targetPosition);
-                        scrollToPosition(targetPosition);
-                    });
-                    
+                    // Then, after pages
+                    for (int i = targetPosition + 1; i <= endPage; i++) {
+                        if (i >= 0 && i < pages.size() && (pages.get(i).text == null || pages.get(i).text.isEmpty())) {
+                            Log.d(TAG, "[FORCE_RENDER] Parsing after page " + (i + 1));
+                            PDFParser.ParsedPage parsed;
+                            synchronized (pdfParser) {
+                                parsed = pdfParser.parsePage(i + 1, currentSettings);
+                            }
+                            if (parsed != null) {
+                                pages.set(i, parsed);
+                                Log.d(TAG, "[FORCE_RENDER] Successfully parsed after page " + (i + 1));
+                                int notifyIndex = i;
+                                mainHandler.post(() -> pdfPageAdapter.notifyItemChanged(notifyIndex));
+                            }
+                        }
+                    }
                 } catch (Exception e) {
                     Log.e(TAG, "[FORCE_RENDER] Error parsing pages: " + e.getMessage(), e);
-                    // Fallback to immediate position restoration
-                    mainHandler.post(() -> scrollToPosition(targetPosition));
                 }
             });
         } else {
@@ -863,6 +970,39 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     .setDuration(PROGRESS_ANIMATION_DURATION)
                     .withEndAction(() -> scrollProgressContainer.setVisibility(View.GONE))
                     .start();
+        }
+    }
+
+    private boolean isDarkTheme() {
+        return (getResources().getConfiguration().uiMode &
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    private void adaptMaterialScrollBarTheme() {
+        if (materialScrollBar != null) {
+            if (isDarkTheme()) {
+                materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
+                materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
+                materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
+                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+            } else {
+                materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
+                materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
+                materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
+                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.search_bar_text));
+            }
+        }
+    }
+
+    private void updateMaterialScrollBarVisibility() {
+        if (materialScrollBar != null && pages != null) {
+            if (pages.size() <= 2) { // Show message if too few pages
+                materialScrollBar.setVisibility(View.VISIBLE); // Still show the bar
+                Toast.makeText(this, "Scroll bar is available, but there are too few pages to scroll.", Toast.LENGTH_SHORT).show();
+            } else {
+                materialScrollBar.setVisibility(View.VISIBLE);
+            }
         }
     }
 } 

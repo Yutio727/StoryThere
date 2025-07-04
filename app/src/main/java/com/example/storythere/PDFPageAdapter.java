@@ -179,6 +179,10 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
         public void bindText(String text, PDFParser.TextSettings settings) {
             if (textView != null) {
                 textView.setText(text);
+                // Ensure text is always selectable
+                textView.setTextIsSelectable(true);
+                textView.setFocusable(true);
+                textView.setFocusableInTouchMode(true);
                 if (settings != null) {
                     textView.setTextSize(settings.fontSize / textView.getResources().getDisplayMetrics().density);
                     textView.setLetterSpacing(settings.letterSpacing);

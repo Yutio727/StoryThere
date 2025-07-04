@@ -82,6 +82,13 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     // Only show progress bar if user interacts near the bottom
     private boolean showProgressOnScroll = false;
     
+    // For dragbar swipe detection
+    private float dragbarSwipeStartX = -1;
+    private float dragbarSwipeStartY = -1;
+    private boolean dragbarSwipeActive = false;
+    private boolean dragbarVisible = true; // Track dragbar visibility state
+    private static final int DRAGBAR_SWIPE_AREA_DP = 100;
+    
 
 
     // For smooth progress animation
@@ -454,24 +461,15 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     pdfRecyclerView.getRecycledViewPool().clear();
                     pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
                     
-                    // Configure MaterialScrollBar
+                    // Configure MaterialScrollBar - start hidden
                     if (materialScrollBar != null) {
-                            materialScrollBar.setVisibility(View.GONE); // Change to VISIBLE if needed invisible
-                            if (isDarkTheme()) {
-                                materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
-                                materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
-                                materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
-                            } else {
-                                materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
-                                materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
-                                materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
-                            }
-//                          --  uncomment to get the indicator of the pages
-//                        materialScrollBar.setIndicator(new CustomIndicator(this), true);
-                        adaptMaterialScrollBarTheme();
-                        updateMaterialScrollBarVisibility();
+                        materialScrollBar.setVisibility(View.VISIBLE); // Keep visible but control with colors
+                        dragbarVisible = false; // Start hidden
+                        // Clear colors to make it invisible initially
+                        materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
+                        materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
+                        materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
+                        materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
                     }
                     
                     // Set document type for position restoration
@@ -561,24 +559,15 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                         pdfRecyclerView.getRecycledViewPool().clear();
                         pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
                         
-                        // Configure MaterialScrollBar
+                        // Configure MaterialScrollBar - start hidden
                         if (materialScrollBar != null) {
-                                materialScrollBar.setVisibility(View.GONE); // Change to VISIBLE if needed invisible
-                                if (isDarkTheme()) {
-                                    materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
-                                    materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
-                                    materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
-                                } else {
-                                    materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
-                                    materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
-                                    materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
-                                }
-//                                -- uncomment to get the indicator of the pages
-//                            materialScrollBar.setIndicator(new CustomIndicator(this), true);
-                            adaptMaterialScrollBarTheme();
-                            updateMaterialScrollBarVisibility();
+                            materialScrollBar.setVisibility(View.VISIBLE); // Keep visible but control with colors
+                            dragbarVisible = false; // Start hidden
+                            // Clear colors to make it invisible initially
+                            materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
+                            materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
+                            materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
+                            materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
                         }
                         
                         // Set document type for position restoration
@@ -651,20 +640,15 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             pdfRecyclerView.getRecycledViewPool().clear();
             pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
             
-            // Configure MaterialScrollBar
+            // Configure MaterialScrollBar - start hidden
             if (materialScrollBar != null) {
-                materialScrollBar.setVisibility(View.VISIBLE); // Change to GONE if needed invisible
-                if (isDarkTheme()) {
-                    materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
-                    materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
-                    materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
-                } else {
-                    materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, R.color.progress_blue));
-                    materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.mtrl_textinput_default_box_stroke_color));
-                    materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.white));
-                    materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, R.color.handle_off_color));
-                }
+                materialScrollBar.setVisibility(View.VISIBLE); // Keep visible but control with colors
+                dragbarVisible = false; // Start hidden
+                // Clear colors to make it invisible initially
+                materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
+                materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
+                materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
+                materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
             }
             
             // Set document type for position restoration
@@ -886,23 +870,60 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
-        // Check if touch is in the dragbar area (right edge of screen)
+        // Convert 100dp to pixels
+        float density = getResources().getDisplayMetrics().density;
+        float dragbarAreaPx = DRAGBAR_SWIPE_AREA_DP * density;
         float screenWidth = getResources().getDisplayMetrics().widthPixels;
-        if (event.getX() > screenWidth * 0.9f) { // Right 10% of screen
-            Log.d(TAG, "[DRAGBAR] Touch in dragbar area: " + event.getAction() + " at x=" + event.getX());
+        float x = event.getX();
+        float y = event.getY();
+        boolean inDragbarArea = x > (screenWidth - dragbarAreaPx);
+
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                if (inDragbarArea) {
+                    dragbarSwipeStartX = x;
+                    dragbarSwipeStartY = y;
+                    dragbarSwipeActive = true;
+                    Log.d(TAG, "[SWIPE_DEBUG] Started tracking swipe at x=" + x + " y=" + y);
+                }
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if (dragbarSwipeActive && dragbarSwipeStartX >= 0 && inDragbarArea) {
+                    float dx = x - dragbarSwipeStartX;
+                    float threshold = dragbarAreaPx / 3;
+                    
+                    // Right-to-left swipe: show dragbar
+                    if (dx < -threshold && !dragbarVisible) {
+                        Log.d(TAG, "[SWIPE_DEBUG] Right-to-left swipe detected! Showing dragbar");
+                        showDragbar();
+                    }
+                    // Left-to-right swipe: hide dragbar
+                    else if (dx > threshold && dragbarVisible) {
+                        Log.d(TAG, "[SWIPE_DEBUG] Left-to-right swipe detected! Hiding dragbar");
+                        hideDragbar();
+                    }
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                dragbarSwipeStartX = -1;
+                dragbarSwipeStartY = -1;
+                dragbarSwipeActive = false;
+                break;
+        }
+
+        // Existing progress bar/dragbar cooperation logic
+        if (x > screenWidth * 0.9f) {
+            Log.d(TAG, "[DRAGBAR] Touch in dragbar area: " + event.getAction() + " at x=" + x);
             if (event.getAction() == MotionEvent.ACTION_DOWN || 
                 event.getAction() == MotionEvent.ACTION_MOVE) {
-                // Show progress bar when touching dragbar area
                 showProgressOnScroll = true;
                 updateScrollProgress();
-                // Reset the hide timer
                 scrollProgressHandler.removeCallbacks(hideProgressRunnable);
             } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                // Start timer to hide progress bar after dragbar interaction ends
                 scrollProgressHandler.postDelayed(hideProgressRunnable, 1000);
             }
         }
-        
         return super.dispatchTouchEvent(event);
     }
 
@@ -1043,14 +1064,32 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         }
     }
 
+    private void showDragbar() {
+        if (materialScrollBar != null) {
+            dragbarVisible = true;
+            adaptMaterialScrollBarTheme(); // This sets the colors and makes it visible
+            Log.d(TAG, "[DRAGBAR] Showing dragbar");
+        }
+    }
+
+    private void hideDragbar() {
+        if (materialScrollBar != null) {
+            dragbarVisible = false;
+            // Clear colors to make it invisible
+            materialScrollBar.setHandleColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
+            materialScrollBar.setBarColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
+            materialScrollBar.setTextColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
+            materialScrollBar.setHandleOffColor(androidx.core.content.ContextCompat.getColor(this, android.R.color.transparent));
+            Log.d(TAG, "[DRAGBAR] Hiding dragbar");
+        }
+    }
+
     private void updateMaterialScrollBarVisibility() {
         if (materialScrollBar != null && pages != null) {
             if (pages.size() <= 2) { // Show message if too few pages
-                materialScrollBar.setVisibility(View.VISIBLE); // Still show the bar
                 Toast.makeText(this, "Scroll bar is available, but there are too few pages to scroll.", Toast.LENGTH_SHORT).show();
-            } else {
-                materialScrollBar.setVisibility(View.VISIBLE);
             }
+            // Don't force visibility - let swipe detection control it
         }
     }
 } 

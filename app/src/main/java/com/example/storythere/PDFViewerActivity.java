@@ -1,5 +1,6 @@
 package com.example.storythere;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Paint;
@@ -90,6 +91,9 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     // Animation duration for progress bar
     private static final int PROGRESS_ANIMATION_DURATION = 250;
     private static final int PROGRESS_BAR_ANIMATION_DURATION = 200;
+
+    // Add this field to the class
+    private boolean textSettingsAppliedAfterFirstTouch = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -453,6 +457,8 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     pdfPageAdapter = new PDFPageAdapter(PDFViewerActivity.this, pages, PDFPageAdapter.DocumentType.TXT, null, txtChunks, null, null, currentSettings);
                     pdfRecyclerView.getRecycledViewPool().clear();
                     pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
+                    pdfPageAdapter.notifyDataSetChanged();
+                    setupFirstTouchTextSettingsFix();
                     
                     // Configure MaterialScrollBar
                     if (materialScrollBar != null) {
@@ -624,7 +630,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             currentSettings.fontSize = 54.0f;
             currentSettings.letterSpacing = 0.0f;
             currentSettings.textAlignment = Paint.Align.LEFT;
-            currentSettings.lineHeight = 1.2f;
+            currentSettings.lineHeight = 1.1f;
             currentSettings.paragraphSpacing = 1.5f;
 
             pdfParser = new PDFParser(this, pdfUri);
@@ -1052,5 +1058,30 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 materialScrollBar.setVisibility(View.VISIBLE);
             }
         }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void setupFirstTouchTextSettingsFix() {
+        pdfRecyclerView.setOnTouchListener((v, event) -> {
+            if (!textSettingsAppliedAfterFirstTouch) {
+                textSettingsAppliedAfterFirstTouch = true;
+                // Set default text settings before rebind
+                if (currentSettings != null) {
+                    currentSettings.fontSize = 54.0f;
+                    currentSettings.letterSpacing = 0.0f;
+                    currentSettings.lineHeight = 1.19f; // changed by 0.01 lmaoooooooo 
+                    currentSettings.paragraphSpacing = 1.5f;
+                    currentSettings.textAlignment = Paint.Align.LEFT;
+                }
+                // Re-apply text settings to force rebind
+                if (pdfPageAdapter != null && currentSettings != null) {
+                    pdfPageAdapter.setTextSettings(currentSettings);
+                    pdfPageAdapter.notifyDataSetChanged();
+                }
+                // Remove this listener so it only happens once
+                pdfRecyclerView.setOnTouchListener(null);
+            }
+            return false; // Let the touch event continue as normal
+        });
     }
 } 

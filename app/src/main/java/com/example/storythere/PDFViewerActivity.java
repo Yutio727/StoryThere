@@ -459,7 +459,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
                     pdfPageAdapter.notifyDataSetChanged();
                     setupFirstTouchTextSettingsFix();
-                    
+
                     // Configure MaterialScrollBar
                     if (materialScrollBar != null) {
                             materialScrollBar.setVisibility(View.GONE); // Change to VISIBLE if needed invisible
@@ -1080,4 +1080,4 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             return false; // Let the touch event continue as normal
         });
     }
-} 
+}

@@ -310,17 +310,17 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             @SuppressLint("ClickableViewAccessibility")
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_MOVE) {
+                if (event.getAction() == MotionEvent.ACTION_MOVE) {
                     int height = v.getHeight();
                     float y = event.getY();
-                    if (y > height * 0.92f) { // bottom 8% of the screen
+                    if (y > height * 0.9f) { // bottom 10% of the screen
                         showProgressOnScroll = true;
                         updateScrollProgress();
                         // Reset the hide timer when touching near bottom
                         scrollProgressHandler.removeCallbacks(hideProgressRunnable);
                     }
                 } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                    // Start 2-second timer to hide progress bar after touch interaction ends
+                    // Start 1-second timer to hide progress bar after touch interaction ends
                     scrollProgressHandler.postDelayed(hideProgressRunnable, 1000);
                 }
                 return false; // Let RecyclerView handle the event as usual

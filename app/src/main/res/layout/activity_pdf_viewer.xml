@@ -51,7 +51,9 @@
             android:background="@color/cardview_light_background"
             android:padding="16dp"
             android:visibility="gone"
-            android:elevation="8dp">
+            android:elevation="8dp"
+            android:clickable="false"
+            android:focusable="false">
 
             <!-- Page Number Display -->
             <TextView

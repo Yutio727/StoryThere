@@ -158,14 +158,37 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         pageNumberText = findViewById(R.id.pageNumberText);
         scrollProgressBar = findViewById(R.id.scrollProgressBar);
         
-        // Hide progress bar if user taps it again
-        scrollProgressContainer.setOnClickListener(new View.OnClickListener() {
+        // Handle touch events on progress bar container to allow dragbar access
+        scrollProgressContainer.setOnTouchListener(new View.OnTouchListener() {
             @Override
-            public void onClick(View v) {
-                if (scrollProgressContainer.getVisibility() == View.VISIBLE) {
-                    showProgressOnScroll = false;
-                    animateHideProgressBar();
+            public boolean onTouch(View v, MotionEvent event) {
+                // Check if touch is in the dragbar area (right 5% of screen)
+                float screenWidth = getResources().getDisplayMetrics().widthPixels;
+                if (event.getX() > screenWidth * 0.95f) {
+                    // Touch is in dragbar area - pass the event to the dragbar
+                    if (materialScrollBar != null) {
+                        // Convert coordinates to dragbar's coordinate system
+                        MotionEvent dragbarEvent = MotionEvent.obtain(event);
+                        int[] containerLocation = new int[2];
+                        v.getLocationInWindow(containerLocation);
+                        int[] dragbarLocation = new int[2];
+                        materialScrollBar.getLocationInWindow(dragbarLocation);
+                        dragbarEvent.offsetLocation(containerLocation[0] - dragbarLocation[0], containerLocation[1] - dragbarLocation[1]);
+                        
+                        // Dispatch to dragbar
+                        boolean handled = materialScrollBar.dispatchTouchEvent(dragbarEvent);
+                        dragbarEvent.recycle();
+                        return handled;
+                    }
+                } else {
+                    // Touch is not in dragbar area - handle as normal progress bar interaction
+                    if (event.getAction() == MotionEvent.ACTION_UP) {
+                        // Hide progress bar on tap (outside dragbar area)
+                        showProgressOnScroll = false;
+                        animateHideProgressBar();
+                    }
                 }
+                return true; // Consume the event
             }
         });
         
@@ -895,7 +918,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     public boolean dispatchTouchEvent(MotionEvent event) {
         // Check if touch is in the dragbar area (right edge of screen)
         float screenWidth = getResources().getDisplayMetrics().widthPixels;
-        if (event.getX() > screenWidth * 0.9f) { // Right 10% of screen
+        if (event.getX() > screenWidth * 0.90f) { // Right 10% of screen
             Log.d(TAG, "[DRAGBAR] Touch in dragbar area: " + event.getAction() + " at x=" + event.getX());
             if (event.getAction() == MotionEvent.ACTION_DOWN || 
                 event.getAction() == MotionEvent.ACTION_MOVE) {

@@ -169,4 +169,12 @@
     <string name="books_by_author">Книги этого автора</string>
     <string name="book">книга</string>
     <string name="books">книг</string>
+    <string name="network_error">Ошибка сети</string>
+    <string name="network_error_title">Проблема с сетью</string>
+    <string name="network_error_message">Не удалось авторизоваться из-за проблемы с сетью. Пожалуйста, проверьте подключение к интернету.</string>
+    <string name="try_again">Попробовать снова</string>
+    <string name="continue_offline_mode">Продолжить в офлайн режиме</string>
+    <string name="offline_user">Офлайн пользователь</string>
+    <string name="offline_mode">Офлайн режим</string>
+    <string name="offline_home_message">Извините, этот раздел недоступен в офлайн режиме</string>
 </resources>

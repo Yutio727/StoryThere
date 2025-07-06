@@ -529,10 +529,20 @@ public class BookOptionsActivity extends AppCompatActivity {
         MaterialButton btnDialogGenerateCover = dialogView.findViewById(R.id.btnDialogGenerateCover);
         MaterialButton btnDialogPickImage = dialogView.findViewById(R.id.btnDialogPickImage);
 
-        btnDialogGenerateCover.setOnClickListener(v -> {
-            dialog.dismiss();
-            performBookCoverGeneration();
-        });
+        // Check if we're in offline mode using NetworkUtils (same logic as annotation field)
+        boolean isOfflineMode = !NetworkUtils.isInternetAvailable(this);
+        
+        if (isOfflineMode) {
+            // Hide the generate cover button for offline users
+            btnDialogGenerateCover.setVisibility(View.GONE);
+        } else {
+            // Show generate cover button for online users
+            btnDialogGenerateCover.setOnClickListener(v -> {
+                dialog.dismiss();
+                performBookCoverGeneration();
+            });
+        }
+
         btnDialogPickImage.setOnClickListener(v -> {
             dialog.dismiss();
             openImagePicker();

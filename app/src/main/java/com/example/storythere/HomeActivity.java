@@ -72,6 +72,14 @@ public class HomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
         
+        // Check if we're in offline mode
+        boolean isOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
+        
+        if (isOfflineMode) {
+            showOfflineMode();
+            return;
+        }
+        
         initializeViews();
         setupBottomNavigation();
         setSelectedTab(0); // Home is selected
@@ -104,24 +112,36 @@ public class HomeActivity extends AppCompatActivity {
     }
     
     private void setupBottomNavigation() {
+        // Check if we're in offline mode
+        boolean isOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
+        
         findViewById(R.id.nav_home).setOnClickListener(v -> {
             // Already on home, do nothing
         });
         
         findViewById(R.id.nav_search).setOnClickListener(v -> {
             Intent intent = new Intent(this, SearchActivity.class);
+            if (isOfflineMode) {
+                intent.putExtra("offline_mode", true);
+            }
             startActivity(intent);
             finish();
         });
         
         findViewById(R.id.nav_my_books).setOnClickListener(v -> {
             Intent intent = new Intent(this, MainActivity.class);
+            if (isOfflineMode) {
+                intent.putExtra("offline_mode", true);
+            }
             startActivity(intent);
             finish();
         });
         
         findViewById(R.id.nav_profile).setOnClickListener(v -> {
             Intent intent = new Intent(this, ProfileActivity.class);
+            if (isOfflineMode) {
+                intent.putExtra("offline_mode", true);
+            }
             startActivity(intent);
             finish();
         });
@@ -209,8 +229,15 @@ public class HomeActivity extends AppCompatActivity {
     private void setupSearchBar() {
         EditText searchBar = findViewById(R.id.search_bar);
         View searchIcon = findViewById(R.id.search_icon);
+        
+        // Check if we're in offline mode
+        boolean isOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
+        
         View.OnClickListener listener = v -> {
             Intent intent = new Intent(this, SearchActivity.class);
+            if (isOfflineMode) {
+                intent.putExtra("offline_mode", true);
+            }
             startActivity(intent);
         };
         searchBar.setOnClickListener(listener);
@@ -647,5 +674,32 @@ public class HomeActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    private void showOfflineMode() {
+        // Initialize views first to avoid NullPointerException
+        initializeViews();
+        
+        // Hide all content views
+        View contentContainer = findViewById(R.id.contentContainer);
+        if (contentContainer != null) {
+            contentContainer.setVisibility(View.GONE);
+        }
+        
+        // Show offline message in center
+        TextView offlineMessage = findViewById(R.id.offlineMessage);
+        if (offlineMessage != null) {
+            offlineMessage.setVisibility(View.VISIBLE);
+            offlineMessage.setText(getString(R.string.offline_home_message));
+        }
+        
+        // Setup only toolbar and bottom navigation
+        setupBottomNavigation();
+        setSelectedTab(0); // Home is selected
+        
+        // Set toolbar title
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(getString(R.string.home));
+        }
     }
 } 

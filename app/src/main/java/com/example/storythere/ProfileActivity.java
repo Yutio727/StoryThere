@@ -29,6 +29,7 @@ import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
 import java.util.Random;
 import android.view.ViewGroup;
+import android.util.Log;
 
 public class ProfileActivity extends AppCompatActivity {
     
@@ -158,6 +159,25 @@ public class ProfileActivity extends AppCompatActivity {
     }
     
     private void loadUserData() {
+        // Check if we're in offline mode
+        boolean isOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
+        
+        if (isOfflineMode) {
+            Log.d("ProfileActivity", "Running in offline mode - showing offline profile");
+            // Show offline profile
+            userName.setText(R.string.offline_user);
+            userEmail.setText(R.string.offline_mode);
+            joinDate.setText(R.string.offline_mode);
+            if (toolbarTitle != null) {
+                toolbarTitle.setText(R.string.profile);
+            }
+            
+            // Set current theme and language displays
+            updateThemeDisplay();
+            updateLanguageDisplay();
+            return;
+        }
+        
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
             // Set user name (display name or email prefix)
@@ -472,20 +492,32 @@ public class ProfileActivity extends AppCompatActivity {
     }
     
     private void setupBottomNavigation() {
+        // Check if we're in offline mode
+        boolean isOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
+        
         findViewById(R.id.nav_home).setOnClickListener(v -> {
             Intent intent = new Intent(this, HomeActivity.class);
+            if (isOfflineMode) {
+                intent.putExtra("offline_mode", true);
+            }
             startActivity(intent);
             finish();
         });
         
         findViewById(R.id.nav_search).setOnClickListener(v -> {
             Intent intent = new Intent(this, SearchActivity.class);
+            if (isOfflineMode) {
+                intent.putExtra("offline_mode", true);
+            }
             startActivity(intent);
             finish();
         });
         
         findViewById(R.id.nav_my_books).setOnClickListener(v -> {
             Intent intent = new Intent(this, MainActivity.class);
+            if (isOfflineMode) {
+                intent.putExtra("offline_mode", true);
+            }
             startActivity(intent);
             finish();
         });

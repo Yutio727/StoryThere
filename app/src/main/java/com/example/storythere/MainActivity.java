@@ -224,6 +224,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
+        
+        // Check if we're in offline mode
+        boolean isOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
+        
+        if (isOfflineMode) {
+            Log.d("MainActivity", "Running in offline mode - skipping authentication check");
+            return; // Skip authentication check in offline mode
+        }
+        
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
             // User is not authenticated, clear cache if needed and go to Login
@@ -544,14 +553,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupBottomNavigation() {
+        // Check if we're in offline mode
+        boolean isOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
+        
         findViewById(R.id.nav_home).setOnClickListener(v -> {
             Intent intent = new Intent(this, HomeActivity.class);
+            if (isOfflineMode) {
+                intent.putExtra("offline_mode", true);
+            }
             startActivity(intent);
             finish();
         });
         
         findViewById(R.id.nav_search).setOnClickListener(v -> {
             Intent intent = new Intent(this, SearchActivity.class);
+            if (isOfflineMode) {
+                intent.putExtra("offline_mode", true);
+            }
             startActivity(intent);
             finish();
         });
@@ -562,6 +580,9 @@ public class MainActivity extends AppCompatActivity {
         
         findViewById(R.id.nav_profile).setOnClickListener(v -> {
             Intent intent = new Intent(this, ProfileActivity.class);
+            if (isOfflineMode) {
+                intent.putExtra("offline_mode", true);
+            }
             startActivity(intent);
             finish();
         });

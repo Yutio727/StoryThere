@@ -75,4 +75,21 @@
         <item name="android:textColor">@color/dialog_title_dark</item>
         <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.StoryThere.DialogTitle</item>
     </style>
+
+    <style name="Widget.StoryThere.OfflineDialog.Button.Primary" parent="Widget.MaterialComponents.Button">
+        <item name="android:textColor">@color/white</item>
+        <item name="backgroundTint">@color/progress_blue</item>
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="fontFamily">@font/montserrat_bold</item>
+        <item name="cornerRadius">12dp</item>
+    </style>
+
+    <style name="Widget.StoryThere.OfflineDialog.Button.Secondary" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:textColor">@color/progress_blue</item>
+        <item name="strokeColor">@color/progress_blue</item>
+        <item name="strokeWidth">2dp</item>
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="fontFamily">@font/montserrat_bold</item>
+        <item name="cornerRadius">12dp</item>
+    </style>
 </resources>

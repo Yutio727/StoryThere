@@ -21,3 +21,5 @@ local_config.properties
 # Temporary files
 *.tmp
 *.temp
+/local_config.properties.template
+/secret.txt

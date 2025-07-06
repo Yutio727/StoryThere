@@ -1,5 +1,6 @@
 package com.example.storythere;
 
+import android.net.ConnectivityManager;
 import android.os.Bundle;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,10 +23,12 @@ import com.example.storythere.data.UserRepository;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import androidx.annotation.NonNull;
+import android.net.Network;
 
 public class Login extends AppCompatActivity {
 
     private FrameLayout overlayView;
+    private ConnectivityManager.NetworkCallback networkCallback;
     private ConstraintLayout overlayContent;
     private ImageView overlayAppIcon;
     private ProgressBar overlayProgressBar;

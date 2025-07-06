@@ -53,6 +53,11 @@ public class RecommendBookAdapter extends RecyclerView.Adapter<RecommendBookAdap
         return books.size();
     }
 
+    public void updateBooks(List<HomeActivity.RecommendedBook> newBooks) {
+        this.books = newBooks;
+        notifyDataSetChanged();
+    }
+
     public static class BookViewHolder extends RecyclerView.ViewHolder {
         ImageView cover;
         TextView title, author;

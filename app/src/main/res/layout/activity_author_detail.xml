@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/light_blue_background">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBarLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/progress_blue"
+            app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Author Header Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+
+                <ImageView
+                    android:id="@+id/author_image"
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:src="@drawable/default_author_avatar"
+                    android:contentDescription="@string/author_photo"
+                    android:scaleType="centerCrop" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="16dp">
+
+                    <TextView
+                        android:id="@+id/author_name"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Author Name"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_activity_primary"
+                        android:fontFamily="@font/montserrat_bold"
+                        android:maxLines="2"
+                        android:ellipsize="end" />
+
+                    <TextView
+                        android:id="@+id/author_life_span"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="1900-1944"
+                        android:textSize="16sp"
+                        android:textColor="@color/text_activity_secondary"
+                        android:fontFamily="@font/montserrat"
+                        android:visibility="visible" />
+
+                    <TextView
+                        android:id="@+id/author_nationality"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="French"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_activity_secondary"
+                        android:fontFamily="@font/montserrat"
+                        android:visibility="visible" />
+
+                    <TextView
+                        android:id="@+id/author_books_count"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="15 books"
+                        android:textSize="14sp"
+                        android:textColor="@color/progress_blue"
+                        android:fontFamily="@font/montserrat_bold" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Biography Section -->
+            <TextView
+                android:id="@+id/author_biography"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Author biography will be displayed here..."
+                android:textSize="16sp"
+                android:textColor="@color/text_activity_primary"
+                android:fontFamily="@font/montserrat"
+                android:lineSpacingExtra="4dp"
+                android:layout_marginBottom="24dp"
+                android:visibility="gone" />
+
+            <!-- Books Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/books_by_author"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_activity_primary"
+                android:fontFamily="@font/montserrat_bold"
+                android:layout_marginBottom="12dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/books_recycler_view"
+                android:layout_width="match_parent"
+                android:layout_height="280dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:clipToPadding="false" />
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout> 

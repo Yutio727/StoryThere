@@ -91,7 +91,8 @@
     <string name="book_cover">Book cover</string>
     <string name="find_your_awesome_book">Find your awesome book</string>
     <string name="we_recommend">We recommend</string>
-    <string name="exclusives">Exclusives</string>
+    <string name="exclusives">Authors</string>
+    <string name="authors">Authors</string>
     <string name="downloading">Downloading book...</string>
     <string name="download_failed">Download failed</string>
     <string name="no_file_selected">No file selected</string>
@@ -162,4 +163,9 @@
     <string name="failed_to_generate_book_cover">Failed to generate book cover</string>
     <string name="book_cover_prompt">Book cover for: %1$s</string>
     <string name="book_already_exists">Book already exists in your library</string>
+    <string name="show_text">Show Text</string>
+    <string name="author_photo">Author Photo</string>
+    <string name="books_by_author">Books by this Author</string>
+    <string name="book">book</string>
+    <string name="books">books</string>
 </resources>

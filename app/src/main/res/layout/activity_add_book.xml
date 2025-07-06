@@ -82,8 +82,18 @@
             android:background="@drawable/rounded_edittext"
             android:padding="16dp"
             android:textSize="16sp"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="4dp"
             android:fontFamily="@font/montserrat_regular"/>
+
+        <!-- Author Suggestions -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/author_suggestions_recycler"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/rounded_edittext"
+            android:visibility="gone"
+            android:maxHeight="200dp"/>
 
         <!-- Annotation -->
         <TextView

@@ -9,13 +9,25 @@
         <menu>
             <item
                 android:id="@+id/action_playback_speed"
-                android:title="Playback Speed" />
+                android:title="@string/playback_speed"
+                app:showAsAction="never"
+                android:iconTint="@color/progress_blue"
+                android:icon="@drawable/ic_playback_speed"
+                android:contentDescription="@string/playback_speed" />
             <item
                 android:id="@+id/action_voice"
-                android:title="Choose Voice" />
+                android:title="@string/choose_voice"
+                android:icon="@drawable/ic_user"
+                app:showAsAction="never"
+                android:iconTint="@color/progress_blue"
+                android:contentDescription="@string/choose_voice" />
             <item
                 android:id="@+id/action_show_text"
-                android:title="Show Text" />
+                android:title="@string/show_text"
+                android:icon="@drawable/ic_text"
+                app:showAsAction="never"
+                android:iconTint="@color/progress_blue"
+                android:contentDescription="@string/show_text" />
         </menu>
     </item>
 </menu> 

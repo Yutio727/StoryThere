@@ -178,9 +178,12 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
 
         public void bindText(String text, PDFParser.TextSettings settings) {
             if (textView != null) {
+                // First set text and temporarily disable selection
                 textView.setText(text);
-                // Ensure text is always selectable
-                textView.setTextIsSelectable(true);
+                textView.setTextIsSelectable(false);
+                textView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+                
+                // Then configure all other settings
                 textView.setFocusable(true);
                 textView.setFocusableInTouchMode(true);
                 if (settings != null) {
@@ -206,6 +209,9 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
                 // Set text color from theme
                 int color = textView.getContext().getResources().getColor(R.color.text_activity_primary, textView.getContext().getTheme());
                 textView.setTextColor(color);
+                
+                // Finally enable selection
+                textView.setTextIsSelectable(true);
             }
         }
     }

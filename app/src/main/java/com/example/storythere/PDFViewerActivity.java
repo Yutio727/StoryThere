@@ -95,6 +95,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     // Add this field to the class
     private boolean textSettingsAppliedAfterFirstTouch = false;
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -306,6 +307,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
 
         // Set up touch listener to detect taps/swipes near the bottom
         pdfRecyclerView.setOnTouchListener(new View.OnTouchListener() {
+            @SuppressLint("ClickableViewAccessibility")
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_MOVE) {
@@ -458,7 +460,6 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     pdfRecyclerView.getRecycledViewPool().clear();
                     pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
                     pdfPageAdapter.notifyDataSetChanged();
-                    setupFirstTouchTextSettingsFix();
 
                     // Configure MaterialScrollBar
                     if (materialScrollBar != null) {
@@ -1058,26 +1059,5 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 materialScrollBar.setVisibility(View.VISIBLE);
             }
         }
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private void setupFirstTouchTextSettingsFix() {
-        pdfRecyclerView.setOnTouchListener((v, event) -> {
-            if (!textSettingsAppliedAfterFirstTouch) {
-                textSettingsAppliedAfterFirstTouch = true;
-                // Set default text settings before rebind
-                if (currentSettings != null) {
-                    currentSettings.lineHeight = currentSettings.lineHeight - 0.01f; // changed by 0.01 lmaoooooooo
-                }
-                // Re-apply text settings to force rebind
-                if (pdfPageAdapter != null && currentSettings != null) {
-                    pdfPageAdapter.setTextSettings(currentSettings);
-                    pdfPageAdapter.notifyDataSetChanged();
-                }
-                // Remove this listener so it only happens once
-                pdfRecyclerView.setOnTouchListener(null);
-            }
-            return false; // Let the touch event continue as normal
-        });
     }
 }

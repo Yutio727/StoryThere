@@ -46,6 +46,25 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
     public void setTextSettings(PDFParser.TextSettings settings) {
         this.currentSettings = settings;
     }
+    
+    /**
+     * Check if a page should use TextView based on its content
+     */
+    public boolean shouldUseTextView(int position) {
+        if (documentType == DocumentType.TXT) {
+            return true;
+        } else if (documentType == DocumentType.EPUB && epubImages != null && position < epubImages.size() && (epubImages.get(position) == null || epubImages.get(position).isEmpty())) {
+            return true;
+        } else if (documentType == DocumentType.PDF) {
+            PDFParser.ParsedPage page = pages.get(position);
+            boolean shouldUse = page != null && page.text != null && !page.text.trim().isEmpty() && (page.images == null || page.images.isEmpty());
+            if (shouldUse) {
+                Log.d("PDFPageAdapter", "Page " + position + " using TextView (text-only PDF page)");
+            }
+            return shouldUse;
+        }
+        return false;
+    }
 
     @NonNull
     @Override
@@ -71,24 +90,30 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
 
     @Override
     public int getItemViewType(int position) {
-        if (documentType == DocumentType.TXT) {
-            return 1;
-        } else if (documentType == DocumentType.EPUB && epubImages != null && position < epubImages.size() && (epubImages.get(position) == null || epubImages.get(position).isEmpty())) {
-            return 1;
-        }
-        return 0;
+        int viewType = shouldUseTextView(position) ? 1 : 0;
+        Log.d("PDFPageAdapter", "getItemViewType(" + position + ") = " + viewType + " (" + (viewType == 1 ? "TextView" : "PDFView") + ")");
+        return viewType;
     }
 
     @Override
     public void onBindViewHolder(@NonNull PDFPageViewHolder holder, int position) {
         if (holder.isTextView) {
             String text = "";
+            PDFParser.TextSettings settings = currentSettings;
+            
             if (documentType == DocumentType.TXT && txtChunks != null) {
                 text = position < txtChunks.size() ? txtChunks.get(position) : "";
             } else if (documentType == DocumentType.EPUB && epubTextChunks != null) {
                 text = position < epubTextChunks.size() ? epubTextChunks.get(position) : "";
+            } else if (documentType == DocumentType.PDF) {
+                // Handle PDF text-only pages
+                PDFParser.ParsedPage page = pages.get(position);
+                if (page != null && page.text != null) {
+                    text = page.text;
+                    settings = page.textSettings != null ? page.textSettings : currentSettings;
+                }
             }
-            holder.bindText(text, currentSettings);
+            holder.bindText(text, settings);
         } else {
             PDFParser.ParsedPage page = pages.get(position);
             if (documentType == DocumentType.PDF && pdfParser != null && (page.text == null || page.text.isEmpty())) {
@@ -101,27 +126,17 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
                             parsed = pdfParser.parsePage(bindPosition + 1, currentSettings);
                         }
                         if (parsed != null) {
-                            // For the first page (position 0), center the text
-                            if (bindPosition == 0) {
-                                PDFParser.TextSettings centeredSettings = new PDFParser.TextSettings();
-                                centeredSettings.fontSize = currentSettings.fontSize;
-                                centeredSettings.letterSpacing = currentSettings.letterSpacing;
-                                centeredSettings.textAlignment = Paint.Align.CENTER; // Center the first page
-                                centeredSettings.lineHeight = currentSettings.lineHeight;
-                                centeredSettings.paragraphSpacing = currentSettings.paragraphSpacing;
-                                parsed = new PDFParser.ParsedPage(
-                                    parsed.text,
-                                    parsed.images,
-                                    parsed.pageNumber,
-                                    parsed.pageWidth,
-                                    parsed.pageHeight,
-                                    centeredSettings
-                                );
-                            }
                             pages.set(bindPosition, parsed);
                             mainHandler.post(() -> {
                                 pdfParsingInProgress.remove(bindPosition);
-                                notifyItemChanged(bindPosition);
+                                // Check if the page should now use TextView (no images and has text)
+                                if (shouldUseTextView(bindPosition)) {
+                                    // Force recreation of the view holder to use TextView
+                                    notifyItemChanged(bindPosition);
+                                } else {
+                                    // Just update the existing PDFView
+                                    notifyItemChanged(bindPosition);
+                                }
                             });
                         } else {
                             mainHandler.post(() -> pdfParsingInProgress.remove(bindPosition));

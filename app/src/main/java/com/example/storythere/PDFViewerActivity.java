@@ -130,7 +130,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         // Initialize MaterialScrollBar
         materialScrollBar = findViewById(R.id.materialScrollBar);
         
-        // Add touch listener to MaterialScrollBar for progress bar cooperation
+        // Add touch listener to MaterialScrollBar for progress bar cooperation and priority loading
         if (materialScrollBar != null) {
             // Try to detect dragbar usage through touch events
             materialScrollBar.setOnTouchListener(new View.OnTouchListener() {
@@ -147,6 +147,10 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     } else if (event.getAction() == MotionEvent.ACTION_UP) {
                         // Start timer to hide progress bar after dragbar interaction ends
                         scrollProgressHandler.postDelayed(hideProgressRunnable, 1000);
+                        
+                        // Trigger priority loading after dragbar interaction ends
+                        Log.d(TAG, "[DRAGBAR] Drag ended, triggering priority loading");
+                        triggerPriorityLoadingAfterDrag();
                     }
                     return false; // Let the dragbar handle the event normally
                 }
@@ -842,7 +846,16 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                         if (parsed != null) {
                             pages.set(targetPosition, parsed);
                             Log.d(TAG, "[FORCE_RENDER] Successfully parsed target page " + (targetPosition + 1));
-                            mainHandler.post(() -> pdfPageAdapter.notifyItemChanged(targetPosition));
+                            mainHandler.post(() -> {
+                                // Check if view type should change after parsing
+                                if (pdfPageAdapter.shouldUseTextView(targetPosition)) {
+                                    // Force recreation of view holder to switch to TextView
+                                    pdfPageAdapter.notifyItemChanged(targetPosition);
+                                } else {
+                                    // Just update the existing PDFView
+                                    pdfPageAdapter.notifyItemChanged(targetPosition);
+                                }
+                            });
                         }
                     }
                     // Parse before/after pages in background, skipping target
@@ -858,7 +871,16 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                                 pages.set(i, parsed);
                                 Log.d(TAG, "[FORCE_RENDER] Successfully parsed before page " + (i + 1));
                                 int notifyIndex = i;
-                                mainHandler.post(() -> pdfPageAdapter.notifyItemChanged(notifyIndex));
+                                mainHandler.post(() -> {
+                                    // Check if view type should change after parsing
+                                    if (pdfPageAdapter.shouldUseTextView(notifyIndex)) {
+                                        // Force recreation of view holder to switch to TextView
+                                        pdfPageAdapter.notifyItemChanged(notifyIndex);
+                                    } else {
+                                        // Just update the existing PDFView
+                                        pdfPageAdapter.notifyItemChanged(notifyIndex);
+                                    }
+                                });
                             }
                         }
                     }
@@ -874,7 +896,16 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                                 pages.set(i, parsed);
                                 Log.d(TAG, "[FORCE_RENDER] Successfully parsed after page " + (i + 1));
                                 int notifyIndex = i;
-                                mainHandler.post(() -> pdfPageAdapter.notifyItemChanged(notifyIndex));
+                                mainHandler.post(() -> {
+                                    // Check if view type should change after parsing
+                                    if (pdfPageAdapter.shouldUseTextView(notifyIndex)) {
+                                        // Force recreation of view holder to switch to TextView
+                                        pdfPageAdapter.notifyItemChanged(notifyIndex);
+                                    } else {
+                                        // Just update the existing PDFView
+                                        pdfPageAdapter.notifyItemChanged(notifyIndex);
+                                    }
+                                });
                             }
                         }
                     }
@@ -1081,6 +1112,26 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             } else {
                 materialScrollBar.setVisibility(View.VISIBLE);
             }
+        }
+    }
+
+    private void triggerPriorityLoadingAfterDrag() {
+        Log.d(TAG, "[PRIORITY_LOAD] Triggering priority loading after drag");
+        if (documentType == PDFPageAdapter.DocumentType.PDF && pdfRecyclerView != null) {
+            LinearLayoutManager layoutManager = (LinearLayoutManager) pdfRecyclerView.getLayoutManager();
+            if (layoutManager != null) {
+                int first = layoutManager.findFirstVisibleItemPosition();
+                int last = layoutManager.findLastVisibleItemPosition();
+                if (first != RecyclerView.NO_POSITION && last != RecyclerView.NO_POSITION) {
+                    int window = 2; // Pre-parse 2 pages before and after
+                    int start = Math.max(0, first - window);
+                    int end = Math.min(totalPages - 1, last + window);
+                    Log.d(TAG, "[PRIORITY_LOAD] Drag ended at position " + first + ", triggering priority loading for pages " + start + " to " + end);
+                    forceRenderPages(start, end, first); // targetPosition is first visible
+                }
+            }
+        } else {
+            Log.d(TAG, "[PRIORITY_LOAD] Not PDF or RecyclerView not available, skipping priority loading");
         }
     }
 }

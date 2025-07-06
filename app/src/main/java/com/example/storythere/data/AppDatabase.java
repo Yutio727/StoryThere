@@ -8,12 +8,13 @@ import androidx.room.TypeConverters;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-@Database(entities = {Book.class}, version = 5, exportSchema = false)
+@Database(entities = {Book.class, Author.class}, version = 7, exportSchema = false)
 @TypeConverters({DateConverter.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
     
     public abstract BookDao bookDao(); // Using Room, which is an abstraction layer of SQLite
+    public abstract AuthorDao authorDao();
 
     private static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
@@ -48,6 +49,31 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
     
+    private static final Migration MIGRATION_5_6 = new Migration(5, 6) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            // Create authors table
+            database.execSQL("CREATE TABLE IF NOT EXISTS authors (" +
+                "authorId TEXT PRIMARY KEY NOT NULL, " +
+                "name TEXT, " +
+                "biography TEXT, " +
+                "birthDate TEXT, " +
+                "deathDate TEXT, " +
+                "nationality TEXT, " +
+                "photoUrl TEXT, " +
+                "totalBooks INTEGER NOT NULL DEFAULT 0" +
+                ")");
+        }
+    };
+    
+    private static final Migration MIGRATION_6_7 = new Migration(6, 7) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            // Add authorId column to books table
+            database.execSQL("ALTER TABLE books ADD COLUMN authorId TEXT");
+        }
+    };
+    
     public static AppDatabase getDatabase(final Context context) {
         if (INSTANCE == null) {
             synchronized (AppDatabase.class) {
@@ -57,7 +83,7 @@ public abstract class AppDatabase extends RoomDatabase {
                         AppDatabase.class,
                         "storythere_database"
                     )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .fallbackToDestructiveMigration()
                     .build();
                 }

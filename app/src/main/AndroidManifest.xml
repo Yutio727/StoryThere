@@ -105,6 +105,11 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
         <activity
+            android:name=".AuthorDetailActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.StoryThere.NoActionBar" />
+        <activity
             android:name=".AudioReaderActivity"
             android:exported="true"
             android:screenOrientation="portrait"

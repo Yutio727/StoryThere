@@ -18,8 +18,11 @@ import android.os.Environment;
 import android.widget.Toast;
 import com.example.storythere.data.Book;
 import com.example.storythere.data.BookRepository;
+import com.example.storythere.data.Author;
+import com.example.storythere.data.AuthorRepository;
 import androidx.lifecycle.ViewModelProvider;
 import com.example.storythere.ui.BookListViewModel;
+import com.example.storythere.ui.AuthorAdapter;
 import android.util.Log;
 import android.widget.Button;
 import com.example.storythere.data.UserRepository;
@@ -37,6 +40,7 @@ import androidx.lifecycle.Observer;
 import java.io.File;
 import java.io.InputStream;
 import java.util.Date;
+
 
 public class HomeActivity extends AppCompatActivity {
     
@@ -60,6 +64,8 @@ public class HomeActivity extends AppCompatActivity {
     private Button adminAddBookButton;
     private static final String ADMIN_EMAIL = "dima.gurliv@gmail.com";
     private UserRepository userRepository;
+    private AuthorRepository authorRepository;
+    private AuthorAdapter authorAdapter;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,9 +82,11 @@ public class HomeActivity extends AppCompatActivity {
         bookRepository = new BookRepository(getApplication());
         viewModel = new ViewModelProvider(this).get(BookListViewModel.class);
         userRepository = new UserRepository();
+        authorRepository = new AuthorRepository(this);
         
         setupAdminButton();
         setupRecommendedBooksRecycler();
+        setupAuthorsRecycler();
     }
     
     private void initializeViews() {
@@ -620,5 +628,24 @@ public class HomeActivity extends AppCompatActivity {
         intent.putExtra("annotation", annotation);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
+    }
+
+    private void setupAuthorsRecycler() {
+        RecyclerView recyclerView = findViewById(R.id.recycler_authors);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        
+        authorAdapter = new AuthorAdapter(this, new ArrayList<>());
+        recyclerView.setAdapter(authorAdapter);
+        
+        // Load authors from Firebase and observe changes
+        authorRepository.loadAuthorsFromFirebase();
+        authorRepository.getPopularAuthors(10).observe(this, new Observer<List<Author>>() {
+            @Override
+            public void onChanged(List<Author> authors) {
+                if (authors != null) {
+                    authorAdapter.updateAuthors(authors);
+                }
+            }
+        });
     }
 } 

@@ -2,6 +2,7 @@ package com.example.storythere.data;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
+import androidx.room.Ignore;
 import java.util.Date;
 
 @Entity(tableName = "books")
@@ -23,7 +24,9 @@ public class Book {
     private String image; // for server-side field
     private int readingPosition; // Store reading position for all document types
     private String timeOfListen; // for word count/listening time
+    private String authorId; // Link to author collection
     
+    @Ignore
     public Book(String title, String author, String filePath, String fileType) {
         this.title = title;
         this.author = author;
@@ -86,4 +89,7 @@ public class Book {
 
     public String getTimeOfListen() { return timeOfListen; }
     public void setTimeOfListen(String timeOfListen) { this.timeOfListen = timeOfListen; }
+
+    public String getAuthorId() { return authorId; }
+    public void setAuthorId(String authorId) { this.authorId = authorId; }
 } 

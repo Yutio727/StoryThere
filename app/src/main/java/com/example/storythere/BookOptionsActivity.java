@@ -45,8 +45,6 @@ import android.graphics.Typeface;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.app.ProgressDialog;
-import android.content.ClipboardManager;
-import android.content.ClipData;
 import android.view.View;
 import android.net.ConnectivityManager;
 import android.net.Network;
@@ -54,11 +52,6 @@ import android.content.Context;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.ProgressBar;
-import android.widget.ProgressBar;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 
 public class BookOptionsActivity extends AppCompatActivity {
@@ -230,7 +223,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                         writer.write(parsed.content);
                     } catch (Exception e) {
                         e.printStackTrace();
-                        Toast.makeText(this, "Failed to cache parsed text", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.failed_to_cache_parsed_text, Toast.LENGTH_SHORT).show();
                         return;
                     }
                     Intent pdfIntent = new Intent(this, PDFViewerActivity.class);
@@ -267,6 +260,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     if ("txt".equals(fileType)) {
                         // Use optimal parsing method from TextParser
                         textUri = contentUri;
+                        Log.d("BookOptionsActivity", "Parsing txt using TextParser");
                         TextParser.ParsedText parsed = TextParser.parseText(this, contentUri);
                         textContent = parsed.content;
                         isRussian = parsed.isRussian;
@@ -278,7 +272,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                         
                         try {
                             if (cacheFile.exists() && cacheFile.length() > 0) {
-                                Log.d("BookOptionsActivity", "Found existing cache file, reading from cache");
+                                Log.d("BookOptionsActivity", "Found existing cache file (EPUB), reading from cache");
                                 // Read from cache
                                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(cacheFile)))) {
                                     StringBuilder sb = new StringBuilder();
@@ -331,6 +325,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                         if (parsedFile != null) {
                             // Use cached parsed text file
                             textUri = Uri.fromFile(parsedFile);
+                            Log.d("BookOptionsActivity", "Found existing cache file, reading from cache");
                             InputStream inputStream = getContentResolver().openInputStream(textUri);
                             StringBuilder textBuilder = new StringBuilder();
                             try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
@@ -344,6 +339,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                         } else {
                             // Parse and cache text
                             if ("pdf".equals(fileType)) {
+                                Log.d("BookOptionsActivity", "No cache found,parsing file: " + contentUri.toString());
                                 // Extract text from PDF in parallel
                                 StringBuilder allText = new StringBuilder();
                                 try {
@@ -385,11 +381,12 @@ public class BookOptionsActivity extends AppCompatActivity {
                                     executor.shutdown();
                                 } catch (Exception e) {
                                     e.printStackTrace();
-                                    Toast.makeText(this, "Error extracting text: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(this, getString(R.string.error_extracting_text) + e.getMessage(), Toast.LENGTH_SHORT).show();
                                     return;
                                 }
                                 textContent = allText.toString();
                             } else if ("epub".equals(fileType)) {
+                                Log.d("BookOptionsActivity", "No cache found, parsing EPUB file: " + contentUri.toString());
                                 // Parse EPUB file
                                 InputStream inputStream = getContentResolver().openInputStream(contentUri);
                                 StringBuilder textBuilder = new StringBuilder();
@@ -405,6 +402,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                                 textContent = textBuilder.toString();
                             } else {
                                 // For other file types
+                                Log.d("BookOptionsActivity", "No cache found, parsing EPUB file: " + contentUri.toString());
                                 InputStream inputStream = getContentResolver().openInputStream(contentUri);
                                 StringBuilder textBuilder = new StringBuilder();
                                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
@@ -417,6 +415,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                             }
                             isRussian = TextParser.isTextPrimarilyRussian(textContent);
                             // Save to a txt file and update Book
+                            Log.d("BookOptionsActivity", "Saving text to cache: " + contentUri.toString());
                             File cacheDir = getCacheDir();
                             String parsedFileName = "parsed_" + (currentBook != null ? currentBook.getId() : System.currentTimeMillis()) + ".txt";
                             File outFile = new File(cacheDir, parsedFileName);
@@ -432,6 +431,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     }
 
                     // Open audio reader with the text
+                    Log.d("BookOptionsActivity", "Openning audio reader with the text of: " + contentUri.toString());
                     Intent audioIntent = new Intent(this, AudioReaderActivity.class);
                     audioIntent.setData(textUri);
                     audioIntent.putExtra("fileType", "txt");
@@ -444,7 +444,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     startActivity(audioIntent);
                 } catch (Exception e) {
                     e.printStackTrace();
-                    Toast.makeText(this, "Error preparing text for listening", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.error_preparing_text_for_listening, Toast.LENGTH_SHORT).show();
                     // Revert to read mode state on error
                     isReadModeSelected = true;
                     updateButtonStates(true);
@@ -470,7 +470,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                                     inputStream.close();
                                 }
                             } catch (Exception e) {
-                                Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(this, R.string.failed_to_load_image, Toast.LENGTH_SHORT).show();
                             }
                             // Prompt user to save changesAdd commentMore actions
                             new AlertDialog.Builder(this)
@@ -561,7 +561,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         try {
             imagePickerLauncher.launch(intent);
         } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, "No app found to pick images", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.no_app_found_to_pick_images, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -611,12 +611,12 @@ public class BookOptionsActivity extends AppCompatActivity {
                     .skipMemoryCache(false)
                     .into(bookCoverImage);
                 
-                Toast.makeText(this, "Cover saved", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.cover_saved, Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(this, "Error saving cover", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.error_saving_cover, Toast.LENGTH_SHORT).show();
             }
         } catch (Exception e) {
-            Toast.makeText(this, "Error saving cover: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.error_saving_cover + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -811,7 +811,7 @@ public class BookOptionsActivity extends AppCompatActivity {
             bookAnnotationProgressBar.setVisibility(View.VISIBLE);
             bookAnnotationProgressStatus.setVisibility(View.VISIBLE);
             bookAnnotationProgressBar.setProgress(0);
-            bookAnnotationProgressStatus.setText("Receiving book data...");
+            bookAnnotationProgressStatus.setText(R.string.receiving_book_data);
             btnSummarize.setEnabled(false);
         });
 
@@ -821,7 +821,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                 Thread.sleep(400); // Simulate delay
                 runOnUiThread(() -> {
                     bookAnnotationProgressBar.setProgress(15);
-                    bookAnnotationProgressStatus.setText("Receiving book data...");
+                    bookAnnotationProgressStatus.setText(R.string.receiving_book_data);
                 });
 
                 // 2. Preparing request for AI
@@ -829,7 +829,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                 Thread.sleep(400); // Simulate delay
                 runOnUiThread(() -> {
                     bookAnnotationProgressBar.setProgress(35);
-                    bookAnnotationProgressStatus.setText("Preparing request for AI...");
+                    bookAnnotationProgressStatus.setText(R.string.preparing_request_for_ai);
                 });
 
                 if (textContent == null || textContent.trim().isEmpty()) {
@@ -845,7 +845,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                 // 3. Connecting to neural network
                 runOnUiThread(() -> {
                     bookAnnotationProgressBar.setProgress(60);
-                    bookAnnotationProgressStatus.setText("Connecting to neural network...");
+                    bookAnnotationProgressStatus.setText(R.string.connecting_to_neural_network);
                 });
 
                 final String[] summaryHolder = new String[1];
@@ -883,14 +883,14 @@ public class BookOptionsActivity extends AppCompatActivity {
                 // 4. Receiving annotation
                 runOnUiThread(() -> {
                     bookAnnotationProgressBar.setProgress(90);
-                    bookAnnotationProgressStatus.setText("Receiving annotation...");
+                    bookAnnotationProgressStatus.setText(R.string.receiving_annotation);
                 });
                 Thread.sleep(600); // Simulate receiving
 
                 // Animate to 100% and show annotation
                 runOnUiThread(() -> {
                     bookAnnotationProgressBar.setProgress(100);
-                    bookAnnotationProgressStatus.setText("Done!");
+                    bookAnnotationProgressStatus.setText(R.string.done);
                 });
                 Thread.sleep(1000);
 
@@ -922,7 +922,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     bookAnnotationProgressBar.setVisibility(View.GONE);
                     bookAnnotationProgressStatus.setVisibility(View.GONE);
                     btnSummarize.setEnabled(true);
-                    Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.error) + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
             }
         }).start();
@@ -930,7 +930,7 @@ public class BookOptionsActivity extends AppCompatActivity {
 
     private void performBookCoverGeneration() {
         if (title == null || title.trim().isEmpty()) {
-            Toast.makeText(this, "Book title is required to generate cover", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.book_title_is_required_to_generate_cover, Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -987,7 +987,7 @@ public class BookOptionsActivity extends AppCompatActivity {
 
         } catch (IOException e) {
             Log.e("BookOptionsActivity", "Error saving generated cover", e);
-            Toast.makeText(this, "Error saving cover: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.error_saving_cover + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 

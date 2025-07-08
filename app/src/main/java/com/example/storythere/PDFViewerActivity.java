@@ -26,6 +26,8 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -36,9 +38,8 @@ import com.example.storythere.data.Book;
 import com.example.storythere.data.BookRepository;
 import android.animation.ObjectAnimator;
 import com.turingtechnologies.materialscrollbar.DragScrollBar;
-import com.turingtechnologies.materialscrollbar.CustomIndicator;
 
-public class PDFViewerActivity extends AppCompatActivity implements TextSettingsDialog.TextSettingsListener {
+public class PDFViewerActivity extends AppCompatActivity implements TextSettingsDialog.TextSettingsListener, PDFPageAdapter.TextSelectionCallback {
     private static final String TAG = "PDFViewerActivity";
     private static final int INITIAL_LOAD_RANGE = 5; // Load 5 pages before and after current
     private static final int LOAD_RANGE = 10; // Load 3 pages in scroll direction
@@ -62,6 +63,11 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     private boolean isEPUB = false;
     private PDFPageAdapter pdfPageAdapter;
     private PDFPageAdapter.DocumentType documentType;
+    
+    // Text content variables for different document types
+    private List<String> txtChunks;
+    private List<String> epubTextChunks;
+    private List<List<PDFParser.ImageInfo>> epubImages;
     
     // MaterialScrollBar
     private DragScrollBar materialScrollBar;
@@ -87,6 +93,12 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
 
     // For smooth progress animation
     private int lastProgressValue = 0;
+    
+    // Text selection tracking
+    private String lastSelectedText = "";
+    private int lastSelectedPage = -1;
+    private int lastSelectedStart = -1;
+    private int lastSelectedEnd = -1;
 
     // Animation duration for progress bar
     private static final int PROGRESS_ANIMATION_DURATION = 250;
@@ -454,7 +466,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             currentSettings.paragraphSpacing = 1.5f;
 
             // Split TXT into pages (e.g., 2000 chars per page)
-            List<String> txtChunks = splitTextIntoPages(textContent, 2000);
+            this.txtChunks = splitTextIntoPages(textContent, 2000);
             pages = new ArrayList<>();
             for (int i = 0; i < txtChunks.size(); i++) {
                 pages.add(new PDFParser.ParsedPage("", new ArrayList<>(), i + 1, 612.0f, 792.0f, currentSettings));
@@ -484,6 +496,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 }
                 mainHandler.post(() -> {
                     pdfPageAdapter = new PDFPageAdapter(PDFViewerActivity.this, pages, PDFPageAdapter.DocumentType.TXT, null, txtChunks, null, null, currentSettings);
+                    pdfPageAdapter.setTextSelectionCallback(PDFViewerActivity.this);
                     pdfRecyclerView.getRecycledViewPool().clear();
                     pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
                     pdfPageAdapter.notifyDataSetChanged();
@@ -546,8 +559,8 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             if (epubParser.parse(epubUri)) {
                 List<String> textContent = epubParser.getTextContent();
                 List<Bitmap> images = epubParser.getImages();
-                List<String> epubPages = new ArrayList<>();
-                List<List<PDFParser.ImageInfo>> epubImages = new ArrayList<>();
+                this.epubTextChunks = new ArrayList<>();
+                this.epubImages = new ArrayList<>();
                 int charsPerPage = 1200;
                 for (int sectionIdx = 0; sectionIdx < textContent.size(); sectionIdx++) {
                     String section = textContent.get(sectionIdx);
@@ -555,18 +568,18 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     List<String> sectionPages = splitTextIntoPages(section, charsPerPage);
                     boolean imageAdded = false;
                     for (int i = 0; i < sectionPages.size(); i++) {
-                        epubPages.add(sectionPages.get(i));
+                        this.epubTextChunks.add(sectionPages.get(i));
                         List<PDFParser.ImageInfo> pageImages = new ArrayList<>();
                         if (!imageAdded && images != null && sectionIdx < images.size()) {
                             Bitmap bitmap = images.get(sectionIdx);
                             pageImages.add(new PDFParser.ImageInfo(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight()));
                             imageAdded = true;
                         }
-                        epubImages.add(pageImages);
+                        this.epubImages.add(pageImages);
                     }
                 }
                 pages = new ArrayList<>();
-                for (int i = 0; i < epubPages.size(); i++) {
+                for (int i = 0; i < this.epubTextChunks.size(); i++) {
                     pages.add(new PDFParser.ParsedPage("", new ArrayList<>(), i + 1, 595.0f, 842.0f, currentSettings));
                 }
                 totalPages = pages.size();
@@ -579,8 +592,8 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 paint.setTextAlign(Paint.Align.LEFT);
                 executor.execute(() -> {
                     int width = getResources().getDisplayMetrics().widthPixels - 64; // 32dp padding each side
-                    for (int i = 0; i < epubPages.size(); i++) {
-                        String text = epubPages.get(i);
+                    for (int i = 0; i < this.epubTextChunks.size(); i++) {
+                        String text = this.epubTextChunks.get(i);
                         Layout.Alignment align = Layout.Alignment.ALIGN_NORMAL;
                         StaticLayout layout = StaticLayout.Builder.obtain(text, 0, text.length(), paint, width)
                             .setAlignment(align)
@@ -591,9 +604,10 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                         pages.get(i).precomputedLayout = layout;
                     }
                     mainHandler.post(() -> {
-                        pdfPageAdapter = new PDFPageAdapter(PDFViewerActivity.this, pages, PDFPageAdapter.DocumentType.EPUB, null, null, epubPages, epubImages, currentSettings);
-                        pdfRecyclerView.getRecycledViewPool().clear();
-                        pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
+                                    pdfPageAdapter = new PDFPageAdapter(PDFViewerActivity.this, pages, PDFPageAdapter.DocumentType.EPUB, null, null, this.epubTextChunks, this.epubImages, currentSettings);
+            pdfPageAdapter.setTextSelectionCallback(PDFViewerActivity.this);
+            pdfRecyclerView.getRecycledViewPool().clear();
+            pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
                         
                         // Configure MaterialScrollBar
                         if (materialScrollBar != null) {
@@ -682,6 +696,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 pages.add(new PDFParser.ParsedPage("", new ArrayList<>(), i + 1, pageWidth, pageHeight, currentSettings));
             }
             pdfPageAdapter = new PDFPageAdapter(this, pages, PDFPageAdapter.DocumentType.PDF, pdfParser, null, null, null, currentSettings);
+            pdfPageAdapter.setTextSelectionCallback(PDFViewerActivity.this);
             pdfRecyclerView.getRecycledViewPool().clear();
             pdfRecyclerView.swapAdapter(pdfPageAdapter, false);
             
@@ -1023,6 +1038,9 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         } else if (id == R.id.action_text_settings) {
             showTextSettingsDialog();
             return true;
+        } else if (id == R.id.action_listen_selected) {
+            launchAudioReaderWithSelectedText();
+            return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -1070,6 +1088,275 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                     .start();
         }
     }
+    
+    // TextSelectionCallback implementation
+    @Override
+    public void onTextSelected(String selectedText, int pagePosition, int start, int end) {
+        lastSelectedText = selectedText;
+        lastSelectedPage = pagePosition;
+        lastSelectedStart = start;
+        lastSelectedEnd = end;
+        Log.d(TAG, "Text selected on page " + pagePosition + ": '" + selectedText + "' (start: " + start + ", end: " + end + ")");
+    }
+    
+    @Override
+    public void onSelectionCleared(int pagePosition) {
+        lastSelectedText = "";
+        lastSelectedPage = -1;
+        lastSelectedStart = -1;
+        lastSelectedEnd = -1;
+        Log.d(TAG, "Text selection cleared on page " + pagePosition);
+    }
+    
+    private void launchAudioReaderWithSelectedText() {
+        if (lastSelectedText == null || lastSelectedText.trim().isEmpty()) {
+            Toast.makeText(this, R.string.please_select_some_text_first, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Calculate the word position of the selected text
+        int wordPosition = calculateWordPositionFromSelection();
+        if (wordPosition == -1) {
+            Toast.makeText(this, R.string.could_not_determine_text_position, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        Log.d(TAG, "Launching AudioReader with word position: " + wordPosition + " for text: '" + lastSelectedText + "'");
+        
+        // Launch AudioReaderActivity with the calculated position
+        launchAudioReader(wordPosition);
+    }
+    
+    private int calculateWordPositionFromSelection() {
+        if (lastSelectedPage < 0 || lastSelectedStart < 0 || lastSelectedEnd < 0) {
+            return -1;
+        }
+
+        // Get the full text content up to the selected page
+        String fullText = getFullTextContent();
+        Log.d(TAG, "Getting the full text content up to the selected page.");
+        if (fullText == null) {
+            return -1;
+        }
+        
+        // Get the text of the current page where selection occurred
+        String pageText = getPageText(lastSelectedPage);
+        if (pageText == null) {
+            return -1;
+        }
+        
+        // Calculate word position
+        return calculateWordPosition(fullText, pageText, lastSelectedStart, lastSelectedEnd);
+    }
+    
+    private String getFullTextContent() {
+        if (documentType == PDFPageAdapter.DocumentType.TXT && this.txtChunks != null) {
+            StringBuilder fullText = new StringBuilder();
+            for (String chunk : this.txtChunks) {
+                fullText.append(chunk).append("\n\n");
+            }
+            return fullText.toString();
+        } else if (documentType == PDFPageAdapter.DocumentType.EPUB && this.epubTextChunks != null) {
+            StringBuilder fullText = new StringBuilder();
+            for (String chunk : this.epubTextChunks) {
+                fullText.append(chunk).append("\n\n");
+            }
+            return fullText.toString();
+        } else if (documentType == PDFPageAdapter.DocumentType.PDF) {
+            // Only use the parsed text path from the Book object, matching BookOptionsActivity
+            if (currentBook != null && currentBook.getParsedTextPath() != null) {
+                File cacheFile = new File(currentBook.getParsedTextPath());
+                Log.d(TAG, "[PDF_FULLTEXT] Using Book parsedTextPath: " + cacheFile.getAbsolutePath() + ", exists: " + cacheFile.exists());
+                if (cacheFile.exists()) {
+                    try {
+                        String textContent = new String(java.nio.file.Files.readAllBytes(cacheFile.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+                        Log.d(TAG, "[PDF_FULLTEXT] Successfully read parsedTextPath, length: " + textContent.length());
+                        return textContent;
+                    } catch (Exception e) {
+                        Log.e(TAG, "[PDF_FULLTEXT] Failed to read parsedTextPath: " + e.getMessage());
+                    }
+                } else {
+                    Log.w(TAG, "[PDF_FULLTEXT] Cache file does not exist: " + cacheFile.getAbsolutePath());
+                }
+            } else {
+                Log.w(TAG, "[PDF_FULLTEXT] No parsedTextPath set in Book object.");
+            }
+            return null;
+        }
+        return null;
+    }
+    
+    private String getPageText(int pagePosition) {
+        if (pagePosition < 0) return null;
+        
+        if (documentType == PDFPageAdapter.DocumentType.TXT && this.txtChunks != null && pagePosition < this.txtChunks.size()) {
+            return this.txtChunks.get(pagePosition);
+        } else if (documentType == PDFPageAdapter.DocumentType.EPUB && this.epubTextChunks != null && pagePosition < this.epubTextChunks.size()) {
+            return this.epubTextChunks.get(pagePosition);
+        } else if (documentType == PDFPageAdapter.DocumentType.PDF && pages != null && pagePosition < pages.size()) {
+            PDFParser.ParsedPage page = pages.get(pagePosition);
+            return page != null ? page.text : null;
+        }
+        return null;
+    }
+    
+    private static String stripAllWhitespace(String s) {
+        return s.replaceAll("\\s+", "");
+    }
+
+    private int calculateWordPosition(String fullText, String pageText, int start, int end) {
+        if (fullText == null || pageText == null) return -1;
+
+        // Clean both strings before searching
+        String cleanedFullText = com.example.storythere.PDFParser.cleanText(fullText);
+        String cleanedPageText = com.example.storythere.PDFParser.cleanText(pageText);
+
+        // Get the selected string from the page text
+        if (start < 0 || end > cleanedPageText.length() || start >= end) {
+            Log.e(TAG, "Invalid selection range for page text");
+            return -1;
+        }
+        String selectedString = cleanedPageText.substring(start, end);
+        String strippedFullText = stripAllWhitespace(cleanedFullText);
+        String strippedSelectedString = stripAllWhitespace(selectedString);
+
+        int selectionStartInFull = strippedFullText.indexOf(strippedSelectedString);
+        if (selectionStartInFull == -1) {
+            Log.e(TAG, "Could not find stripped selected string in stripped full text");
+            Log.e(TAG, "[DEBUG] strippedSelectedString length: " + strippedSelectedString.length() + ", strippedFullText length: " + strippedFullText.length());
+            Log.e(TAG, "[DEBUG] strippedSelectedString (first 200): " + strippedSelectedString.substring(0, Math.min(200, strippedSelectedString.length())));
+            Log.e(TAG, "[DEBUG] strippedFullText (first 200): " + strippedFullText.substring(0, Math.min(200, strippedFullText.length())));
+            return -1;
+        }
+
+        // Map the stripped index back to the original cleanedFullText
+        int nonWsCount = 0;
+        int charPosInFull = -1;
+        for (int i = 0; i < cleanedFullText.length(); i++) {
+            if (!Character.isWhitespace(cleanedFullText.charAt(i))) {
+                if (nonWsCount == selectionStartInFull) {
+                    charPosInFull = i;
+                    break;
+                }
+                nonWsCount++;
+            }
+        }
+        if (charPosInFull == -1) {
+            Log.e(TAG, "Failed to map stripped index back to original text");
+            return -1;
+        }
+
+        // Now count words up to charPosInFull in cleanedFullText
+        String[] fullWords = cleanedFullText.split("\\s+");
+        int wordCount = 0;
+        int currentPos = 0;
+        for (String word : fullWords) {
+            int wordStart = cleanedFullText.indexOf(word, currentPos);
+            if (wordStart == -1) break;
+            if (wordStart >= charPosInFull) break;
+            wordCount++;
+            currentPos = wordStart + word.length();
+        }
+
+        Log.d(TAG, "Calculated word position (whitespace-stripped, selected string): " + wordCount + " (selection: " + start + "-" + end + " in page " + lastSelectedPage + ")");
+        return wordCount;
+    }
+    
+    private void launchAudioReader(int wordPosition) {
+        try {
+            // Get the current book information
+            String title = getIntent().getStringExtra("title");
+            
+            // Parse text content similar to BookOptionsActivity
+            String textContent;
+            boolean isRussian = false;
+            Uri textUri = null;
+            
+            if (documentType == PDFPageAdapter.DocumentType.TXT) {
+                // For TXT files, use the existing parsed content
+                textContent = getFullTextContent();
+                isRussian = TextParser.isTextPrimarilyRussian(textContent);
+                
+                // Save to cache file if it doesn't exist
+                String safeTitle = (title != null ? title.replaceAll("[^a-zA-Z0-9]", "_") : "book");
+                File cacheFile = new File(getCacheDir(), safeTitle + "_audio.txt");
+                if (!cacheFile.exists()) {
+                    Log.d(TAG, "[CACHE] No existing cached file found.");
+                    try (FileWriter writer = new FileWriter(cacheFile, false)) {
+                        writer.write(textContent);
+                        Log.d(TAG, "[CACHE] Writing text to cached file: " + cacheFile);
+                    }
+                }
+                else{
+                    Log.d(TAG, "[CACHE] Found existing cache file: " + cacheFile);
+                }
+                textUri = Uri.fromFile(cacheFile);
+                
+            } else if (documentType == PDFPageAdapter.DocumentType.EPUB) {
+                // For EPUB files, use the existing parsed content
+                textContent = getFullTextContent();
+                isRussian = TextParser.isTextPrimarilyRussian(textContent);
+                
+                // Save to cache file if it doesn't exist
+                String safeTitle = (title != null ? title.replaceAll("[^a-zA-Z0-9]", "_") : "book");
+                File cacheFile = new File(getCacheDir(), safeTitle + "_audio.txt");
+                if (!cacheFile.exists()) {
+                    Log.d(TAG, "[CACHE] No existing cached file found.");
+                    try (FileWriter writer = new FileWriter(cacheFile, false)) {
+                        writer.write(textContent);
+                        Log.d(TAG, "[CACHE] Writing text to cached file: " + cacheFile);
+                    }
+                }
+                else{
+                    Log.d(TAG, "[CACHE] Found existing cache file: ." + cacheFile);
+                }
+                textUri = Uri.fromFile(cacheFile);
+                
+            } else if (documentType == PDFPageAdapter.DocumentType.PDF) {
+                // For PDF files, extract text content
+                textContent = getFullTextContent();
+                isRussian = TextParser.isTextPrimarilyRussian(textContent);
+                
+                // Save to cache file if it doesn't exist
+                String safeTitle = (title != null ? title.replaceAll("[^a-zA-Z0-9]", "_") : "book");
+                File cacheFile = new File(getCacheDir(), safeTitle + "_audio.txt");
+                if (!cacheFile.exists()) {
+                    Log.d(TAG, "[CACHE] No existing cached file found.");
+                    try (FileWriter writer = new FileWriter(cacheFile, false)) {
+                        writer.write(textContent);
+                        Log.d(TAG, "[CACHE] Writing text to cached file: " + cacheFile);
+                    }
+                }
+                else{
+                    Log.d(TAG, "[CACHE] Found existing cache file: ." + cacheFile);
+                }
+                textUri = Uri.fromFile(cacheFile);
+            }
+            
+            if (textUri == null) {
+                Toast.makeText(this, R.string.could_not_prepare_text_for_audio_reading, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            // Launch AudioReaderActivity
+            Intent audioIntent = new Intent(this, AudioReaderActivity.class);
+            audioIntent.setData(textUri);
+            audioIntent.putExtra("fileType", "txt");
+            audioIntent.putExtra("title", title);
+            audioIntent.putExtra("author", currentBook != null ? currentBook.getAuthor() : "Unknown Author");
+            audioIntent.putExtra("is_russian", isRussian);
+            audioIntent.putExtra("start_position", wordPosition); // Pass the calculated word position
+            if (currentBook != null && currentBook.getPreviewImagePath() != null) {
+                audioIntent.putExtra("previewImagePath", currentBook.getPreviewImagePath());
+            }
+            
+            startActivity(audioIntent);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error launching AudioReader: " + e.getMessage(), e);
+            Toast.makeText(this, R.string.error_launching_audio_reader, Toast.LENGTH_SHORT).show();
+        }
+    }
 
     private void animateHideProgressBar() {
         if (scrollProgressContainer.getVisibility() == View.VISIBLE) {
@@ -1108,7 +1395,7 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         if (materialScrollBar != null && pages != null) {
             if (pages.size() <= 2) { // Show message if too few pages
                 materialScrollBar.setVisibility(View.VISIBLE); // Still show the bar
-                Toast.makeText(this, "Scroll bar is available, but there are too few pages to scroll.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.scroll_bar_is_available_but_there_are_too_few_pages_to_scroll, Toast.LENGTH_SHORT).show();
             } else {
                 materialScrollBar.setVisibility(View.VISIBLE);
             }

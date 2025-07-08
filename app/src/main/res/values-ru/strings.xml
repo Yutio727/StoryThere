@@ -177,4 +177,23 @@
     <string name="offline_user">Офлайн пользователь</string>
     <string name="offline_mode">Офлайн режим</string>
     <string name="offline_home_message">Извините, этот раздел недоступен в офлайн режиме</string>
+    <string name="scroll_bar_is_available_but_there_are_too_few_pages_to_scroll">Скроллбар доступен, но страниц слишком мало, чтобы что-то листать.</string>
+    <string name="please_select_some_text_first">Пожалуйста, выберите немного текста</string>
+    <string name="could_not_determine_text_position">Не удалось определить позицию в тексте</string>
+    <string name="could_not_prepare_text_for_audio_reading">Не удалось подготовить текст для прослушивания</string>
+    <string name="error_launching_audio_reader">Ошибка при запуске режима прослушивания</string>
+    <string name="failed_to_cache_parsed_text">Не удалось кэшировать текст</string>
+    <string name="error_extracting_text">"Не удалось извлечь текст: "</string>
+    <string name="error_preparing_text_for_listening">Не удалось подготовить текст для прослушивания</string>
+    <string name="failed_to_load_image">Не удалось загрузить изображение</string>
+    <string name="no_app_found_to_pick_images">Нет приложений, чтобы выбрать изображение</string>
+    <string name="cover_saved">Обложка сохранена</string>
+    <string name="error_saving_cover">Не удалось сохранить облоку</string>
+    <string name="preparing_request_for_ai">Подготавливаем запрос к нейронной сети...</string>
+    <string name="connecting_to_neural_network">Подключаемся к нейронной сети...</string>
+    <string name="receiving_annotation">Получаем описание...</string>
+    <string name="done">Готово!</string>
+    <string name="error">"Ошибка: "</string>
+    <string name="book_title_is_required_to_generate_cover">Для генерации обложки требуется сгенерировать описание</string>
+    <string name="receiving_book_data">Получаем данные о книге...</string>
 </resources>

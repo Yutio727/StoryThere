@@ -176,4 +176,23 @@
     <string name="offline_user">Offline User</string>
     <string name="offline_mode">Offline Mode</string>
     <string name="offline_home_message">Sorry, this section is not available offline</string>
+    <string name="scroll_bar_is_available_but_there_are_too_few_pages_to_scroll">Scroll bar is available, but there are too few pages to scroll.</string>
+    <string name="please_select_some_text_first">Please select some text first</string>
+    <string name="could_not_determine_text_position">Could not determine text position</string>
+    <string name="could_not_prepare_text_for_audio_reading">Could not prepare text for audio reading</string>
+    <string name="error_launching_audio_reader">Error launching audio reader</string>
+    <string name="failed_to_cache_parsed_text">Failed to cache parsed text</string>
+    <string name="error_extracting_text">"Error extracting text: "</string>
+    <string name="error_preparing_text_for_listening">Error preparing text for listening</string>
+    <string name="failed_to_load_image">Failed to load image</string>
+    <string name="no_app_found_to_pick_images">No app found to pick images</string>
+    <string name="cover_saved">Cover saved</string>
+    <string name="error_saving_cover">Error saving cover</string>
+    <string name="preparing_request_for_ai">Preparing request for AI...</string>
+    <string name="connecting_to_neural_network">Connecting to neural network...</string>
+    <string name="receiving_annotation">Receiving annotation...</string>
+    <string name="done">Done!</string>
+    <string name="error">"Error: "</string>
+    <string name="book_title_is_required_to_generate_cover">Book title is required to generate cover</string>
+    <string name="receiving_book_data">Receiving book data...</string>
 </resources>

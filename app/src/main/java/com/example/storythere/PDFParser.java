@@ -349,7 +349,7 @@ public class PDFParser {
         }
     }
 
-    private static String cleanText(String text) {
+    static String cleanText(String text) {
         if (text == null || text.isEmpty()) {
             return "";
         }

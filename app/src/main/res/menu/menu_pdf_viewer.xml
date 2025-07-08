@@ -8,4 +8,10 @@
         android:icon="@android:drawable/ic_menu_edit"
         app:showAsAction="ifRoom" />
         
+    <item
+        android:id="@+id/action_listen_selected"
+        android:title="Listen to Selected Text"
+        android:icon="@drawable/headphones_icon"
+        app:showAsAction="ifRoom" />
+        
 </menu> 

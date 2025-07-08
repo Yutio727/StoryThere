@@ -1,14 +1,11 @@
 package com.example.storythere;
 
-import android.app.Activity;
 import android.content.Context;
-import android.graphics.Paint;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
@@ -19,6 +16,11 @@ import com.turingtechnologies.materialscrollbar.ICustomAdapter;
 
 public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageViewHolder> implements ICustomAdapter {
     public enum DocumentType { PDF, EPUB, TXT }
+
+    public interface TextSelectionCallback {
+        void onTextSelected(String selectedText, int pagePosition, int start, int end);
+        void onSelectionCleared(int pagePosition);
+    }
 
     private final Context context;
     private final List<PDFParser.ParsedPage> pages;
@@ -31,6 +33,7 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService pdfParseExecutor = Executors.newFixedThreadPool(2);
     private final ConcurrentHashMap<Integer, Boolean> pdfParsingInProgress = new ConcurrentHashMap<>();
+    private TextSelectionCallback textSelectionCallback;
 
     public PDFPageAdapter(Context context, List<PDFParser.ParsedPage> pages, DocumentType type, PDFParser pdfParser, List<String> txtChunks, List<String> epubTextChunks, List<List<PDFParser.ImageInfo>> epubImages, PDFParser.TextSettings settings) {
         this.context = context;
@@ -45,6 +48,10 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
 
     public void setTextSettings(PDFParser.TextSettings settings) {
         this.currentSettings = settings;
+    }
+    
+    public void setTextSelectionCallback(TextSelectionCallback callback) {
+        this.textSelectionCallback = callback;
     }
     
     /**
@@ -70,7 +77,7 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
     @Override
     public PDFPageViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         if (viewType == 1) { // Text-only page
-            TextView textView = new TextView(context);
+            SelectableTextView textView = new SelectableTextView(context);
             textView.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -90,9 +97,7 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
 
     @Override
     public int getItemViewType(int position) {
-        int viewType = shouldUseTextView(position) ? 1 : 0;
-        Log.d("PDFPageAdapter", "getItemViewType(" + position + ") = " + viewType + " (" + (viewType == 1 ? "TextView" : "PDFView") + ")");
-        return viewType;
+        return shouldUseTextView(position) ? 1 : 0;
     }
 
     @Override
@@ -113,7 +118,7 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
                     settings = page.textSettings != null ? page.textSettings : currentSettings;
                 }
             }
-            holder.bindText(text, settings);
+            holder.bindText(text, settings, position, textSelectionCallback);
         } else {
             PDFParser.ParsedPage page = pages.get(position);
             if (documentType == DocumentType.PDF && pdfParser != null && (page.text == null || page.text.isEmpty())) {
@@ -169,14 +174,15 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
 
     static class PDFPageViewHolder extends RecyclerView.ViewHolder {
         private final PDFView pdfView;
-        private final TextView textView;
+        private final SelectableTextView textView;
         public final boolean isTextView;
+        private int currentPosition = -1;
 
         public PDFPageViewHolder(@NonNull View itemView, boolean isTextView) {
             super(itemView);
             this.isTextView = isTextView;
             if (isTextView) {
-                this.textView = (TextView) itemView;
+                this.textView = (SelectableTextView) itemView;
                 this.pdfView = null;
             } else {
                 this.pdfView = (PDFView) itemView;
@@ -191,8 +197,10 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
             }
         }
 
-        public void bindText(String text, PDFParser.TextSettings settings) {
+        public void bindText(String text, PDFParser.TextSettings settings, int position, TextSelectionCallback callback) {
             if (textView != null) {
+                currentPosition = position;
+                
                 // First set text and temporarily disable selection
                 textView.setText(text);
                 textView.setTextIsSelectable(false);
@@ -224,6 +232,23 @@ public class PDFPageAdapter extends RecyclerView.Adapter<PDFPageAdapter.PDFPageV
                 // Set text color from theme
                 int color = textView.getContext().getResources().getColor(R.color.text_activity_primary, textView.getContext().getTheme());
                 textView.setTextColor(color);
+                
+                // Set up text selection listener
+                textView.setTextSelectionListener(new SelectableTextView.TextSelectionListener() {
+                    @Override
+                    public void onTextSelected(String selectedText, int start, int end) {
+                        if (callback != null) {
+                            callback.onTextSelected(selectedText, currentPosition, start, end);
+                        }
+                    }
+                    
+                    @Override
+                    public void onSelectionCleared() {
+                        if (callback != null) {
+                            callback.onSelectionCleared(currentPosition);
+                        }
+                    }
+                });
                 
                 // Finally enable selection
                 textView.setTextIsSelectable(true);

@@ -124,6 +124,7 @@ public class AudioReaderActivity extends AppCompatActivity {
             String author = intent.getStringExtra("author");
             boolean isRussian = intent.getBooleanExtra("is_russian", false);
             String previewImagePath = intent.getStringExtra("previewImagePath");
+            int startPosition = intent.getIntExtra("start_position", -1);
             
             if (title != null && getSupportActionBar() != null) {
                 if (title.contains(".")) {
@@ -168,6 +169,27 @@ public class AudioReaderActivity extends AppCompatActivity {
             
             // Initialize TTS with the correct language
             initializeTTS(isRussian);
+            
+            // Set start position if provided
+            if (startPosition >= 0) {
+                currentPosition = startPosition;
+                Log.d(TAG, "Setting start position to: " + startPosition);
+                
+                // Calculate the correct time for this position
+                float wordsPerSecond = (WORDS_PER_MINUTE * 1.0f) / 60.0f;
+                long expectedTimeForPosition = (long)((startPosition * 1000.0f) / wordsPerSecond);
+                totalPlaybackTime = expectedTimeForPosition;
+                
+                // Update UI to show correct position
+                int startSeconds = (int)(startPosition / wordsPerSecond);
+                if (currentTimeText != null) {
+                    currentTimeText.setText(formatTime(startSeconds));
+                }
+                if (progressBar != null && totalWords > 0) {
+                    int progress = (int)((startPosition * 100.0f) / totalWords);
+                    progressBar.setProgress(progress);
+                }
+            }
         }
         
         // Setup click listeners
@@ -1010,6 +1032,15 @@ public class AudioReaderActivity extends AppCompatActivity {
     }
 
     private void restoreCache() {
+        // Check if we have a start position from intent (don't restore if we do)
+        Intent intent = getIntent();
+        int startPosition = intent != null ? intent.getIntExtra("start_position", -1) : -1;
+
+        if (startPosition >= 0) {
+            Log.d(TAG, "[CACHE] Skipping cache restore - using start position: " + startPosition);
+            return;
+        }
+        
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String uniqueKey = getUniqueKey();
         currentPosition = prefs.getInt(KEY_POSITION + uniqueKey, 0);

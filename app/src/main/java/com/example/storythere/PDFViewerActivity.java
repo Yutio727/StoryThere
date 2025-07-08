@@ -1163,10 +1163,28 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             }
             return fullText.toString();
         } else if (documentType == PDFPageAdapter.DocumentType.PDF) {
-            // Only use the parsed text path from the Book object, matching BookOptionsActivity
-            if (currentBook != null && currentBook.getParsedTextPath() != null) {
-                File cacheFile = new File(currentBook.getParsedTextPath());
-                Log.d(TAG, "[PDF_FULLTEXT] Using Book parsedTextPath: " + cacheFile.getAbsolutePath() + ", exists: " + cacheFile.exists());
+            File cacheFile = null;
+            if (currentBook != null) {
+                String parsedTextPath = currentBook.getParsedTextPath();
+                if (parsedTextPath == null || parsedTextPath.isEmpty()) {
+                    // Generate the parsed text path as in BookOptionsActivity
+                    String parsedFileName;
+                    long id = currentBook.getId();
+                    if (id != 0) {
+                        parsedFileName = "parsed_" + id + ".txt";
+                    } else {
+                        parsedFileName = "parsed_" + System.currentTimeMillis() + ".txt";
+                    }
+                    cacheFile = new File(getCacheDir(), parsedFileName);
+                    currentBook.setParsedTextPath(cacheFile.getAbsolutePath());
+                    if (bookRepository != null) {
+                        bookRepository.update(currentBook);
+                    }
+                    Log.d(TAG, "[PDF_FULLTEXT] Generated and set parsedTextPath: " + cacheFile.getAbsolutePath());
+                } else {
+                    cacheFile = new File(parsedTextPath);
+                    Log.d(TAG, "[PDF_FULLTEXT] Using Book parsedTextPath: " + cacheFile.getAbsolutePath() + ", exists: " + cacheFile.exists());
+                }
                 if (cacheFile.exists()) {
                     try {
                         String textContent = new String(java.nio.file.Files.readAllBytes(cacheFile.toPath()), java.nio.charset.StandardCharsets.UTF_8);
@@ -1176,10 +1194,61 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                         Log.e(TAG, "[PDF_FULLTEXT] Failed to read parsedTextPath: " + e.getMessage());
                     }
                 } else {
-                    Log.w(TAG, "[PDF_FULLTEXT] Cache file does not exist: " + cacheFile.getAbsolutePath());
+                    // If the cache file does not exist, parse the full PDF and cache it (parallel, as in BookOptionsActivity)
+                    Log.d(TAG, "[PDF_FULLTEXT] Cache file does not exist, parsing full PDF: " + cacheFile.getAbsolutePath());
+                    try {
+                        Uri contentUri = Uri.parse(currentBook.getFilePath());
+                        InputStream baseInputStream = getContentResolver().openInputStream(contentUri);
+                        if (baseInputStream == null) throw new Exception("Failed to open PDF");
+                        com.itextpdf.kernel.pdf.PdfReader baseReader = new com.itextpdf.kernel.pdf.PdfReader(baseInputStream);
+                        com.itextpdf.kernel.pdf.PdfDocument baseDoc = new com.itextpdf.kernel.pdf.PdfDocument(baseReader);
+                        int totalPages = baseDoc.getNumberOfPages();
+                        baseDoc.close();
+                        baseReader.close();
+                        baseInputStream.close();
+                        int numThreads = Math.min(4, totalPages);
+                        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(numThreads);
+                        java.util.List<java.util.concurrent.Future<String>> futures = new java.util.ArrayList<>();
+                        for (int i = 1; i <= totalPages; i++) {
+                            final int pageIndex = i;
+                            futures.add(executor.submit(() -> {
+                                try (InputStream inputStream = getContentResolver().openInputStream(contentUri)) {
+                                    com.itextpdf.kernel.pdf.PdfReader reader = new com.itextpdf.kernel.pdf.PdfReader(inputStream);
+                                    com.itextpdf.kernel.pdf.PdfDocument doc = new com.itextpdf.kernel.pdf.PdfDocument(reader);
+                                    String text = com.itextpdf.kernel.pdf.canvas.parser.PdfTextExtractor.getTextFromPage(
+                                            doc.getPage(pageIndex),
+                                            new com.itextpdf.kernel.pdf.canvas.parser.listener.SimpleTextExtractionStrategy()
+                                    );
+                                    doc.close();
+                                    reader.close();
+                                    return text;
+                                } catch (Exception e) {
+                                    return "";
+                                }
+                            }));
+                        }
+                        StringBuilder allText = new StringBuilder();
+                        for (int i = 0; i < totalPages; i++) {
+                            String pageText = futures.get(i).get();
+                            synchronized (allText) {
+                                allText.append(pageText).append("\n");
+                            }
+                        }
+                        executor.shutdown();
+                        String textContent = allText.toString();
+                        // Write to cache
+                        try (java.io.FileWriter writer = new java.io.FileWriter(cacheFile, false)) {
+                            writer.write(textContent);
+                            Log.d(TAG, "[PDF_FULLTEXT] Successfully parsed and cached PDF text, length: " + textContent.length());
+                        }
+                        return textContent;
+                    } catch (Exception e) {
+                        Log.e(TAG, "[PDF_FULLTEXT] Error parsing and caching PDF: " + e.getMessage());
+                    }
                 }
             } else {
-                Log.w(TAG, "[PDF_FULLTEXT] No parsedTextPath set in Book object.");
+                Log.w(TAG, "[PDF_FULLTEXT] No Book object available.");
+                return null;
             }
             return null;
         }

@@ -409,7 +409,7 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
         int progressPercentage = (int) ((float) currentPage / totalPages * 100);
         runOnUiThread(() -> {
             animateShowProgressBar();
-            String pageText = String.format("Page %d of %d", currentPage, totalPages);
+            String pageText = String.format(getString(R.string.page_d_of_d), currentPage, totalPages);
             pageNumberText.setText(pageText);
             // Animate progress bar smoothly
             if (progressPercentage != lastProgressValue) {
@@ -1155,8 +1155,8 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
                         int pos = bm.optInt("position", -1);
                         long ts = bm.optLong("timestamp", 0);
                         String label = bm.optString("label", "");
-                        String display = "Position: " + pos + ", Time: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date(ts));
-                        if (!label.isEmpty()) display += ", Label: " + label;
+                        String display = getString(R.string.position) + pos + getString(R.string.time) + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date(ts));
+                        if (!label.isEmpty()) display += getString(R.string.label) + label;
                         items.add(display);
                         positions.add(pos);
                     }

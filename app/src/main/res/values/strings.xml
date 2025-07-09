@@ -206,4 +206,8 @@
     <string name="listen_to_selected_text">Listen to Selected Text</string>
     <string name="bookmark">Bookmark</string>
     <string name="show_bookmarks">Show Bookmarks</string>
+    <string name="page_d_of_d">Page %d of %d</string>
+    <string name="position">"Position: "</string>
+    <string name="time">", Time: "</string>
+    <string name="label">", Label: "</string>
 </resources>

@@ -207,4 +207,8 @@
     <string name="listen_to_selected_text">Начать слушать</string>
     <string name="bookmark">Сделать закладку</string>
     <string name="show_bookmarks">Показать закладки</string>
+    <string name="page_d_of_d">Страница %d из %d</string>
+    <string name="position">"Позиция: "</string>
+    <string name="time">", Время: "</string>
+    <string name="label">", Пометка: "</string>
 </resources>

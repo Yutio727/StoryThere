@@ -4,24 +4,24 @@
     
     <item
         android:id="@+id/action_text_settings"
-        android:title="Text Settings"
+        android:title="@string/text_settings"
         android:icon="@android:drawable/ic_menu_edit"
         app:showAsAction="ifRoom" />
         
     <item
         android:id="@+id/action_listen_selected"
-        android:title="Listen to Selected Text"
+        android:title="@string/listen_to_selected_text"
         app:showAsAction="never" />
         
     <item
         android:id="@+id/action_bookmark"
-        android:title="Bookmark"
+        android:title="@string/bookmark"
         android:icon="@drawable/ic_star_blue"
         app:showAsAction="never" />
         
     <item
         android:id="@+id/action_show_bookmarks"
-        android:title="Show Bookmarks"
+        android:title="@string/show_bookmarks"
         android:icon="@drawable/ic_book_placeholder"
         app:showAsAction="never" />
         

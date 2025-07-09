@@ -196,4 +196,15 @@
     <string name="error">"Ошибка: "</string>
     <string name="book_title_is_required_to_generate_cover">Для генерации обложки требуется сгенерировать описание</string>
     <string name="receiving_book_data">Получаем данные о книге...</string>
+    <string name="bookmark_saved">Закладка сохранена!</string>
+    <string name="failed_to_save_bookmark">Не удалось сохранить закладку</string>
+    <string name="could_not_save_bookmark_no_book_loaded">Не удалось сохранить закладку (книга не найдена)</string>
+    <string name="no_book_loaded">Книга не найдена</string>
+    <string name="jumped_to_bookmark_page">"Перенеслись к закладке (страница "</string>
+    <string name="jumped_to_bookmark_chunk">"Перенеслись к закладке (чанк "</string>
+    <string name="jumped_to_bookmark_epub_chunk">"Перенеслись к закладке (чанк "</string>
+    <string name="bookmarks">Закладки</string>
+    <string name="listen_to_selected_text">Начать слушать</string>
+    <string name="bookmark">Сделать закладку</string>
+    <string name="show_bookmarks">Показать закладки</string>
 </resources>

@@ -203,4 +203,7 @@
     <string name="jumped_to_bookmark_chunk">"Jumped to bookmark (chunk "</string>
     <string name="jumped_to_bookmark_epub_chunk">"Jumped to bookmark (EPUB chunk "</string>
     <string name="bookmarks">Bookmarks</string>
+    <string name="listen_to_selected_text">Listen to Selected Text</string>
+    <string name="bookmark">Bookmark</string>
+    <string name="show_bookmarks">Show Bookmarks</string>
 </resources>

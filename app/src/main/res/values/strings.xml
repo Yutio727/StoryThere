@@ -195,4 +195,12 @@
     <string name="error">"Error: "</string>
     <string name="book_title_is_required_to_generate_cover">Book title is required to generate cover</string>
     <string name="receiving_book_data">Receiving book data...</string>
+    <string name="bookmark_saved">Bookmark saved!</string>
+    <string name="failed_to_save_bookmark">Failed to save bookmark</string>
+    <string name="could_not_save_bookmark_no_book_loaded">Could not save bookmark (no book loaded)</string>
+    <string name="no_book_loaded">No book loaded</string>
+    <string name="jumped_to_bookmark_page">"Jumped to bookmark (page "</string>
+    <string name="jumped_to_bookmark_chunk">"Jumped to bookmark (chunk "</string>
+    <string name="jumped_to_bookmark_epub_chunk">"Jumped to bookmark (EPUB chunk "</string>
+    <string name="bookmarks">Bookmarks</string>
 </resources>

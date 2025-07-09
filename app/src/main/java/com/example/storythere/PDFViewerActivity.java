@@ -100,6 +100,12 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
     private int lastSelectedStart = -1;
     private int lastSelectedEnd = -1;
 
+    // Add these fields to the class
+    private String cachedSelectedText = "";
+    private int cachedSelectedPage = -1;
+    private int cachedSelectedStart = -1;
+    private int cachedSelectedEnd = -1;
+
     // Animation duration for progress bar
     private static final int PROGRESS_ANIMATION_DURATION = 250;
     private static final int PROGRESS_BAR_ANIMATION_DURATION = 200;
@@ -261,6 +267,14 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
                 // Only update progress if it's already showing (from dragbar or bottom touch)
                 if (showProgressOnScroll) {
                     updateScrollProgress();
+                }
+                // Always update currentPage field to reflect the first visible page (0-based)
+                LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+                if (layoutManager != null) {
+                    int firstVisiblePosition = layoutManager.findFirstVisibleItemPosition();
+                    if (firstVisiblePosition != RecyclerView.NO_POSITION) {
+                        currentPage = firstVisiblePosition;
+                    }
                 }
             }
         });
@@ -1041,6 +1055,120 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         } else if (id == R.id.action_listen_selected) {
             launchAudioReaderWithSelectedText();
             return true;
+        } else if (id == R.id.action_bookmark) {
+            int bookmarkPosition = currentPage;
+            if (currentBook != null) {
+                long bookId = currentBook.getId();
+                android.content.SharedPreferences prefs = getSharedPreferences("bookmarks", MODE_PRIVATE);
+                String key = "bookmark_" + bookId;
+                Object raw = prefs.getAll().get(key);
+                String json;
+                if (raw instanceof String) {
+                    json = (String) raw;
+                } else if (raw instanceof Integer) {
+                    // Migrate old int bookmark to JSON array
+                    int oldBookmark = (Integer) raw;
+                    org.json.JSONArray arrMigrate = new org.json.JSONArray();
+                    org.json.JSONObject bookmarkMigrate = new org.json.JSONObject();
+                    try {
+                        bookmarkMigrate.put("position", oldBookmark);
+                        bookmarkMigrate.put("timestamp", System.currentTimeMillis());
+                        bookmarkMigrate.put("label", "");
+                        arrMigrate.put(bookmarkMigrate);
+                    } catch (Exception e) { /* ignore */ }
+                    json = arrMigrate.toString();
+                    prefs.edit().remove(key).putString(key, json).apply();
+                } else {
+                    json = "[]";
+                }
+                org.json.JSONArray arr;
+                try {
+                    arr = new org.json.JSONArray(json);
+                } catch (Exception e) {
+                    arr = new org.json.JSONArray();
+                }
+                org.json.JSONObject bookmark = new org.json.JSONObject();
+                try {
+                    bookmark.put("position", bookmarkPosition);
+                    bookmark.put("timestamp", System.currentTimeMillis());
+                    bookmark.put("label", ""); // Optional label, empty for now
+                    arr.put(bookmark);
+                    prefs.edit().putString(key, arr.toString()).apply();
+                    Toast.makeText(this, R.string.bookmark_saved, Toast.LENGTH_SHORT).show();
+                    // Logging all bookmarks and the latest bookmark
+                    Log.d(TAG, "[BOOKMARKS] All bookmarks for book " + bookId + ": " + arr.toString());
+                    Log.d(TAG, "[BOOKMARKS] Latest bookmark: " + bookmark.toString());
+                } catch (Exception e) {
+                    Toast.makeText(this, R.string.failed_to_save_bookmark, Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                Toast.makeText(this, R.string.could_not_save_bookmark_no_book_loaded, Toast.LENGTH_SHORT).show();
+            }
+            return true;
+        } else if (id == R.id.action_show_bookmarks) {
+            if (currentBook != null) {
+                long bookId = currentBook.getId();
+                android.content.SharedPreferences prefs = getSharedPreferences("bookmarks", MODE_PRIVATE);
+                String key = "bookmark_" + bookId;
+                Object raw = prefs.getAll().get(key);
+                String json;
+                if (raw instanceof String) {
+                    json = (String) raw;
+                } else if (raw instanceof Integer) {
+                    // Migrate old int bookmark to JSON array
+                    int oldBookmark = (Integer) raw;
+                    org.json.JSONArray arrMigrate = new org.json.JSONArray();
+                    org.json.JSONObject bookmarkMigrate = new org.json.JSONObject();
+                    try {
+                        bookmarkMigrate.put("position", oldBookmark);
+                        bookmarkMigrate.put("timestamp", System.currentTimeMillis());
+                        bookmarkMigrate.put("label", "");
+                        arrMigrate.put(bookmarkMigrate);
+                    } catch (Exception e) { /* ignore */ }
+                    json = arrMigrate.toString();
+                    prefs.edit().remove(key).putString(key, json).apply();
+                } else {
+                    json = "[]";
+                }
+                org.json.JSONArray arr;
+                try {
+                    arr = new org.json.JSONArray(json);
+                } catch (Exception e) {
+                    arr = new org.json.JSONArray();
+                }
+                // Show bottom sheet with bookmarks
+                android.view.LayoutInflater inflater = android.view.LayoutInflater.from(this);
+                android.view.View sheetView = inflater.inflate(R.layout.bottom_sheet_bookmarks, null);
+                android.widget.ListView listView = sheetView.findViewById(R.id.bookmark_list);
+                java.util.List<String> items = new java.util.ArrayList<>();
+                java.util.List<Integer> positions = new java.util.ArrayList<>();
+                for (int i = 0; i < arr.length(); i++) {
+                    org.json.JSONObject bm = arr.optJSONObject(i);
+                    if (bm != null) {
+                        int pos = bm.optInt("position", -1);
+                        long ts = bm.optLong("timestamp", 0);
+                        String label = bm.optString("label", "");
+                        String display = "Position: " + pos + ", Time: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date(ts));
+                        if (!label.isEmpty()) display += ", Label: " + label;
+                        items.add(display);
+                        positions.add(pos);
+                    }
+                }
+                android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_list_item_1, items);
+                listView.setAdapter(adapter);
+                com.google.android.material.bottomsheet.BottomSheetDialog dialog = new com.google.android.material.bottomsheet.BottomSheetDialog(this);
+                dialog.setContentView(sheetView);
+                // Auto-scroll to bookmark on click
+                listView.setOnItemClickListener((parent, view, position, id1) -> {
+                    int bookmarkPos = positions.get(position);
+                    scrollToBookmarkPosition(bookmarkPos);
+                    dialog.dismiss();
+                });
+                dialog.show();
+            } else {
+                Toast.makeText(this, R.string.no_book_loaded, Toast.LENGTH_SHORT).show();
+            }
+            return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -1096,6 +1224,11 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         lastSelectedPage = pagePosition;
         lastSelectedStart = start;
         lastSelectedEnd = end;
+        // Also update cached selection
+        cachedSelectedText = selectedText;
+        cachedSelectedPage = pagePosition;
+        cachedSelectedStart = start;
+        cachedSelectedEnd = end;
         Log.d(TAG, "Text selected on page " + pagePosition + ": '" + selectedText + "' (start: " + start + ", end: " + end + ")");
     }
     
@@ -1105,25 +1238,44 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         lastSelectedPage = -1;
         lastSelectedStart = -1;
         lastSelectedEnd = -1;
+        // Do NOT clear cached selection here
         Log.d(TAG, "Text selection cleared on page " + pagePosition);
     }
     
     private void launchAudioReaderWithSelectedText() {
-        if (lastSelectedText == null || lastSelectedText.trim().isEmpty()) {
+        String selectionToUse = lastSelectedText;
+        int pageToUse = lastSelectedPage;
+        int startToUse = lastSelectedStart;
+        int endToUse = lastSelectedEnd;
+        // If current selection is empty, use cached
+        if (selectionToUse == null || selectionToUse.trim().isEmpty() || pageToUse < 0 || startToUse < 0 || endToUse < 0) {
+            selectionToUse = cachedSelectedText;
+            pageToUse = cachedSelectedPage;
+            startToUse = cachedSelectedStart;
+            endToUse = cachedSelectedEnd;
+        }
+        if (selectionToUse == null || selectionToUse.trim().isEmpty() || pageToUse < 0 || startToUse < 0 || endToUse < 0) {
             Toast.makeText(this, R.string.please_select_some_text_first, Toast.LENGTH_SHORT).show();
             return;
         }
-        
-        // Calculate the word position of the selected text
+        // Temporarily set lastSelected* to cached values for calculation
+        int oldPage = lastSelectedPage, oldStart = lastSelectedStart, oldEnd = lastSelectedEnd;
+        String oldText = lastSelectedText;
+        lastSelectedText = selectionToUse;
+        lastSelectedPage = pageToUse;
+        lastSelectedStart = startToUse;
+        lastSelectedEnd = endToUse;
         int wordPosition = calculateWordPositionFromSelection();
+        // Restore old values
+        lastSelectedText = oldText;
+        lastSelectedPage = oldPage;
+        lastSelectedStart = oldStart;
+        lastSelectedEnd = oldEnd;
         if (wordPosition == -1) {
             Toast.makeText(this, R.string.could_not_determine_text_position, Toast.LENGTH_SHORT).show();
             return;
         }
-        
-        Log.d(TAG, "Launching AudioReader with word position: " + wordPosition + " for text: '" + lastSelectedText + "'");
-        
-        // Launch AudioReaderActivity with the calculated position
+        Log.d(TAG, "Launching AudioReader with word position: " + wordPosition + " for text: '" + selectionToUse + "'");
         launchAudioReader(wordPosition);
     }
     
@@ -1289,7 +1441,13 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
         String strippedFullText = stripAllWhitespace(cleanedFullText);
         String strippedSelectedString = stripAllWhitespace(selectedString);
 
+        // --- DEBUG LOGGING ---
+        Log.d(TAG, "[BOOKMARK_DEBUG] selectedString: '" + selectedString + "'");
+        Log.d(TAG, "[BOOKMARK_DEBUG] strippedSelectedString: '" + strippedSelectedString + "'");
+        Log.d(TAG, "[BOOKMARK_DEBUG] strippedFullText (first 200): '" + strippedFullText.substring(0, Math.min(200, strippedFullText.length())) + "'");
+
         int selectionStartInFull = strippedFullText.indexOf(strippedSelectedString);
+        Log.d(TAG, "[BOOKMARK_DEBUG] selectionStartInFull: " + selectionStartInFull);
         if (selectionStartInFull == -1) {
             Log.e(TAG, "Could not find stripped selected string in stripped full text");
             Log.e(TAG, "[DEBUG] strippedSelectedString length: " + strippedSelectedString.length() + ", strippedFullText length: " + strippedFullText.length());
@@ -1488,6 +1646,27 @@ public class PDFViewerActivity extends AppCompatActivity implements TextSettings
             }
         } else {
             Log.d(TAG, "[PRIORITY_LOAD] Not PDF or RecyclerView not available, skipping priority loading");
+        }
+    }
+
+    private void scrollToBookmarkPosition(int bookmarkPosition) {
+        Log.d(TAG, "[BOOKMARK_SCROLL] Requested bookmarkPosition: " + bookmarkPosition);
+        int page = -1;
+        if (documentType == PDFPageAdapter.DocumentType.PDF && pages != null && !pages.isEmpty()) {
+            page = Math.max(0, Math.min(bookmarkPosition, pages.size() - 1));
+            Log.d(TAG, "[BOOKMARK_SCROLL] Scrolling to PDF page " + (page+1) + " for bookmarkPosition " + bookmarkPosition);
+            scrollToPosition(page);
+//            Toast.makeText(this, getString(R.string.jumped_to_bookmark_page) + (page+1) + ")", Toast.LENGTH_SHORT).show();
+        } else if (documentType == PDFPageAdapter.DocumentType.TXT && txtChunks != null) {
+            page = Math.max(0, Math.min(bookmarkPosition, txtChunks.size() - 1));
+            Log.d(TAG, "[BOOKMARK_SCROLL] Scrolling to TXT page " + (page+1) + " for bookmarkPosition " + bookmarkPosition);
+            scrollToPosition(page);
+//            Toast.makeText(this, getString(R.string.jumped_to_bookmark_chunk) + (page+1) + ")", Toast.LENGTH_SHORT).show();
+        } else if (documentType == PDFPageAdapter.DocumentType.EPUB && epubTextChunks != null) {
+            page = Math.max(0, Math.min(bookmarkPosition, epubTextChunks.size() - 1));
+            Log.d(TAG, "[BOOKMARK_SCROLL] Scrolling to EPUB page " + (page+1) + " for bookmarkPosition " + bookmarkPosition);
+            scrollToPosition(page);
+//            Toast.makeText(this, getString(R.string.jumped_to_bookmark_epub_chunk) + (page+1) + ")", Toast.LENGTH_SHORT).show();
         }
     }
 }

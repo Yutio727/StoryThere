@@ -7,7 +7,7 @@
     android:clipToPadding="true"
     android:fitsSystemWindows="true"
     android:background="@color/background_activity"
-    tools:context=".Login">
+    tools:context=".ui.Login">
 
     <TextView
         android:id="@+id/tvLoginTitle"

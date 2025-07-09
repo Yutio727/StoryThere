@@ -44,7 +44,7 @@ public abstract class AppDatabase extends RoomDatabase {
     private static final Migration MIGRATION_4_5 = new Migration(4, 5) {
         @Override
         public void migrate(SupportSQLiteDatabase database) {
-            // Add readingPosition column for storing reading progress
+            // Add readingPosition column for storing viewing progress
             database.execSQL("ALTER TABLE books ADD COLUMN readingPosition INTEGER NOT NULL DEFAULT 0");
         }
     };

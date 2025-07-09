@@ -20,13 +20,13 @@
         android:theme="@style/Theme.StoryThere"
         tools:targetApi="31">
         <activity
-            android:name=".ResetPassword"
+            android:name=".ui.ResetPassword"
             android:exported="false" />
         <activity
-            android:name=".Registration"
+            android:name=".ui.Registration"
             android:exported="false" />
         <activity
-            android:name=".Login"
+            android:name=".ui.Login"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -46,32 +46,32 @@
         </provider>
 
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.MainActivity"
             android:exported="true"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
         <activity
-            android:name=".HomeActivity"
+            android:name=".ui.HomeActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
         <activity
-            android:name=".SearchActivity"
+            android:name=".ui.SearchActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
         <activity
-            android:name=".ProfileActivity"
+            android:name=".ui.ProfileActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
         <activity
-            android:name=".ReaderActivity"
+            android:name=".viewing.ReaderActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
         <activity
-            android:name=".PDFViewerActivity"
+            android:name=".viewing.ViewerActivity"
             android:exported="true"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.Light">
@@ -95,22 +95,22 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".BookOptionsActivity"
+            android:name=".ui.BookOptionsActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
         <activity
-            android:name=".AddBookActivity"
+            android:name=".ui.AddBookActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
         <activity
-            android:name=".AuthorDetailActivity"
+            android:name=".ui.AuthorDetailActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
         <activity
-            android:name=".AudioReaderActivity"
+            android:name=".listening.AudioReaderActivity"
             android:exported="true"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar">

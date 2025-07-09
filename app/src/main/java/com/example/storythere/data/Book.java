@@ -22,7 +22,7 @@ public class Book {
     private boolean isAlreadyRead;
     private String parsedTextPath;
     private String image; // for server-side field
-    private int readingPosition; // Store reading position for all document types
+    private int readingPosition; // Store viewing position for all document types
     private String timeOfListen; // for word count/listening time
     private String authorId; // Link to author collection
     

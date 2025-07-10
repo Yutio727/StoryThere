@@ -44,6 +44,7 @@ import android.animation.ObjectAnimator;
 import com.example.storythere.parsers.EPUBParser;
 import com.example.storythere.parsers.PDFParser;
 import com.example.storythere.parsers.TextParser;
+import com.example.storythere.adapters.BookmarkAdapter;
 import com.turingtechnologies.materialscrollbar.DragScrollBar;
 
 public class ViewerActivity extends AppCompatActivity implements TextSettingsDialog.TextSettingsListener, PageAdapter.TextSelectionCallback {
@@ -1147,30 +1148,48 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
                 android.view.LayoutInflater inflater = android.view.LayoutInflater.from(this);
                 android.view.View sheetView = inflater.inflate(R.layout.bottom_sheet_bookmarks, null);
                 android.widget.ListView listView = sheetView.findViewById(R.id.bookmark_list);
-                java.util.List<String> items = new java.util.ArrayList<>();
-                java.util.List<Integer> positions = new java.util.ArrayList<>();
-                for (int i = 0; i < arr.length(); i++) {
-                    org.json.JSONObject bm = arr.optJSONObject(i);
+                java.util.List<com.example.storythere.adapters.BookmarkAdapter.BookmarkItem> bookmarkItems = new java.util.ArrayList<>();
+                
+                // Create a copy of the JSON array to make it effectively final
+                final org.json.JSONArray bookmarksArray = arr;
+                
+                for (int i = 0; i < bookmarksArray.length(); i++) {
+                    org.json.JSONObject bm = bookmarksArray.optJSONObject(i);
                     if (bm != null) {
                         int pos = bm.optInt("position", -1);
                         long ts = bm.optLong("timestamp", 0);
                         String label = bm.optString("label", "");
                         String display = getString(R.string.position) + pos + getString(R.string.time) + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date(ts));
                         if (!label.isEmpty()) display += getString(R.string.label) + label;
-                        items.add(display);
-                        positions.add(pos);
+                        bookmarkItems.add(new com.example.storythere.adapters.BookmarkAdapter.BookmarkItem(display, pos, ts, label));
                     }
                 }
-                android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_list_item_1, items);
-                listView.setAdapter(adapter);
+                
                 com.google.android.material.bottomsheet.BottomSheetDialog dialog = new com.google.android.material.bottomsheet.BottomSheetDialog(this);
                 dialog.setContentView(sheetView);
-                // Auto-scroll to bookmark on click
-                listView.setOnItemClickListener((parent, view, position, id1) -> {
-                    int bookmarkPos = positions.get(position);
-                    scrollToBookmarkPosition(bookmarkPos);
-                    dialog.dismiss();
-                });
+                
+                // Create adapter reference that can be used in lambda
+                final com.example.storythere.adapters.BookmarkAdapter[] adapterRef = new com.example.storythere.adapters.BookmarkAdapter[1];
+                
+                adapterRef[0] = new com.example.storythere.adapters.BookmarkAdapter(
+                    this, 
+                    bookmarkItems,
+                    bookmark -> {
+                        // Handle bookmark click
+                        scrollToBookmarkPosition(bookmark.position);
+                        dialog.dismiss();
+                    },
+                    (bookmark, position) -> {
+                        // Handle bookmark delete
+                        deleteBookmark(bookId, position, bookmarksArray);
+                        bookmarkItems.remove(position);
+                        adapterRef[0].notifyDataSetChanged();
+                        if (bookmarkItems.isEmpty()) {
+                            dialog.dismiss();
+                        }
+                    }
+                );
+                listView.setAdapter(adapterRef[0]);
                 dialog.show();
             } else {
                 Toast.makeText(this, R.string.no_book_loaded, Toast.LENGTH_SHORT).show();
@@ -1674,6 +1693,29 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
             Log.d(TAG, "[BOOKMARK_SCROLL] Scrolling to EPUB page " + (page+1) + " for bookmarkPosition " + bookmarkPosition);
             scrollToPosition(page);
 //            Toast.makeText(this, getString(R.string.jumped_to_bookmark_epub_chunk) + (page+1) + ")", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void deleteBookmark(long bookId, int position, org.json.JSONArray bookmarksArray) {
+        try {
+            // Remove the bookmark from the JSON array
+            org.json.JSONArray newArray = new org.json.JSONArray();
+            for (int i = 0; i < bookmarksArray.length(); i++) {
+                if (i != position) {
+                    newArray.put(bookmarksArray.get(i));
+                }
+            }
+            
+            // Save the updated bookmarks
+            android.content.SharedPreferences prefs = getSharedPreferences("bookmarks", MODE_PRIVATE);
+            String key = "bookmark_" + bookId;
+            prefs.edit().putString(key, newArray.toString()).apply();
+            
+            Toast.makeText(this, R.string.bookmark_deleted, Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "Deleted bookmark at position " + position + " for book " + bookId);
+        } catch (Exception e) {
+            Log.e(TAG, "Error deleting bookmark", e);
+            Toast.makeText(this, "Error deleting bookmark", Toast.LENGTH_SHORT).show();
         }
     }
 }

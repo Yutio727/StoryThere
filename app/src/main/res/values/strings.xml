@@ -199,6 +199,8 @@
     <string name="failed_to_save_bookmark">Failed to save bookmark</string>
     <string name="could_not_save_bookmark_no_book_loaded">Could not save bookmark (no book loaded)</string>
     <string name="no_book_loaded">No book loaded</string>
+    <string name="delete_bookmark">Delete bookmark</string>
+    <string name="bookmark_deleted">Bookmark deleted</string>
     <string name="jumped_to_bookmark_page">"Jumped to bookmark (page "</string>
     <string name="jumped_to_bookmark_chunk">"Jumped to bookmark (chunk "</string>
     <string name="jumped_to_bookmark_epub_chunk">"Jumped to bookmark (EPUB chunk "</string>

@@ -212,4 +212,5 @@
     <string name="position">"Position: "</string>
     <string name="time">", Time: "</string>
     <string name="label">", Label: "</string>
+    <string name="go_to_text">Go to text: Start Reading</string>
 </resources>

@@ -121,6 +121,10 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
     // Add this field to the class
     private boolean textSettingsAppliedAfterFirstTouch = false;
 
+    private int startPosition = -1;
+
+    private boolean hasHandledStartPosition = false;
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -305,9 +309,10 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
 
         // Get content from intent
         Intent intent = getIntent();
+        startPosition = intent != null ? intent.getIntExtra("start_position", -1) : -1;
+        String fileType = intent != null ? intent.getStringExtra("fileType") : null;
+        String filePath = intent != null ? intent.getStringExtra("filePath") : null;
         Uri uri = intent.getData();
-        String fileType = intent.getStringExtra("fileType");
-        String filePath = intent.getStringExtra("filePath");
         
         // Load book from database for position tracking
         if (filePath != null) {
@@ -387,6 +392,80 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
                 return false; // Let RecyclerView handle the event as usual
             }
         });
+
+        // After loading content and initializing pageAdapter, if startPosition >= 0, scroll to page
+        if (startPosition >= 0 && !hasHandledStartPosition) {
+            hasHandledStartPosition = true;
+            Log.d(TAG, "[START_POSITION] Received startPosition: " + startPosition);
+            
+            // Check if this is a page position (reasonable assumption if it's less than total pages)
+            if (pages != null && startPosition < pages.size()) {
+                // This looks like a page position, scroll directly to it
+                Log.d(TAG, "[START_POSITION] Treating startPosition as page position, scrolling to page: " + startPosition);
+                scrollToPosition(startPosition);
+            } else {
+                // This might be a word position, try to find the page containing it
+                Log.d(TAG, "[START_POSITION] Treating startPosition as word position, finding containing page");
+                
+                // Find the page and offset for the word index
+                int pageIndex = 0;
+                int wordCount = 0;
+                int wordOffsetInPage = 0;
+                int selectLength = 5; // select 5 words
+                if (documentType == PageAdapter.DocumentType.TXT && txtChunks != null) {
+                    outer:
+                    for (int i = 0; i < txtChunks.size(); i++) {
+                        String[] words = txtChunks.get(i).split("\\s+");
+                        if (wordCount + words.length > startPosition) {
+                            pageIndex = i;
+                            wordOffsetInPage = startPosition - wordCount;
+                            break outer;
+                        }
+                        wordCount += words.length;
+                    }
+                    // Now select from wordOffsetInPage to wordOffsetInPage+selectLength
+                    String[] words = txtChunks.get(pageIndex).split("\\s+");
+                    int selStart = 0, selEnd = 0, w = 0;
+                    for (int i = 0; i < words.length; i++) {
+                        if (i == wordOffsetInPage) selStart = selEnd;
+                        selEnd += words[i].length();
+                        if (i < words.length - 1) selEnd++; // for space
+                        if (i == wordOffsetInPage + selectLength - 1) break;
+                    }
+                    pageAdapter.selectTextOnPage(pageIndex, selStart, selEnd);
+                    scrollToPosition(pageIndex);
+                } else if (documentType == PageAdapter.DocumentType.EPUB && epubTextChunks != null) {
+                    outer:
+                    for (int i = 0; i < epubTextChunks.size(); i++) {
+                        String[] words = epubTextChunks.get(i).split("\\s+");
+                        if (wordCount + words.length > startPosition) {
+                            pageIndex = i;
+                            wordOffsetInPage = startPosition - wordCount;
+                            break outer;
+                        }
+                        wordCount += words.length;
+                    }
+                    // Now select from wordOffsetInPage to wordOffsetInPage+selectLength
+                    String[] words = epubTextChunks.get(pageIndex).split("\\s+");
+                    int selStart = 0, selEnd = 0;
+                    for (int i = 0; i < words.length; i++) {
+                        if (i == wordOffsetInPage) selStart = selEnd;
+                        selEnd += words[i].length();
+                        if (i < words.length - 1) selEnd++;
+                        if (i == wordOffsetInPage + selectLength - 1) break;
+                    }
+                    pageAdapter.selectTextOnPage(pageIndex, selStart, selEnd);
+                    scrollToPosition(pageIndex);
+                }
+            }
+        }
+
+        if (pageAdapter != null && pdfRecyclerView != null) {
+            pageAdapter.setRecyclerView(pdfRecyclerView);
+        }
+
+        // Helper: scroll to page containing search_phrase
+        scrollToPhraseIfPresent();
     }
 
     private void updateScrollProgress() {
@@ -565,6 +644,9 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
             Toast.makeText(this, R.string.failed_to_load_text_content, Toast.LENGTH_SHORT).show();
             finish();
         }
+
+        // Helper: scroll to page containing search_phrase
+        scrollToPhraseIfPresent();
     }
 
     private void loadEPUB(Uri epubUri) {
@@ -686,6 +768,9 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
             Toast.makeText(this, R.string.failed_to_load_epub, Toast.LENGTH_SHORT).show();
             finish();
         }
+
+        // Helper: scroll to page containing search_phrase
+        scrollToPhraseIfPresent();
     }
 
     private void loadPDF(Uri pdfUri) {
@@ -759,6 +844,9 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
             Toast.makeText(this, R.string.failed_to_load_pdf, Toast.LENGTH_SHORT).show();
             finish();
         }
+
+        // Helper: scroll to page containing search_phrase
+        scrollToPhraseIfPresent();
     }
 
     private void saveCurrentPosition() {
@@ -1717,5 +1805,517 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
             Log.e(TAG, "Error deleting bookmark", e);
             Toast.makeText(this, "Error deleting bookmark", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    // Helper: scroll to page containing search_phrase and highlight it (PDF)
+    private void scrollToPhraseIfPresent() {
+        scrollToPhraseIfPresent(0);
+    }
+
+    private void scrollToPhraseIfPresent(int retryCount) {
+        Intent intent = getIntent();
+        String searchPhrase = intent != null ? intent.getStringExtra("search_phrase") : null;
+        int startPosition = intent != null ? intent.getIntExtra("start_position", -1) : -1;
+        Log.d(TAG, "[SEARCH_PHRASE] Starting search for phrase: '" + searchPhrase + "' (retry " + retryCount + ")");
+        if ((searchPhrase == null || searchPhrase.isEmpty()) && startPosition < 0) {
+            Log.d(TAG, "[SEARCH_PHRASE] Early return - no searchPhrase and no startPosition");
+            return;
+        }
+        if (pages == null || pages.isEmpty()) {
+            Log.d(TAG, "[SEARCH_PHRASE] Early return - pages is null or empty");
+            return;
+        }
+        boolean isPDF = documentType == PageAdapter.DocumentType.PDF;
+        boolean isTXT = documentType == PageAdapter.DocumentType.TXT;
+        boolean isEPUB = documentType == PageAdapter.DocumentType.EPUB;
+        if (isPDF) {
+            // ... existing PDF logic ...
+            boolean allEmpty = true;
+            for (int i = 0; i < pages.size(); i++) {
+                String pageText = null;
+                if (pages.get(i) != null && pages.get(i).text != null) {
+                    pageText = pages.get(i).text;
+                }
+                if (pageText == null || pageText.isEmpty()) {
+                    Log.d(TAG, "[SEARCH_PHRASE][PDF] Page " + i + " text is empty or null, will trigger parse if possible");
+                    PDFParser parser = (pageAdapter != null) ? pageAdapter.getPdfParser() : null;
+                    PDFParser.TextSettings settings = (pageAdapter != null) ? pageAdapter.getCurrentSettings() : null;
+                    if (parser != null && settings != null) {
+                        try {
+                            PDFParser.ParsedPage parsed = parser.parsePage(i + 1, settings);
+                            if (parsed != null && parsed.text != null && !parsed.text.isEmpty()) {
+                                pages.set(i, parsed);
+                                pageText = parsed.text;
+                                Log.d(TAG, "[SEARCH_PHRASE][PDF] Parsed text for page " + i + ": '" + (pageText.length() > 300 ? pageText.substring(0, 300) + "..." : pageText) + "'");
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "[SEARCH_PHRASE][PDF] Error parsing page " + i + ": " + e.getMessage());
+                        }
+                    }
+                }
+                if (pageText == null || pageText.isEmpty()) {
+                    allEmpty = allEmpty && true;
+                    continue;
+                } else {
+                    allEmpty = false;
+                }
+                // Only log the text when actually searching this page
+                Log.d(TAG, "[SEARCH_PHRASE][PDF] Searching page " + i + " for phrase. Text preview: '" + (pageText.length() > 300 ? pageText.substring(0, 300) + "..." : pageText) + "'");
+                int matchStart = -1, matchEnd = -1;
+                int phraseLen = searchPhrase != null ? searchPhrase.length() : 0;
+                if (searchPhrase != null && !searchPhrase.isEmpty()) {
+                    outer:
+                    for (int j = 0; j <= pageText.length() - 1; j++) {
+                        int k = j, m = 0;
+                        while (k < pageText.length() && m < phraseLen) {
+                            char c = pageText.charAt(k);
+                            if (Character.isWhitespace(c)) {
+                                k++;
+                                continue;
+                            }
+                            if (c != searchPhrase.charAt(m)) {
+                                break;
+                            }
+                            k++;
+                            m++;
+                        }
+                        if (m == phraseLen) {
+                            matchStart = j;
+                            matchEnd = k;
+                            break outer;
+                        }
+                    }
+                }
+                if (matchStart >= 0 && matchEnd > matchStart) {
+                    scrollToPosition(i);
+                    final int pageIndex = i;
+                    final int startPos = matchStart;
+                    final int endPos = matchEnd;
+                    highlightTextWithRetryPDF(pageIndex, startPos, endPos, 0);
+                    return;
+                }
+            }
+            if (allEmpty && retryCount < 5) {
+                Log.d(TAG, "[SEARCH_PHRASE][PDF] All page texts empty, retrying scrollToPhraseIfPresent in 500ms (attempt " + (retryCount + 1) + ")");
+                new Handler(Looper.getMainLooper()).postDelayed(() -> scrollToPhraseIfPresent(retryCount + 1), 500);
+                return;
+            }
+            Toast.makeText(this, "Text not found on this page", Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "[SEARCH_PHRASE][PDF] Phrase not found in any page");
+            return;
+        } else if (isTXT || isEPUB) {
+            // Use txtChunks or epubTextChunks
+            List<String> chunks = isTXT ? txtChunks : (isEPUB ? epubTextChunks : null);
+            if (chunks == null || chunks.isEmpty()) {
+                Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] No chunks available");
+                return;
+            }
+            int runningWordCount = 0;
+            for (int i = 0; i < chunks.size(); i++) {
+                String pageText = chunks.get(i);
+                if (pageText == null || pageText.isEmpty()) continue;
+                String[] wordsArr = pageText.split("\\s+");
+                int wordCount = wordsArr.length;
+                int charCount = pageText.length();
+                int startWord = runningWordCount;
+                int endWord = runningWordCount + wordCount - 1;
+                Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Page " + i + " text: '" + pageText + "'");
+                Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Page " + i + " word range: startWord-" + startWord + ", endWord-" + endWord + ", totalWords-" + wordCount + ", totalChars-" + charCount);
+                Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Searching page " + i + " for phrase. Text preview: '" + (pageText.length() > 300 ? pageText.substring(0, 300) + "..." : pageText) + "'");
+                int matchStart = -1, matchEnd = -1;
+                int phraseLen = searchPhrase != null ? searchPhrase.length() : 0;
+                if (searchPhrase != null && !searchPhrase.isEmpty()) {
+                    // Fuzzy search: ignore whitespace
+                    outer:
+                    for (int j = 0; j <= pageText.length() - 1; j++) {
+                        int k = j, m = 0;
+                        while (k < pageText.length() && m < phraseLen) {
+                            char c = pageText.charAt(k);
+                            if (Character.isWhitespace(c)) {
+                                k++;
+                                continue;
+                            }
+                            if (c != searchPhrase.charAt(m)) {
+                                break;
+                            }
+                            k++;
+                            m++;
+                        }
+                        if (m == phraseLen) {
+                            matchStart = j;
+                            matchEnd = k;
+                            break outer;
+                        }
+                    }
+                }
+                if (matchStart >= 0 && matchEnd > matchStart) {
+                    scrollToPosition(i);
+                    final int pageIndex = i;
+                    final int startPos = matchStart;
+                    final int endPos = matchEnd;
+                    highlightTextWithRetryTXT(pageIndex, startPos, endPos, 0);
+                    return;
+                }
+                runningWordCount += wordCount;
+            }
+            // If not found, but startPosition is present, map word position to page/offset
+            if (startPosition >= 0) {
+                int[] pageAndOffset = mapWordPositionToPageAndOffset(chunks, startPosition);
+                int pageIndex = pageAndOffset[0];
+                int wordOffset = pageAndOffset[1];
+                String pageText = chunks.get(pageIndex);
+                // Find char offsets for the next 6 words
+                int selStart = -1, selEnd = -1, wordCount = 0, charPos = 0;
+                String[] words = pageText.split("\\s+");
+                for (int w = 0, c = 0; w < words.length; w++) {
+                    if (w == wordOffset) selStart = c;
+                    c += words[w].length();
+                    if (w < words.length - 1) c++; // for space
+                    if (w == wordOffset + 5) {
+                        selEnd = c;
+                        break;
+                    }
+                }
+                if (selStart >= 0 && selEnd > selStart) {
+                    scrollToPosition(pageIndex);
+                    highlightTextWithRetryTXT(pageIndex, selStart, selEnd, 0);
+                    return;
+                }
+            }
+            Toast.makeText(this, "Text not found in TXT/EPUB", Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Phrase not found in any page");
+            return;
+        }
+        // ... (rest unchanged)
+    }
+
+    // Helper to map word position to (page, word offset in page) for TXT/EPUB
+    private int[] mapWordPositionToPageAndOffset(List<String> chunks, int wordPosition) {
+        int wordCount = 0;
+        for (int i = 0; i < chunks.size(); i++) {
+            String[] words = chunks.get(i).split("\\s+");
+            if (wordCount + words.length > wordPosition) {
+                return new int[]{i, wordPosition - wordCount};
+            }
+            wordCount += words.length;
+        }
+        // If out of bounds, return last page
+        return new int[]{chunks.size() - 1, 0};
+    }
+
+    // Helper for TXT/EPUB selection
+    private void highlightTextWithRetryTXT(int pageIndex, int startPos, int endPos, int retryCount) {
+        Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] highlightTextWithRetryTXT called - pageIndex: " + pageIndex + ", startPos: " + startPos + ", endPos: " + endPos + ", retryCount: " + retryCount);
+        if (retryCount >= 5) {
+            Log.w(TAG, "[SEARCH_PHRASE][TXT/EPUB] Failed to select text after " + retryCount + " retries");
+            Toast.makeText(this, "Text not found on this page", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (pageAdapter != null) {
+            boolean shouldBeTextView = pageAdapter.shouldUseTextView(pageIndex);
+            Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Page " + pageIndex + " should be text view: " + shouldBeTextView);
+            if (!shouldBeTextView) {
+                Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Page " + pageIndex + " is not a text view page, cannot select text");
+                Toast.makeText(this, "Text not found on this page", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Retry attempt " + (retryCount + 1) + " - checking if page is ready");
+            if (pageAdapter != null) {
+                if (pdfRecyclerView != null) {
+                    RecyclerView.ViewHolder vh = pdfRecyclerView.findViewHolderForAdapterPosition(pageIndex);
+                    Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] ViewHolder for page " + pageIndex + ": " + (vh != null ? vh.getClass().getSimpleName() : "null"));
+                    if (vh instanceof PageAdapter.PDFPageViewHolder) {
+                        PageAdapter.PDFPageViewHolder holder = (PageAdapter.PDFPageViewHolder) vh;
+                        Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Holder isTextView: " + holder.isTextView);
+                        if (holder.isTextView) {
+                            SelectableTextView textView = holder.getTextView();
+                            if (textView != null) {
+                                CharSequence text = textView.getText();
+                                Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Text view has text: " + (text != null ? "yes, length: " + text.length() : "no"));
+                                if (text != null && text.length() > 0) {
+                                    if (startPos >= 0 && endPos > startPos && endPos <= text.length()) {
+                                        textView.setSelection(startPos, endPos);
+                                        textView.requestFocus();
+                                        Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Selected text: '" + text.subSequence(startPos, endPos) + "'");
+                                        return;
+                                    } else {
+                                        Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Selection range invalid, retrying...");
+                                    }
+                                } else {
+                                    Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Text view has no text, retrying...");
+                                }
+                            } else {
+                                Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Text view is null");
+                            }
+                        } else {
+                            Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Holder is not a text view, it's a PDF view");
+                        }
+                    } else {
+                        Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] ViewHolder is not PDFPageViewHolder: " + (vh != null ? vh.getClass().getSimpleName() : "null"));
+                    }
+                } else {
+                    Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] pdfRecyclerView is null");
+                }
+                // If we get here, the page isn't ready yet, retry
+                Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] Page " + pageIndex + " not ready yet, retrying... (attempt " + (retryCount + 1) + ")");
+                highlightTextWithRetryTXT(pageIndex, startPos, endPos, retryCount + 1);
+            } else {
+                Log.d(TAG, "[SEARCH_PHRASE][TXT/EPUB] pageAdapter is null");
+            }
+        }, retryCount == 0 ? 1000 : 200 + (retryCount * 100));
+    }
+
+    /**
+     * Highlight text with retry logic for PDF (using BackgroundColorSpan)
+     */
+    private void highlightTextWithRetryPDF(int pageIndex, int startPos, int endPos, int retryCount) {
+        Log.d(TAG, "[SEARCH_PHRASE][PDF] highlightTextWithRetryPDF called - pageIndex: " + pageIndex + ", startPos: " + startPos + ", endPos: " + endPos + ", retryCount: " + retryCount);
+        if (retryCount >= 5) {
+            Log.w(TAG, "[SEARCH_PHRASE][PDF] Failed to select text after " + retryCount + " retries");
+            Toast.makeText(this, "Text not found on this page", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (pageAdapter != null) {
+            boolean shouldBeTextView = pageAdapter.shouldUseTextView(pageIndex);
+            Log.d(TAG, "[SEARCH_PHRASE][PDF] Page " + pageIndex + " should be text view: " + shouldBeTextView);
+            if (!shouldBeTextView) {
+                Log.d(TAG, "[SEARCH_PHRASE][PDF] Page " + pageIndex + " is not a text view page, cannot select text");
+                Toast.makeText(this, "Text not found on this page", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            Log.d(TAG, "[SEARCH_PHRASE][PDF] Retry attempt " + (retryCount + 1) + " - checking if page is ready");
+            if (pageAdapter != null) {
+                if (pdfRecyclerView != null) {
+                    RecyclerView.ViewHolder vh = pdfRecyclerView.findViewHolderForAdapterPosition(pageIndex);
+                    Log.d(TAG, "[SEARCH_PHRASE][PDF] ViewHolder for page " + pageIndex + ": " + (vh != null ? vh.getClass().getSimpleName() : "null"));
+                    if (vh instanceof PageAdapter.PDFPageViewHolder) {
+                        PageAdapter.PDFPageViewHolder holder = (PageAdapter.PDFPageViewHolder) vh;
+                        Log.d(TAG, "[SEARCH_PHRASE][PDF] Holder isTextView: " + holder.isTextView);
+                        if (holder.isTextView) {
+                            SelectableTextView textView = holder.getTextView();
+                            if (textView != null) {
+                                CharSequence text = textView.getText();
+                                Log.d(TAG, "[SEARCH_PHRASE][PDF] Text view has text: " + (text != null ? "yes, length: " + text.length() : "no"));
+                                if (text != null && text.length() > 0) {
+                                    if (startPos >= 0 && endPos > startPos && endPos <= text.length()) {
+                                        textView.setSelection(startPos, endPos);
+                                        textView.requestFocus();
+                                        Log.d(TAG, "[SEARCH_PHRASE][PDF] Selected text: '" + text.subSequence(startPos, endPos) + "'");
+                                        return;
+                                    } else {
+                                        Log.d(TAG, "[SEARCH_PHRASE][PDF] Selection range invalid, retrying...");
+                                    }
+                                } else {
+                                    Log.d(TAG, "[SEARCH_PHRASE][PDF] Text view has no text, retrying...");
+                                }
+                            } else {
+                                Log.d(TAG, "[SEARCH_PHRASE][PDF] Text view is null");
+                            }
+                        } else {
+                            Log.d(TAG, "[SEARCH_PHRASE][PDF] Holder is not a text view, it's a PDF view");
+                        }
+                    } else {
+                        Log.d(TAG, "[SEARCH_PHRASE][PDF] ViewHolder is not PDFPageViewHolder: " + (vh != null ? vh.getClass().getSimpleName() : "null"));
+                    }
+                } else {
+                    Log.d(TAG, "[SEARCH_PHRASE][PDF] pdfRecyclerView is null");
+                }
+                // If we get here, the page isn't ready yet, retry
+                Log.d(TAG, "[SEARCH_PHRASE][PDF] Page " + pageIndex + " not ready yet, retrying... (attempt " + (retryCount + 1) + ")");
+                highlightTextWithRetryPDF(pageIndex, startPos, endPos, retryCount + 1);
+            } else {
+                Log.d(TAG, "[SEARCH_PHRASE][PDF] pageAdapter is null");
+            }
+        }, retryCount == 0 ? 1000 : 200 + (retryCount * 100));
+    }
+
+    /**
+     * Select text with retry logic for PDF (search as-is)
+     */
+    private void selectTextWithRetryPDF(int pageIndex, int startPos, int endPos, int retryCount, String searchPhrase) {
+        Log.d(TAG, "[SEARCH_PHRASE][PDF] selectTextWithRetryPDF called - pageIndex: " + pageIndex + ", startPos: " + startPos + ", endPos: " + endPos + ", retryCount: " + retryCount);
+        if (retryCount >= 5) {
+            Log.w(TAG, "[SEARCH_PHRASE][PDF] Failed to select text after " + retryCount + " retries");
+            Toast.makeText(this, "Text not found on this page", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (pageAdapter != null) {
+            boolean shouldBeTextView = pageAdapter.shouldUseTextView(pageIndex);
+            Log.d(TAG, "[SEARCH_PHRASE][PDF] Page " + pageIndex + " should be text view: " + shouldBeTextView);
+            if (!shouldBeTextView) {
+                Log.d(TAG, "[SEARCH_PHRASE][PDF] Page " + pageIndex + " is not a text view page, cannot select text");
+                Toast.makeText(this, "Text not found on this page", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            Log.d(TAG, "[SEARCH_PHRASE][PDF] Retry attempt " + (retryCount + 1) + " - checking if page is ready");
+            if (pageAdapter != null) {
+                if (pdfRecyclerView != null) {
+                    RecyclerView.ViewHolder vh = pdfRecyclerView.findViewHolderForAdapterPosition(pageIndex);
+                    Log.d(TAG, "[SEARCH_PHRASE][PDF] ViewHolder for page " + pageIndex + ": " + (vh != null ? vh.getClass().getSimpleName() : "null"));
+                    if (vh instanceof PageAdapter.PDFPageViewHolder) {
+                        PageAdapter.PDFPageViewHolder holder = (PageAdapter.PDFPageViewHolder) vh;
+                        Log.d(TAG, "[SEARCH_PHRASE][PDF] Holder isTextView: " + holder.isTextView);
+                        if (holder.isTextView) {
+                            SelectableTextView textView = holder.getTextView();
+                            if (textView != null) {
+                                CharSequence text = textView.getText();
+                                Log.d(TAG, "[SEARCH_PHRASE][PDF] Text view has text: " + (text != null ? "yes, length: " + text.length() : "no"));
+                                if (text != null && text.length() > 0) {
+                                    // Fuzzy search: for each possible substring, remove whitespace and compare
+                                    String pageText = text.toString();
+                                    String searchNoSpace = searchPhrase;
+                                    int matchStart = -1, matchEnd = -1;
+                                    int phraseLen = searchNoSpace.length();
+                                    outer:
+                                    for (int i = 0; i <= pageText.length() - 1; i++) {
+                                        int j = i, k = 0;
+                                        while (j < pageText.length() && k < phraseLen) {
+                                            char c = pageText.charAt(j);
+                                            if (Character.isWhitespace(c)) {
+                                                j++;
+                                                continue;
+                                            }
+                                            if (c != searchNoSpace.charAt(k)) {
+                                                break;
+                                            }
+                                            j++;
+                                            k++;
+                                        }
+                                        if (k == phraseLen) {
+                                            // Found match: i is the start, j is the end
+                                            matchStart = i;
+                                            matchEnd = j;
+                                            break outer;
+                                        }
+                                    }
+                                    if (matchStart >= 0 && matchEnd > matchStart) {
+                                        Log.d(TAG, "[SEARCH_PHRASE][PDF] Fuzzy match found at " + matchStart + " to " + matchEnd + ": '" + pageText.substring(matchStart, matchEnd) + "'");
+                                        textView.setSelection(matchStart, matchEnd);
+                                        textView.requestFocus();
+                                        return;
+                                    } else {
+                                        Log.d(TAG, "[SEARCH_PHRASE][PDF] Fuzzy match not found, retrying...");
+                                    }
+                                } else {
+                                    Log.d(TAG, "[SEARCH_PHRASE][PDF] Text view has no text, retrying...");
+                                }
+                            } else {
+                                Log.d(TAG, "[SEARCH_PHRASE][PDF] Text view is null");
+                            }
+                        } else {
+                            Log.d(TAG, "[SEARCH_PHRASE][PDF] Holder is not a text view, it's a PDF view");
+                        }
+                    } else {
+                        Log.d(TAG, "[SEARCH_PHRASE][PDF] ViewHolder is not PDFPageViewHolder: " + (vh != null ? vh.getClass().getSimpleName() : "null"));
+                    }
+                } else {
+                    Log.d(TAG, "[SEARCH_PHRASE][PDF] pdfRecyclerView is null");
+                }
+                // If we get here, the page isn't ready yet, retry
+                Log.d(TAG, "[SEARCH_PHRASE][PDF] Page " + pageIndex + " not ready yet, retrying... (attempt " + (retryCount + 1) + ")");
+                selectTextWithRetryPDF(pageIndex, startPos, endPos, retryCount + 1, searchPhrase);
+            } else {
+                Log.d(TAG, "[SEARCH_PHRASE][PDF] pageAdapter is null");
+            }
+        }, retryCount == 0 ? 1000 : 200 + (retryCount * 100));
+    }
+
+    /**
+     * Select text with retry logic in case the page isn't rendered yet
+     */
+    private void selectTextWithRetry(int pageIndex, int startPos, int endPos, int retryCount) {
+        Log.d(TAG, "[SEARCH_PHRASE] selectTextWithRetry called - pageIndex: " + pageIndex + ", startPos: " + startPos + ", endPos: " + endPos + ", retryCount: " + retryCount);
+        if (retryCount >= 5) {
+            Log.w(TAG, "[SEARCH_PHRASE] Failed to select text after " + retryCount + " retries");
+            return;
+        }
+        
+        // Check if this page should be a text view page
+        if (pageAdapter != null) {
+            boolean shouldBeTextView = pageAdapter.shouldUseTextView(pageIndex);
+            Log.d(TAG, "[SEARCH_PHRASE] Page " + pageIndex + " should be text view: " + shouldBeTextView);
+            if (!shouldBeTextView) {
+                Log.d(TAG, "[SEARCH_PHRASE] Page " + pageIndex + " is not a text view page, cannot select text");
+                return;
+            }
+        }
+        
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            Log.d(TAG, "[SEARCH_PHRASE] Retry attempt " + (retryCount + 1) + " - checking if page is ready");
+            if (pageAdapter != null) {
+                // Check if the view holder exists and is a text view
+                if (pdfRecyclerView != null) {
+                    RecyclerView.ViewHolder vh = pdfRecyclerView.findViewHolderForAdapterPosition(pageIndex);
+                    Log.d(TAG, "[SEARCH_PHRASE] ViewHolder for page " + pageIndex + ": " + (vh != null ? vh.getClass().getSimpleName() : "null"));
+                    if (vh instanceof PageAdapter.PDFPageViewHolder) {
+                        PageAdapter.PDFPageViewHolder holder = (PageAdapter.PDFPageViewHolder) vh;
+                        Log.d(TAG, "[SEARCH_PHRASE] Holder isTextView: " + holder.isTextView);
+                        if (holder.isTextView) {
+                            // Check if the text view has text
+                            SelectableTextView textView = holder.getTextView();
+                            if (textView != null) {
+                                CharSequence text = textView.getText();
+                                Log.d(TAG, "[SEARCH_PHRASE] Text view has text: " + (text != null ? "yes, length: " + text.length() : "no"));
+                                Log.d(TAG, "[SEARCH_PHRASE] Text is Spannable: " + (text instanceof android.text.Spannable));
+                                if (text != null && text.length() > 0) {
+                                    Log.d(TAG, "[SEARCH_PHRASE] Selecting text on page " + pageIndex + " from " + startPos + " to " + endPos);
+                                    Log.d(TAG, "[SEARCH_PHRASE] Text preview: '" + text.toString().substring(0, Math.min(100, text.length())) + "...'");
+                                    pageAdapter.selectTextOnPage(pageIndex, startPos, endPos);
+                                    Log.d(TAG, "[SEARCH_PHRASE] Text selection completed successfully");
+                                    return; // Success, no need to retry
+                                } else {
+                                    Log.d(TAG, "[SEARCH_PHRASE] Text view has no text, retrying...");
+                                }
+                            } else {
+                                Log.d(TAG, "[SEARCH_PHRASE] Text view is null");
+                            }
+                        } else {
+                            Log.d(TAG, "[SEARCH_PHRASE] Holder is not a text view, it's a PDF view");
+                        }
+                    } else {
+                        Log.d(TAG, "[SEARCH_PHRASE] ViewHolder is not PDFPageViewHolder: " + (vh != null ? vh.getClass().getSimpleName() : "null"));
+                    }
+                } else {
+                    Log.d(TAG, "[SEARCH_PHRASE] pdfRecyclerView is null");
+                }
+                
+                // If we get here, the page isn't ready yet, retry
+                Log.d(TAG, "[SEARCH_PHRASE] Page " + pageIndex + " not ready yet, retrying... (attempt " + (retryCount + 1) + ")");
+                selectTextWithRetry(pageIndex, startPos, endPos, retryCount + 1);
+            } else {
+                Log.d(TAG, "[SEARCH_PHRASE] pageAdapter is null");
+            }
+        }, retryCount == 0 ? 1000 : 200 + (retryCount * 100)); // Longer delay for first attempt, then increasing delays
+    }
+    
+    /**
+     * Map a position in the stripped text (no whitespace) back to the original text position
+     */
+    private int mapStrippedToOriginalPosition(String originalText, int strippedPosition) {
+        if (originalText == null || strippedPosition < 0) {
+            return 0;
+        }
+        
+        int originalPosition = 0;
+        int strippedCount = 0;
+        
+        for (int i = 0; i < originalText.length(); i++) {
+            if (!Character.isWhitespace(originalText.charAt(i))) {
+                if (strippedCount == strippedPosition) {
+                    return originalPosition;
+                }
+                strippedCount++;
+            }
+            originalPosition++;
+        }
+        
+        // If we reach here, return the end of the text
+        return originalText.length();
     }
 }

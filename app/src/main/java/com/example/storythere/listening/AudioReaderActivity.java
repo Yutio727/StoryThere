@@ -26,6 +26,8 @@ import com.bumptech.glide.Glide;
 import com.example.storythere.R;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -35,6 +37,12 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import android.speech.tts.UtteranceProgressListener;
 import android.content.SharedPreferences;
+import com.example.storythere.parsers.TextParser;
+import com.example.storythere.viewing.ViewerActivity;
+import com.example.storythere.viewing.ReaderActivity;
+import com.example.storythere.data.BookRepository;
+import com.example.storythere.data.Book;
+import com.example.storythere.parsers.PDFParser;
 
 public class AudioReaderActivity extends AppCompatActivity {
     private static final String TAG = "AudioReaderActivity";
@@ -101,6 +109,11 @@ public class AudioReaderActivity extends AppCompatActivity {
     
     private long lastTTSOnDoneTime = 0;
     
+    // Add BookRepository for database access
+    private BookRepository bookRepository;
+    
+    private boolean hasLaunchedViewer = false;
+    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -116,6 +129,9 @@ public class AudioReaderActivity extends AppCompatActivity {
         
         // Initialize views
         initializeViews();
+        
+        // Initialize BookRepository
+        bookRepository = new BookRepository(getApplication());
         
         // Get data from intent
         Intent intent = getIntent();
@@ -220,6 +236,48 @@ public class AudioReaderActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.action_show_text) {
             toggleTextDisplay();
+            return true;
+        } else if (id == R.id.action_go_to_text) {
+            Intent originalIntent = getIntent();
+            String fileType = originalIntent.hasExtra("original_file_type") ? originalIntent.getStringExtra("original_file_type") : originalIntent.getStringExtra("fileType");
+            String filePath = originalIntent.hasExtra("filePath") ? originalIntent.getStringExtra("filePath") : null;
+            String originalFilePath = originalIntent.hasExtra("original_file_uri") ? originalIntent.getStringExtra("original_file_uri") : null;
+            int startPosition = currentPosition;
+            Uri originalUri = originalIntent.hasExtra("original_file_uri") ? Uri.parse(originalIntent.getStringExtra("original_file_uri")) : originalIntent.getData();
+            
+            Log.d(TAG, "[GO_TO_TEXT] Launching ViewerActivity from AudioReaderActivity:");
+            Log.d(TAG, "[GO_TO_TEXT] - fileType: " + fileType);
+            Log.d(TAG, "[GO_TO_TEXT] - filePath: " + filePath);
+            Log.d(TAG, "[GO_TO_TEXT] - originalFilePath: " + originalFilePath);
+            Log.d(TAG, "[GO_TO_TEXT] - startPosition: " + startPosition);
+            Log.d(TAG, "[GO_TO_TEXT] - originalUri: " + originalUri);
+            
+            // If filePath is null, try to get it from the database or use originalFilePath
+            if (filePath == null) {
+                if (originalFilePath != null) {
+                    Log.d(TAG, "[GO_TO_TEXT] filePath is null, trying to get from database using originalFilePath: " + originalFilePath);
+                    // Try to get the book from database using originalFilePath
+                    bookRepository.getBookByPath(originalFilePath).observe(this, book -> {
+                        if (book != null) {
+                            Log.d(TAG, "[GO_TO_TEXT] Found book in database: " + book.getTitle() + " with filePath: " + book.getFilePath());
+                            // Use the filePath from the database
+                            launchViewerActivity(fileType, book.getFilePath(), originalIntent, startPosition, originalUri);
+                        } else {
+                            Log.d(TAG, "[GO_TO_TEXT] Book not found in database, using originalFilePath: " + originalFilePath);
+                            // Use originalFilePath as fallback
+                            launchViewerActivity(fileType, originalFilePath, originalIntent, startPosition, originalUri);
+                        }
+                    });
+                    return true; // Return early since we're using async database call
+                } else {
+                    Log.w(TAG, "[GO_TO_TEXT] Both filePath and originalFilePath are null, cannot proceed");
+                    Toast.makeText(this, R.string.error_launching_audio_reader, Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+            }
+            
+            // If filePath is not null, launch directly
+            launchViewerActivity(fileType, filePath, originalIntent, startPosition, originalUri);
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -1078,5 +1136,271 @@ public class AudioReaderActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         saveCache();
+    }
+
+    private void launchViewerActivity(String fileType, String filePath, Intent originalIntent, int startPosition, Uri originalUri) {
+        if (hasLaunchedViewer) {
+            Log.w(TAG, "[GO_TO_TEXT] launchViewerActivity called more than once, ignoring duplicate call.");
+            return;
+        }
+        hasLaunchedViewer = true;
+        try {
+            // Extract phrase of 6-7 meaningful words after currentPosition for search
+            String searchPhrase = null;
+            String originalPhrase = null;
+            if (textContent != null && !textContent.isEmpty()) {
+                String[] words = textContent.split("\\s+");
+                int phraseStart = Math.max(0, startPosition);
+                int phraseEnd = Math.min(words.length, phraseStart + 7);
+                
+                // Build the original phrase with spaces for logging
+                StringBuilder originalPhraseBuilder = new StringBuilder();
+                StringBuilder phraseBuilder = new StringBuilder();
+                int meaningfulWordsCount = 0;
+                
+                for (int i = phraseStart; i < phraseEnd && meaningfulWordsCount < 7; i++) {
+                    String word = words[i].trim();
+                    // Only include words that are meaningful (not just single characters or very short)
+                    if (!word.isEmpty() && word.length() > 1) {
+                        originalPhraseBuilder.append(word).append(" ");
+                        phraseBuilder.append(word);
+                        meaningfulWordsCount++;
+                    } else if (!word.isEmpty() && word.length() == 1) {
+                        // For single characters, only include if they're followed by a meaningful word
+                        // This helps with punctuation and single letters that might be part of abbreviations
+                        if (i + 1 < words.length && words[i + 1].trim().length() > 1) {
+                            originalPhraseBuilder.append(word).append(" ");
+                            phraseBuilder.append(word);
+                            meaningfulWordsCount++;
+                        }
+                    }
+                }
+                
+                originalPhrase = originalPhraseBuilder.toString().trim();
+                searchPhrase = phraseBuilder.toString().replaceAll("\\s+", ""); // Remove all whitespace
+                
+                // Log the extracted phrase
+                Log.d(TAG, "[GO_TO_TEXT] Extracted search phrase: '" + searchPhrase + "' from words " + phraseStart + " to " + (phraseEnd - 1));
+                Log.d(TAG, "[GO_TO_TEXT] Original phrase with spaces: '" + originalPhrase + "'");
+                Log.d(TAG, "[GO_TO_TEXT] Meaningful words count: " + meaningfulWordsCount);
+            }
+
+            // Calculate page position based on word position
+            int pagePosition = calculatePagePositionFromWordPosition(startPosition);
+            Log.d(TAG, "[GO_TO_TEXT] Word position: " + startPosition + " -> Page position: " + pagePosition);
+            
+            // Log what phrase we're searching for
+            if (searchPhrase != null && !searchPhrase.isEmpty()) {
+                Log.d(TAG, "[GO_TO_TEXT] Will search for phrase: '" + searchPhrase + "' on page " + pagePosition);
+            }
+
+            if ("pdf".equals(fileType)) {
+                Intent pdfIntent = new Intent(this, ViewerActivity.class);
+                pdfIntent.setData(originalUri);
+                pdfIntent.putExtra("fileType", fileType);
+                pdfIntent.putExtra("filePath", filePath);
+                pdfIntent.putExtra("title", originalIntent.getStringExtra("title"));
+                pdfIntent.putExtra("start_position", pagePosition); // Pass page position instead of word position
+                if (searchPhrase != null && !searchPhrase.isEmpty()) pdfIntent.putExtra("search_phrase", searchPhrase);
+                Log.d(TAG, "[GO_TO_TEXT] Launching PDF in ViewerActivity with page position: " + pagePosition);
+                startActivity(pdfIntent);
+            } else if ("txt".equals(fileType)) {
+                TextParser.ParsedText parsed = TextParser.parseText(this, originalUri);
+                String title = originalIntent.getStringExtra("title");
+                String safeTitle = (title != null ? title.replaceAll("[^a-zA-Z0-9]", "_") : "book");
+                File cacheFile = new File(getCacheDir(), safeTitle + "_parsed.txt");
+                try (FileWriter writer = new FileWriter(cacheFile, false)) {
+                    writer.write(parsed.content);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Toast.makeText(this, R.string.failed_to_cache_parsed_text, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Intent pdfIntent = new Intent(this, ViewerActivity.class);
+                pdfIntent.setData(Uri.fromFile(cacheFile));
+                pdfIntent.putExtra("isRussian", parsed.isRussian);
+                pdfIntent.putExtra("fileType", fileType);
+                pdfIntent.putExtra("filePath", filePath);
+                pdfIntent.putExtra("title", title);
+                pdfIntent.putExtra("start_position", pagePosition); // Pass page position instead of word position
+                if (searchPhrase != null && !searchPhrase.isEmpty()) pdfIntent.putExtra("search_phrase", searchPhrase);
+                Log.d(TAG, "[GO_TO_TEXT] Launching TXT in ViewerActivity with cache file: " + cacheFile.getAbsolutePath() + " and page position: " + pagePosition);
+                startActivity(pdfIntent);
+            } else if ("epub".equals(fileType)) {
+                Intent epubIntent = new Intent(this, ViewerActivity.class);
+                epubIntent.setData(originalUri);
+                epubIntent.putExtra("fileType", fileType);
+                epubIntent.putExtra("filePath", filePath);
+                epubIntent.putExtra("title", originalIntent.getStringExtra("title"));
+                epubIntent.putExtra("start_position", pagePosition); // Pass page position instead of word position
+                if (searchPhrase != null && !searchPhrase.isEmpty()) epubIntent.putExtra("search_phrase", searchPhrase);
+                Log.d(TAG, "[GO_TO_TEXT] Launching EPUB in ViewerActivity with page position: " + pagePosition);
+                startActivity(epubIntent);
+            } else {
+                Intent readerIntent = new Intent(this, ReaderActivity.class);
+                readerIntent.setData(originalUri);
+                readerIntent.putExtra("fileType", fileType);
+                readerIntent.putExtra("filePath", filePath);
+                readerIntent.putExtra("title", originalIntent.getStringExtra("title"));
+                readerIntent.putExtra("start_position", pagePosition); // Pass page position instead of word position
+                if (searchPhrase != null && !searchPhrase.isEmpty()) readerIntent.putExtra("search_phrase", searchPhrase);
+                Log.d(TAG, "[GO_TO_TEXT] Launching other file type in ReaderActivity with page position: " + pagePosition);
+                startActivity(readerIntent);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "[GO_TO_TEXT] Error launching viewer: " + e.getMessage(), e);
+            Toast.makeText(this, R.string.error_launching_audio_reader, Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * Calculate page position from word position by simulating how ViewerActivity splits text into pages
+     */
+    private int calculatePagePositionFromWordPosition(int wordPosition) {
+        if (textContent == null || textContent.isEmpty()) {
+            return 0;
+        }
+        
+        // Get the actual word at the given position for logging
+        String[] allWords = textContent.split("\\s+");
+        String actualWord = "";
+        if (wordPosition >= 0 && wordPosition < allWords.length) {
+            actualWord = allWords[wordPosition].trim();
+        }
+        
+        // Also get a few words around the position for better context
+        StringBuilder contextWords = new StringBuilder();
+        int start = Math.max(0, wordPosition - 2);
+        int end = Math.min(allWords.length, wordPosition + 3);
+        for (int i = start; i < end; i++) {
+            String word = allWords[i].trim();
+            if (!word.isEmpty()) {
+                if (i == wordPosition) {
+                    contextWords.append("[").append(word).append("] "); // Highlight the target word
+                } else {
+                    contextWords.append(word).append(" ");
+                }
+            }
+        }
+        
+        Log.d(TAG, "[GO_TO_TEXT] Word at position " + wordPosition + ": '" + actualWord + "'");
+        Log.d(TAG, "[GO_TO_TEXT] Context around position " + wordPosition + ": '" + contextWords.toString().trim() + "'");
+        
+        // Get file type to determine the correct page splitting logic
+        Intent intent = getIntent();
+        String fileType = intent != null ? intent.getStringExtra("original_file_type") : null;
+        if (fileType == null) {
+            fileType = intent != null ? intent.getStringExtra("fileType") : "txt";
+        }
+        
+        if ("pdf".equals(fileType)) {
+            // For PDF, we need to estimate which PDF page contains our word position
+            // Since we don't have access to the actual PDF structure here, we'll use a heuristic
+            // based on the total word count and estimated pages
+            int totalWords = allWords.length;
+            
+            // Get the original PDF URI to try to get page count
+            String originalFilePath = intent != null ? intent.getStringExtra("original_file_uri") : null;
+            if (originalFilePath != null) {
+                try {
+                    Uri pdfUri = Uri.parse(originalFilePath);
+                    // Try to get PDF page count using PDFParser
+                    PDFParser pdfParser = new PDFParser(this, pdfUri);
+                    int pdfPageCount = pdfParser.getPageCount();
+                    pdfParser.close();
+                    
+                    // Estimate which PDF page contains our word position
+                    // This is a rough estimation: assume words are distributed evenly across pages
+                    int estimatedPage = (int) ((wordPosition * pdfPageCount) / (double) totalWords);
+                    estimatedPage = Math.max(0, Math.min(estimatedPage, pdfPageCount - 1));
+                    
+                    Log.d(TAG, "[GO_TO_TEXT] PDF detected, total pages: " + pdfPageCount + ", total words: " + totalWords);
+                    Log.d(TAG, "[GO_TO_TEXT] Word position " + wordPosition + " estimated to be on PDF page " + estimatedPage);
+                    Log.d(TAG, "[GO_TO_TEXT] Word position: " + wordPosition + " -> PDF page position: " + estimatedPage);
+                    
+                    return estimatedPage;
+                } catch (Exception e) {
+                    Log.e(TAG, "[GO_TO_TEXT] Error getting PDF page count: " + e.getMessage());
+                    // Fall back to simple estimation
+                }
+            }
+            
+            // Fallback: use simple estimation without PDF parsing
+            int estimatedPages = Math.max(1, totalWords / 500); // Rough estimate: 500 words per page
+            int estimatedPage = (int) ((wordPosition * estimatedPages) / (double) totalWords);
+            estimatedPage = Math.max(0, Math.min(estimatedPage, estimatedPages - 1));
+            
+            Log.d(TAG, "[GO_TO_TEXT] PDF detected, estimated pages: " + estimatedPages + ", total words: " + totalWords);
+            Log.d(TAG, "[GO_TO_TEXT] Word position " + wordPosition + " estimated to be on PDF page " + estimatedPage);
+            Log.d(TAG, "[GO_TO_TEXT] Word position: " + wordPosition + " -> PDF page position: " + estimatedPage);
+            
+            return estimatedPage;
+        }
+        
+        // For EPUB and TXT, use text-based page splitting
+        List<String> pages;
+        if ("epub".equals(fileType)) {
+            // For EPUB, use the same logic as ViewerActivity: 1200 chars per page
+            pages = splitTextIntoPages(textContent, 1200);
+            Log.d(TAG, "[GO_TO_TEXT] EPUB detected, using 1200 chars per page, total pages: " + pages.size());
+        } else if ("txt".equals(fileType)) {
+            // For TXT, use 2000 chars per page like ViewerActivity
+            pages = splitTextIntoPages(textContent, 2000);
+            Log.d(TAG, "[GO_TO_TEXT] TXT detected, using 2000 chars per page, total pages: " + pages.size());
+        } else {
+            // For other file types, use 2000 chars per page as fallback
+            pages = splitTextIntoPages(textContent, 2000);
+            Log.d(TAG, "[GO_TO_TEXT] Other file type detected, using 2000 chars per page, total pages: " + pages.size());
+        }
+        
+        // Count words up to each page to find which page contains our word position
+        int currentWordCount = 0;
+        for (int i = 0; i < pages.size(); i++) {
+            String pageText = pages.get(i);
+            String[] pageWords = pageText.split("\\s+");
+            int pageWordCount = 0;
+            for (String word : pageWords) {
+                if (!word.trim().isEmpty()) {
+                    pageWordCount++;
+                }
+            }
+            
+            // Check if our word position falls within this page
+            if (wordPosition < currentWordCount + pageWordCount) {
+                Log.d(TAG, "[GO_TO_TEXT] Word position " + wordPosition + " found in page " + i + " (words " + currentWordCount + " to " + (currentWordCount + pageWordCount - 1) + ")");
+                Log.d(TAG, "[GO_TO_TEXT] Page " + i + " content preview: '" + pageText.substring(0, Math.min(100, pageText.length())) + "...'");
+                return i;
+            }
+            
+            currentWordCount += pageWordCount;
+        }
+        
+        // If word position is beyond all pages, return the last page
+        Log.d(TAG, "[GO_TO_TEXT] Word position " + wordPosition + " beyond all pages, returning last page: " + (pages.size() - 1));
+        return Math.max(0, pages.size() - 1);
+    }
+    
+    /**
+     * Split text into pages using the same logic as ViewerActivity
+     */
+    private List<String> splitTextIntoPages(String text, int charsPerPage) {
+        List<String> pages = new ArrayList<>();
+        String[] paragraphs = text.split("\\n+"); // Split by one or more newlines
+        StringBuilder currentPage = new StringBuilder();
+        int currentLength = 0;
+        for (String paragraph : paragraphs) {
+            int paragraphLength = paragraph.length() + 2; // +2 for the two newlines
+            if (currentLength + paragraphLength > charsPerPage && currentLength > 0) {
+                pages.add(currentPage.toString().trim());
+                currentPage.setLength(0);
+                currentLength = 0;
+            }
+            currentPage.append(paragraph).append("\n\n");
+            currentLength += paragraphLength;
+        }
+        if (currentLength > 0) {
+            pages.add(currentPage.toString().trim());
+        }
+        return pages;
     }
 } 

@@ -755,13 +755,33 @@ public class BookOptionsActivity extends AppCompatActivity {
                         } catch (Exception ignored) {}
                     } else {
                         try {
-                            TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
-                            int wordCount = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
-                            timeOfListen = wordCount + getString(R.string.words);
-                            bookReadingTimeText.setText(timeOfListen);
-                            currentBook.setTimeOfListen(timeOfListen);
-                            bookRepository.update(currentBook);
-                            estimatedMinutes = (int) Math.ceil(wordCount / 250.0);
+                            if ("epub".equals(fileType)) {
+                                // For EPUB files, use EPUBParser
+                                EPUBParser epubParser = new EPUBParser(this);
+                                if (epubParser.parse(contentUri)) {
+                                    List<String> epubTextContent = epubParser.getTextContent();
+                                    StringBuilder sb = new StringBuilder();
+                                    for (String page : epubTextContent) {
+                                        sb.append(page).append("\n\n");
+                                    }
+                                    String content = sb.toString();
+                                    int wordCount = content.trim().isEmpty() ? 0 : content.trim().split("\\s+").length;
+                                    timeOfListen = wordCount + getString(R.string.words);
+                                    bookReadingTimeText.setText(timeOfListen);
+                                    currentBook.setTimeOfListen(timeOfListen);
+                                    bookRepository.update(currentBook);
+                                    estimatedMinutes = (int) Math.ceil(wordCount / 250.0);
+                                }
+                            } else {
+                                // For TXT files, use TextParser
+                                TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
+                                int wordCount = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
+                                timeOfListen = wordCount + getString(R.string.words);
+                                bookReadingTimeText.setText(timeOfListen);
+                                currentBook.setTimeOfListen(timeOfListen);
+                                bookRepository.update(currentBook);
+                                estimatedMinutes = (int) Math.ceil(wordCount / 250.0);
+                            }
                         } catch (Exception e) {
                             bookReadingTimeText.setText("");
                         }

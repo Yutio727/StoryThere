@@ -1,4 +1,4 @@
-package com.example.storythere.viewing;
+package com.example.storythere.adapters;
 
 import android.content.Context;
 import android.os.Handler;
@@ -15,6 +15,8 @@ import java.util.concurrent.Executors;
 
 import com.example.storythere.R;
 import com.example.storythere.parsers.PDFParser;
+import com.example.storythere.viewing.PDFView;
+import com.example.storythere.viewing.SelectableTextView;
 import com.turingtechnologies.materialscrollbar.ICustomAdapter;
 
 public class PageAdapter extends RecyclerView.Adapter<PageAdapter.PDFPageViewHolder> implements ICustomAdapter {

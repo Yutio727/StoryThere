@@ -44,7 +44,6 @@ import android.animation.ObjectAnimator;
 import com.example.storythere.parsers.EPUBParser;
 import com.example.storythere.parsers.PDFParser;
 import com.example.storythere.parsers.TextParser;
-import com.example.storythere.adapters.BookmarkAdapter;
 import com.turingtechnologies.materialscrollbar.DragScrollBar;
 
 public class ViewerActivity extends AppCompatActivity implements TextSettingsDialog.TextSettingsListener, PageAdapter.TextSelectionCallback {
@@ -132,7 +131,7 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
             WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
         );
         
-        setContentView(R.layout.activity_pdf_viewer);
+        setContentView(R.layout.activity_viewer);
 
         // Set up toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);

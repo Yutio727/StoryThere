@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.Observer;
 import com.bumptech.glide.Glide;
+import com.example.storythere.NetworkUtils;
 import com.example.storythere.R;
 import com.example.storythere.ai.GigaChatService;
 import com.example.storythere.ai.HuggingFaceService;

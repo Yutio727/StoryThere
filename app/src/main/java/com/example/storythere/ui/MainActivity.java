@@ -419,12 +419,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String getAnnotationWithTime(Book book) {
-        String timeOfListen = book.getTimeOfListen();
-        if (timeOfListen == null || timeOfListen.trim().isEmpty()) return "";
-        String result = timeOfListen;
+        String readingStats = book.getReadingStats();
+        if (readingStats == null || readingStats.trim().isEmpty()) return "";
+        String result = readingStats;
         int estimatedMinutes = -1;
         try {
-            int count = Integer.parseInt(timeOfListen.trim().split(" ")[0]);
+            int count = Integer.parseInt(readingStats.trim().split(" ")[0]);
             if (book.getFileType().equals("pdf")) {
                 estimatedMinutes = (int) Math.ceil(count * 300.0 / 250.0);
             } else {
@@ -435,7 +435,7 @@ public class MainActivity extends AppCompatActivity {
             // Use translations for separator and min
             String separator = " | ";
             String min = getString(R.string.min);
-            result = timeOfListen + separator + estimatedMinutes + min;
+            result = readingStats + separator + estimatedMinutes + min;
         }
         return result;
     }

@@ -170,10 +170,10 @@ public class BookOptionsActivity extends AppCompatActivity {
                             updateAnnotationDisplay(null);
                         }
                         
-                        // Migrate old annotation data to timeOfListen if needed
-                        if (book.getTimeOfListen() == null && book.getAnnotation() != null && isCountTimeOfListen(book.getAnnotation())) {
+                        // Migrate old annotation data to readingStats if needed
+                        if (book.getReadingStats() == null && book.getAnnotation() != null && isCountReadingStats(book.getAnnotation())) {
                             // This is old data where annotation contains word count - migrate it
-                            book.setTimeOfListen(book.getAnnotation());
+                            book.setReadingStats(book.getAnnotation());
                             book.setAnnotation(null); // Clear the old annotation field
                             bookRepository.update(book);
                         }
@@ -706,11 +706,11 @@ public class BookOptionsActivity extends AppCompatActivity {
         }
     }
 
-    // Helper to check if timeOfListen starts with a number (for word/page count)
-    private boolean isCountTimeOfListen(String timeOfListen) {
-        if (timeOfListen == null) return false;
+    // Helper to check if readingStats starts with a number (for word/page count)
+    private boolean isCountReadingStats(String readingStats) {
+        if (readingStats == null) return false;
         try {
-            String first = timeOfListen.trim().split(" ")[0];
+            String first = readingStats.trim().split(" ")[0];
             Integer.parseInt(first);
             return true;
         } catch (Exception e) {
@@ -724,21 +724,21 @@ public class BookOptionsActivity extends AppCompatActivity {
             int estimatedMinutes = -1;
             if (isReadModeSelected) {
                 if ("pdf".equals(fileType)) {
-                    String timeOfListen = currentBook.getTimeOfListen();
-                    if (isCountTimeOfListen(timeOfListen)) {
-                        bookReadingTimeText.setText(timeOfListen);
+                    String readingStats = currentBook.getReadingStats();
+                    if (isCountReadingStats(readingStats)) {
+                        bookReadingTimeText.setText(readingStats);
                         try {
-                            int pageCount = Integer.parseInt(timeOfListen.trim().split(" ")[0]);
+                            int pageCount = Integer.parseInt(readingStats.trim().split(" ")[0]);
                             estimatedMinutes = (int) Math.ceil(pageCount * 300.0 / 250.0); // 300 words/page
                         } catch (Exception ignored) {}
                     } else {
                         try {
                             PDFParser pdfParser = new PDFParser(this, contentUri);
                             int totalPages = pdfParser.getPageCount();
-                            timeOfListen = totalPages + getString(R.string.pages);
-                            bookReadingTimeText.setText(timeOfListen);
+                            readingStats = totalPages + getString(R.string.pages);
+                            bookReadingTimeText.setText(readingStats);
                             pdfParser.close();
-                            currentBook.setTimeOfListen(timeOfListen);
+                            currentBook.setReadingStats(readingStats);
                             bookRepository.update(currentBook);
                             estimatedMinutes = (int) Math.ceil(totalPages * 300.0 / 250.0);
                         } catch (Exception e) {
@@ -746,11 +746,11 @@ public class BookOptionsActivity extends AppCompatActivity {
                         }
                     }
                 } else {
-                    String timeOfListen = currentBook.getTimeOfListen();
-                    if (isCountTimeOfListen(timeOfListen)) {
-                        bookReadingTimeText.setText(timeOfListen);
+                    String readingStats = currentBook.getReadingStats();
+                    if (isCountReadingStats(readingStats)) {
+                        bookReadingTimeText.setText(readingStats);
                         try {
-                            int wordCount = Integer.parseInt(timeOfListen.trim().split(" ")[0]);
+                            int wordCount = Integer.parseInt(readingStats.trim().split(" ")[0]);
                             estimatedMinutes = (int) Math.ceil(wordCount / 250.0);
                         } catch (Exception ignored) {}
                     } else {
@@ -766,9 +766,9 @@ public class BookOptionsActivity extends AppCompatActivity {
                                     }
                                     String content = sb.toString();
                                     int wordCount = content.trim().isEmpty() ? 0 : content.trim().split("\\s+").length;
-                                    timeOfListen = wordCount + getString(R.string.words);
-                                    bookReadingTimeText.setText(timeOfListen);
-                                    currentBook.setTimeOfListen(timeOfListen);
+                                    readingStats = wordCount + getString(R.string.words);
+                                    bookReadingTimeText.setText(readingStats);
+                                    currentBook.setReadingStats(readingStats);
                                     bookRepository.update(currentBook);
                                     estimatedMinutes = (int) Math.ceil(wordCount / 250.0);
                                 }
@@ -776,9 +776,9 @@ public class BookOptionsActivity extends AppCompatActivity {
                                 // For TXT files, use TextParser
                                 TextParser.ParsedText parsedText = TextParser.parseText(this, contentUri);
                                 int wordCount = parsedText.content.trim().isEmpty() ? 0 : parsedText.content.trim().split("\\s+").length;
-                                timeOfListen = wordCount + getString(R.string.words);
-                                bookReadingTimeText.setText(timeOfListen);
-                                currentBook.setTimeOfListen(timeOfListen);
+                                readingStats = wordCount + getString(R.string.words);
+                                bookReadingTimeText.setText(readingStats);
+                                currentBook.setReadingStats(readingStats);
                                 bookRepository.update(currentBook);
                                 estimatedMinutes = (int) Math.ceil(wordCount / 250.0);
                             }
@@ -788,11 +788,11 @@ public class BookOptionsActivity extends AppCompatActivity {
                     }
                 }
             } else {
-                String timeOfListen = currentBook.getTimeOfListen();
-                if (isCountTimeOfListen(timeOfListen)) {
-                    bookReadingTimeText.setText(timeOfListen);
+                String readingStats = currentBook.getReadingStats();
+                if (isCountReadingStats(readingStats)) {
+                    bookReadingTimeText.setText(readingStats);
                     try {
-                        int count = Integer.parseInt(timeOfListen.trim().split(" ")[0]);
+                        int count = Integer.parseInt(readingStats.trim().split(" ")[0]);
                         if ("pdf".equals(fileType)) {
                             estimatedMinutes = (int) Math.ceil(count * 300.0 / 250.0);
                         } else {

@@ -2,32 +2,31 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/action_more"
-        android:icon="@android:drawable/ic_menu_more"
-        android:title="More options"
-        app:showAsAction="always">
-        <menu>
-            <item
-                android:id="@+id/action_playback_speed"
-                android:title="@string/playback_speed"
-                app:showAsAction="never"
-                android:iconTint="@color/progress_blue"
-                android:icon="@drawable/ic_playback_speed"
-                android:contentDescription="@string/playback_speed" />
-            <item
-                android:id="@+id/action_voice"
-                android:title="@string/choose_voice"
-                android:icon="@drawable/ic_user"
-                app:showAsAction="never"
-                android:iconTint="@color/progress_blue"
-                android:contentDescription="@string/choose_voice" />
-            <item
-                android:id="@+id/action_show_text"
-                android:title="@string/show_text"
-                android:icon="@drawable/ic_text"
-                app:showAsAction="never"
-                android:iconTint="@color/progress_blue"
-                android:contentDescription="@string/show_text" />
-        </menu>
-    </item>
+        android:id="@+id/action_playback_speed"
+        android:title="@string/playback_speed"
+        app:showAsAction="never"
+        android:iconTint="@color/progress_blue"
+        android:icon="@drawable/ic_playback_speed"
+        android:contentDescription="@string/playback_speed" />
+    <item
+        android:id="@+id/action_voice"
+        android:title="@string/choose_voice"
+        android:icon="@drawable/ic_user"
+        app:showAsAction="never"
+        android:iconTint="@color/progress_blue"
+        android:contentDescription="@string/choose_voice" />
+    <item
+        android:id="@+id/action_show_text"
+        android:title="@string/show_text"
+        android:icon="@drawable/ic_text"
+        app:showAsAction="never"
+        android:iconTint="@color/progress_blue"
+        android:contentDescription="@string/show_text" />
+    <item
+        android:id="@+id/action_go_to_text"
+        android:title="@string/go_to_text"
+        android:icon="@drawable/ic_text"
+        app:showAsAction="never"
+        android:iconTint="@color/progress_blue"
+        android:contentDescription="@string/go_to_text" />
 </menu> 

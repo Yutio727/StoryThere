@@ -149,4 +149,51 @@ public class SelectableTextView extends AppCompatTextView {
             Log.d(TAG, "setTextIsSelectable suppressed: " + e.getMessage());
         }
     }
+    
+    /**
+     * Programmatically set the selection range if the text is Spannable.
+     */
+    public void setSelection(int start, int end) {
+        Log.d(TAG, "[SELECT_TEXT] setSelection called - start: " + start + ", end: " + end + ", text length: " + getText().length());
+        
+        // Ensure the text is Spannable
+        CharSequence currentText = getText();
+        if (!(currentText instanceof android.text.Spannable)) {
+            Log.d(TAG, "[SELECT_TEXT] Converting text to Spannable");
+            android.text.SpannableString spannableText = new android.text.SpannableString(currentText);
+            setText(spannableText);
+            currentText = spannableText;
+        }
+        
+        if (currentText instanceof android.text.Spannable) {
+            android.text.Spannable spannable = (android.text.Spannable) currentText;
+            Log.d(TAG, "[SELECT_TEXT] Text is Spannable, setting selection");
+            
+            // Ensure bounds are valid
+            int textLength = spannable.length();
+            start = Math.max(0, Math.min(start, textLength));
+            end = Math.max(start, Math.min(end, textLength));
+            
+            Log.d(TAG, "[SELECT_TEXT] Adjusted bounds - start: " + start + ", end: " + end + ", textLength: " + textLength);
+            
+            try {
+                android.text.Selection.setSelection(spannable, start, end);
+                Log.d(TAG, "[SELECT_TEXT] Selection set successfully");
+                
+                // Force the selection to be visible
+                requestFocus();
+                
+                // Trigger the selection change callback manually
+                if (selectionListener != null) {
+                    String selectedText = spannable.toString().substring(start, end);
+                    Log.d(TAG, "[SELECT_TEXT] Manually triggering selection callback: '" + selectedText + "'");
+                    selectionListener.onTextSelected(selectedText, start, end);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "[SELECT_TEXT] Error setting selection: " + e.getMessage(), e);
+            }
+        } else {
+            Log.d(TAG, "[SELECT_TEXT] Text is not Spannable, cannot set selection. Text type: " + currentText.getClass().getSimpleName());
+        }
+    }
 } 

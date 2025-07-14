@@ -1,4 +1,4 @@
-package com.example.storythere.ui;
+package com.example.storythere;
 
 import android.content.Context;
 import android.net.ConnectivityManager;

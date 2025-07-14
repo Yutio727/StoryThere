@@ -23,7 +23,7 @@ public class Book {
     private String parsedTextPath;
     private String image; // for server-side field
     private int readingPosition; // Store viewing position for all document types
-    private String timeOfListen; // for word count/listening time
+    private String readingStats; // for word count/listening time
     private String authorId; // Link to author collection
     
     @Ignore
@@ -87,8 +87,8 @@ public class Book {
     public String getImage() { return image != null ? image : previewImagePath; }
     public void setImage(String image) { this.image = image; }
 
-    public String getTimeOfListen() { return timeOfListen; }
-    public void setTimeOfListen(String timeOfListen) { this.timeOfListen = timeOfListen; }
+    public String getReadingStats() { return readingStats; }
+    public void setReadingStats(String readingStats) { this.readingStats = readingStats; }
 
     public String getAuthorId() { return authorId; }
     public void setAuthorId(String authorId) { this.authorId = authorId; }

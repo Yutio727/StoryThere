@@ -1,4 +1,4 @@
-package com.example.storythere.viewing;
+package com.example.storythere.adapters;
 
 import android.content.Context;
 import android.os.Handler;
@@ -15,6 +15,8 @@ import java.util.concurrent.Executors;
 
 import com.example.storythere.R;
 import com.example.storythere.parsers.PDFParser;
+import com.example.storythere.viewing.PDFView;
+import com.example.storythere.viewing.SelectableTextView;
 import com.turingtechnologies.materialscrollbar.ICustomAdapter;
 
 public class PageAdapter extends RecyclerView.Adapter<PageAdapter.PDFPageViewHolder> implements ICustomAdapter {
@@ -37,6 +39,7 @@ public class PageAdapter extends RecyclerView.Adapter<PageAdapter.PDFPageViewHol
     private final ExecutorService pdfParseExecutor = Executors.newFixedThreadPool(2);
     private final ConcurrentHashMap<Integer, Boolean> pdfParsingInProgress = new ConcurrentHashMap<>();
     private TextSelectionCallback textSelectionCallback;
+    private RecyclerView recyclerView;
 
     public PageAdapter(Context context, List<PDFParser.ParsedPage> pages, DocumentType type, PDFParser pdfParser, List<String> txtChunks, List<String> epubTextChunks, List<List<PDFParser.ImageInfo>> epubImages, PDFParser.TextSettings settings) {
         this.context = context;
@@ -204,8 +207,9 @@ public class PageAdapter extends RecyclerView.Adapter<PageAdapter.PDFPageViewHol
             if (textView != null) {
                 currentPosition = position;
                 
-                // First set text and temporarily disable selection
-                textView.setText(text);
+                // First set text as Spannable to ensure selection works
+                android.text.SpannableString spannableText = new android.text.SpannableString(text);
+                textView.setText(spannableText);
                 textView.setTextIsSelectable(false);
                 textView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
                 
@@ -255,7 +259,27 @@ public class PageAdapter extends RecyclerView.Adapter<PageAdapter.PDFPageViewHol
                 
                 // Finally enable selection
                 textView.setTextIsSelectable(true);
+                
+                Log.d("PageAdapter", "[BIND_TEXT] Text bound successfully - position: " + position + ", text length: " + text.length() + ", isSpannable: " + (textView.getText() instanceof android.text.Spannable));
             }
+        }
+        
+        /**
+         * Programmatically set text selection on this view holder
+         */
+        public void setTextSelection(int start, int end) {
+            Log.d("PageAdapter", "[SELECT_TEXT] setTextSelection called - isTextView: " + isTextView + ", textView: " + (textView != null ? "not null" : "null") + ", start: " + start + ", end: " + end);
+            if (isTextView && textView != null) {
+                Log.d("PageAdapter", "[SELECT_TEXT] Calling textView.setSelection(" + start + ", " + end + ")");
+                textView.setSelection(start, end);
+                Log.d("PageAdapter", "[SELECT_TEXT] setSelection completed");
+            } else {
+                Log.d("PageAdapter", "[SELECT_TEXT] Cannot set selection - isTextView: " + isTextView + ", textView: " + (textView != null ? "not null" : "null"));
+            }
+        }
+        
+        public SelectableTextView getTextView() {
+            return textView;
         }
     }
 
@@ -268,4 +292,32 @@ public class PageAdapter extends RecyclerView.Adapter<PageAdapter.PDFPageViewHol
         }
         return "";
     }
+
+    public void setRecyclerView(RecyclerView recyclerView) {
+        this.recyclerView = recyclerView;
+    }
+
+    /**
+     * Programmatically select text on a given page (if it is a text view page).
+     */
+    public void selectTextOnPage(int pageIndex, int start, int end) {
+        Log.d("PageAdapter", "[SELECT_TEXT] selectTextOnPage called - pageIndex: " + pageIndex + ", start: " + start + ", end: " + end);
+        if (recyclerView == null) {
+            Log.d("PageAdapter", "[SELECT_TEXT] recyclerView is null, returning");
+            return;
+        }
+        RecyclerView.ViewHolder vh = recyclerView.findViewHolderForAdapterPosition(pageIndex);
+        Log.d("PageAdapter", "[SELECT_TEXT] ViewHolder for page " + pageIndex + ": " + (vh != null ? vh.getClass().getSimpleName() : "null"));
+        if (vh instanceof PDFPageViewHolder) {
+            PDFPageViewHolder holder = (PDFPageViewHolder) vh;
+            Log.d("PageAdapter", "[SELECT_TEXT] Holder isTextView: " + holder.isTextView);
+            holder.setTextSelection(start, end);
+            Log.d("PageAdapter", "[SELECT_TEXT] setTextSelection called on holder");
+        } else {
+            Log.d("PageAdapter", "[SELECT_TEXT] ViewHolder is not PDFPageViewHolder");
+        }
+    }
+
+    public PDFParser getPdfParser() { return pdfParser; }
+    public PDFParser.TextSettings getCurrentSettings() { return currentSettings; }
 } 

@@ -6,6 +6,7 @@ plugins {
 android {
     namespace 'com.example.storythere'
     compileSdk 35
+    android.buildFeatures.buildConfig true
 
     defaultConfig {
         applicationId "com.example.storythere"
@@ -15,6 +16,12 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+
+        Properties properties = new Properties()
+        properties.load(project.rootProject.file("local.properties").newDataInputStream())
+        buildConfigField "String", "GIGACHAT_DEFAULT_KEY", "\"${properties.getProperty("GIGACHAT_DEFAULT_KEY")}\""
+        buildConfigField "String", "HUGGINGFACE_API_KEY", "\"${properties.getProperty("HUGGINGFACE_API_KEY")}\""
     }
 
     buildTypes {

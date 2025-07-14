@@ -3,6 +3,9 @@ package com.example.storythere.ai;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Log;
+
+import com.example.storythere.BuildConfig;
+
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -16,7 +19,7 @@ import java.util.Locale;
 public class HuggingFaceService {
     private static final String TAG = "HuggingFaceService";
     private static final String API_URL = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-dev";
-    private static final String API_KEY = "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"; // Replace with your actual token
+    private static final String API_KEY = BuildConfig.HUGGINGFACE_API_KEY; // Replace with your actual token
     
     private final OkHttpClient client;
     

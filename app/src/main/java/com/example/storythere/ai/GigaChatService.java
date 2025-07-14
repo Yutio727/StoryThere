@@ -1,6 +1,9 @@
 package com.example.storythere.ai;
 
 import android.util.Log;
+
+import com.example.storythere.BuildConfig;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -25,8 +28,7 @@ public class GigaChatService {
     
     // Timeout settings (in milliseconds)
     private static final int CONNECTION_TIMEOUT_MS = 180_000; // 5 minutes
-    
-    // Your API key (base64 encoded) - will be loaded from secure source
+
     private static final String ENCODED_API_KEY = getApiKey();
     
     private final ExecutorService executor;
@@ -42,7 +44,7 @@ public class GigaChatService {
     }
     
     private static String getApiKey() {
-        return "M2NmMTNhZWUtOGU4Zi00MDQ2LTg1ZGUtMzU2ODJhZmNlZDkzOjE4MGNkZjRlLTljNzAtNDRkNS1iNzA2LWVlNTNlMGFmNWI2YQ==";
+        return BuildConfig.GIGACHAT_DEFAULT_KEY;
     }
     
     private void configureSSL() {

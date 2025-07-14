@@ -16,7 +16,6 @@ import java.security.cert.X509Certificate;
 import java.security.NoSuchAlgorithmException;
 import java.security.KeyManagementException;
 import java.util.Properties;
-
 public class GigaChatService {
     private static final String TAG = "GigaChatService";
     
@@ -43,31 +42,6 @@ public class GigaChatService {
     }
     
     private static String getApiKey() {
-        // Try to get from environment variable first
-        String apiKey = System.getenv("GIGACHAT_API_KEY");
-        if (apiKey != null && !apiKey.isEmpty()) {
-            return apiKey;
-        }
-        
-        // Try to get from local config file
-        try {
-            Properties props = new Properties();
-            File configFile = new File("local_config.properties");
-            if (configFile.exists()) {
-                try (FileInputStream fis = new FileInputStream(configFile)) {
-                    props.load(fis);
-                    apiKey = props.getProperty("GIGACHAT_API_KEY");
-                    if (apiKey != null && !apiKey.isEmpty()) {
-                        return apiKey;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // Ignore config file errors, fall back to default
-        }
-        
-        // Fallback to a default key (for development only)
-        // In production, this should be removed and only environment variables used
         return "M2NmMTNhZWUtOGU4Zi00MDQ2LTg1ZGUtMzU2ODJhZmNlZDkzOjE4MGNkZjRlLTljNzAtNDRkNS1iNzA2LWVlNTNlMGFmNWI2YQ==";
     }
     

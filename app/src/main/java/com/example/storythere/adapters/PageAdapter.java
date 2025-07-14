@@ -178,7 +178,7 @@ public class PageAdapter extends RecyclerView.Adapter<PageAdapter.PDFPageViewHol
         return pages.size();
     }
 
-    static class PDFPageViewHolder extends RecyclerView.ViewHolder {
+    public static class PDFPageViewHolder extends RecyclerView.ViewHolder {
         private final PDFView pdfView;
         private final SelectableTextView textView;
         public final boolean isTextView;

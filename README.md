@@ -73,6 +73,8 @@ StoryThere is an Android app that brings your world of stories to your phone. It
      ```sh
      adb install app/build/outputs/apk/debug/app-debug.apk
      ```
+- Or just download the last release:
+https://github.com/Yutio727/StoryThere/releases/tag/0.2.0
 ---
 
 ## Permissions
@@ -191,7 +193,8 @@ StoryThere — это Android-приложение, которое перено�
      ```sh
      adb install app/build/outputs/apk/debug/app-debug.apk
      ```
-
+- Или просто скачайте последний версию:
+https://github.com/Yutio727/StoryThere/releases/tag/0.2.0
 ---
 
 ## Оффлайн режим

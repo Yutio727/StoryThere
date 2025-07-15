@@ -108,7 +108,6 @@ StoryThere is an Android app that brings your world of stories to your phone. It
 ---
 
 ## License
-[MIT](LICENSE)
 No license here yet
 
 
@@ -207,5 +206,4 @@ StoryThere — это Android-приложение, которое перено�
 ---
 
 ## Лицензия
-[MIT](LICENSE)
 Здесь пока что нет лицензии

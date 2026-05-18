@@ -8,13 +8,14 @@ import androidx.room.TypeConverters;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-@Database(entities = {Book.class, Author.class}, version = 8, exportSchema = false)
+@Database(entities = {Book.class, Author.class, RemoteBook.class}, version = 9, exportSchema = false)
 @TypeConverters({DateConverter.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
     
     public abstract BookDao bookDao(); // Using Room, which is an abstraction layer of SQLite
     public abstract AuthorDao authorDao();
+    public abstract RemoteBookDao remoteBookDao();
 
     private static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
@@ -81,6 +82,21 @@ public abstract class AppDatabase extends RoomDatabase {
             database.execSQL("ALTER TABLE books RENAME COLUMN timeOfListen TO readingStats");
         }
     };
+
+    private static final Migration MIGRATION_8_9 = new Migration(8, 9) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS remote_books (" +
+                "id INTEGER PRIMARY KEY NOT NULL, " +
+                "title TEXT, " +
+                "author TEXT, " +
+                "fileUrl TEXT, " +
+                "fileType TEXT, " +
+                "image TEXT, " +
+                "annotation TEXT" +
+                ")");
+        }
+    };
     
     public static AppDatabase getDatabase(final Context context) {
         if (INSTANCE == null) {
@@ -91,7 +107,7 @@ public abstract class AppDatabase extends RoomDatabase {
                         AppDatabase.class,
                         "storythere_database"
                     )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .fallbackToDestructiveMigration()
                     .build();
                 }

@@ -10,9 +10,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 
-import com.example.storythere.api.ApiClient;
-import com.example.storythere.api.ApiService;
-import com.example.storythere.api.model.ApiBook;
 import com.example.storythere.R;
 import android.widget.EditText;
 import android.app.DownloadManager;
@@ -23,6 +20,8 @@ import com.example.storythere.data.Book;
 import com.example.storythere.data.BookRepository;
 import com.example.storythere.data.Author;
 import com.example.storythere.data.AuthorRepository;
+import com.example.storythere.data.RemoteBook;
+import com.example.storythere.data.RemoteBookRepository;
 import androidx.lifecycle.ViewModelProvider;
 import com.example.storythere.adapters.BookListViewModel;
 import com.example.storythere.adapters.AuthorAdapter;
@@ -40,9 +39,6 @@ import androidx.lifecycle.Observer;
 import java.io.File;
 import java.io.InputStream;
 import java.util.Date;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
 
 public class HomeActivity extends AppCompatActivity {
@@ -68,6 +64,7 @@ public class HomeActivity extends AppCompatActivity {
     private static final String ADMIN_EMAIL = "dima.gurliv@gmail.com";
     private UserRepository userRepository;
     private AuthorRepository authorRepository;
+    private RemoteBookRepository remoteBookRepository;
     private AuthorAdapter authorAdapter;
     
     @Override
@@ -94,6 +91,7 @@ public class HomeActivity extends AppCompatActivity {
         viewModel = new ViewModelProvider(this).get(BookListViewModel.class);
         userRepository = new UserRepository();
         authorRepository = new AuthorRepository(this);
+        remoteBookRepository = new RemoteBookRepository(this);
         
         setupAdminButton();
         setupRecommendedBooksRecycler();
@@ -302,35 +300,26 @@ public class HomeActivity extends AppCompatActivity {
     private void setupRecommendedBooksRecycler() {
         RecyclerView recyclerView = findViewById(R.id.recycler_recommend_books);
         recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        RecommendBookAdapter adapter = new RecommendBookAdapter(new ArrayList<>(), HomeActivity.this::handleRecommendedBookClick);
+        recyclerView.setAdapter(adapter);
 
-        ApiService apiService = ApiClient.getApiService();
-        apiService.getBooks(7, 0).enqueue(new Callback<List<ApiBook>>() {
-            @Override
-            public void onResponse(Call<List<ApiBook>> call, Response<List<ApiBook>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    List<RecommendedBook> bookList = new ArrayList<>();
-                    for (ApiBook book : response.body()) {
-                        bookList.add(new RecommendedBook(
-                            book.title,
-                            book.author,
-                            book.fileUrl,
-                            book.fileType,
-                            book.image,
-                            book.annotation
-                        ));
-                    }
-                    RecommendBookAdapter adapter = new RecommendBookAdapter(bookList, HomeActivity.this::handleRecommendedBookClick);
-                    recyclerView.setAdapter(adapter);
-                } else {
-                    Log.w("HomeActivity", "Failed to load books from API. code=" + response.code());
-                }
+        remoteBookRepository.getRecommendedBooks(7).observe(this, remoteBooks -> {
+            if (remoteBooks == null) return;
+            List<RecommendedBook> bookList = new ArrayList<>();
+            for (RemoteBook book : remoteBooks) {
+                bookList.add(new RecommendedBook(
+                    book.getTitle(),
+                    book.getAuthor(),
+                    book.getFileUrl(),
+                    book.getFileType(),
+                    book.getImage(),
+                    book.getAnnotation()
+                ));
             }
-
-            @Override
-            public void onFailure(Call<List<ApiBook>> call, Throwable t) {
-                Log.w("HomeActivity", "Failed to load books from API", t);
-            }
+            adapter.updateBooks(bookList);
         });
+
+        remoteBookRepository.loadRecommendedBooksFromApi(7);
     }
 
     private void handleRecommendedBookClick(RecommendedBook book) {

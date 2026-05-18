@@ -13,6 +13,10 @@ public class ApiUser {
     public String role;
     public String photoURL;
     public String dateOfBirth;
+
+    @SerializedName("recommendationAgeBucket")
+    public String recommendationAgeBucket;
+
     public String createdAt;
     public String lastLoginAt;
     public String updatedAt;

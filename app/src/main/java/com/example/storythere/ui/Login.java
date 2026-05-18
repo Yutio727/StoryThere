@@ -23,12 +23,22 @@ import com.google.firebase.auth.FirebaseAuth;
 import android.widget.ProgressBar;
 import com.google.firebase.auth.FirebaseUser;
 import com.example.storythere.data.UserRepository;
+import com.example.storythere.data.User;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
 import android.app.AlertDialog;
 import android.view.LayoutInflater;
 import android.widget.Toast;
 import com.google.android.material.button.MaterialButton;
+import android.content.SharedPreferences;
 
 public class Login extends AppCompatActivity {
+    private static final String USER_SYNC_PREFS = "UserSyncPrefs";
+    private static final String KEY_DOB_PREFIX = "dob_";
+    private static final String KEY_BUCKET_PREFIX = "bucket_";
 
     private FrameLayout overlayView;
     private ConnectivityManager.NetworkCallback networkCallback;
@@ -382,21 +392,7 @@ public class Login extends AppCompatActivity {
                         if (task.isSuccessful()) {
                             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
                             if (user != null) {
-                                // Sync user profile/session with backend (MySQL via API)
-                                userRepository.updateLastLogin(user.getUid(), new UserRepository.UserCallback() {
-                                    @Override
-                                    public void onSuccess(com.example.storythere.api.model.ApiUser apiUser) {
-                                        Log.d("Login", "User synced with backend successfully");
-                                        showSuccessAndNavigate();
-                                    }
-
-                                    @Override
-                                    public void onError(Throwable throwable) {
-                                        Log.w("Login", "Failed to sync user with backend", throwable);
-                                        // Continue login flow even if sync fails
-                                        showSuccessAndNavigate();
-                                    }
-                                });
+                                handlePostLoginSync(user);
                             } else {
                                 showSuccessAndNavigate();
                             }
@@ -414,6 +410,181 @@ public class Login extends AppCompatActivity {
                         }
                     }
                 });
+    }
+
+    private void handlePostLoginSync(FirebaseUser firebaseUser) {
+        SharedPreferences prefs = getSharedPreferences(USER_SYNC_PREFS, MODE_PRIVATE);
+        String uid = firebaseUser.getUid();
+        String cachedDob = normalizeDateToIso(prefs.getString(KEY_DOB_PREFIX + uid, null));
+        String cachedBucket = prefs.getString(KEY_BUCKET_PREFIX + uid, null);
+
+        // Explicitly requested flow:
+        // 1) if dob+bucket already known -> don't call sync endpoint.
+        if (isNotBlank(cachedDob) && isNotBlank(cachedBucket)) {
+            showSuccessAndNavigate();
+            return;
+        }
+
+        // 2) if dob exists but bucket missing -> compute bucket, cache and send sync update.
+        if (isNotBlank(cachedDob)) {
+            String computedBucket = calculateAgeBucketFromIsoDate(cachedDob);
+            if (isNotBlank(computedBucket)) {
+                cacheSyncProfile(uid, cachedDob, computedBucket);
+                User payload = buildSyncPayload(firebaseUser, cachedDob, computedBucket);
+                userRepository.updateLastLogin(uid, payload, new UserRepository.UserCallback() {
+                    @Override
+                    public void onSuccess(com.example.storythere.api.model.ApiUser apiUser) {
+                        cacheSyncProfile(uid, apiUser.dateOfBirth, apiUser.recommendationAgeBucket);
+                        showSuccessAndNavigate();
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        Log.w("Login", "Failed to sync computed recommendationAgeBucket", throwable);
+                        showSuccessAndNavigate();
+                    }
+                });
+                return;
+            }
+        }
+
+        // 3) if dob unknown locally -> fetch current server user once.
+        userRepository.getUser(uid, new UserRepository.UserCallback() {
+            @Override
+            public void onSuccess(com.example.storythere.api.model.ApiUser apiUser) {
+                String serverDob = normalizeDateToIso(apiUser.dateOfBirth);
+                String serverBucket = apiUser.recommendationAgeBucket;
+
+                if (isNotBlank(serverDob) && isNotBlank(serverBucket)) {
+                    cacheSyncProfile(uid, serverDob, serverBucket);
+                    showSuccessAndNavigate();
+                    return;
+                }
+
+                if (isNotBlank(serverDob)) {
+                    String computedBucket = calculateAgeBucketFromIsoDate(serverDob);
+                    if (isNotBlank(computedBucket)) {
+                        cacheSyncProfile(uid, serverDob, computedBucket);
+                        User payload = buildSyncPayload(firebaseUser, serverDob, computedBucket);
+                        userRepository.updateLastLogin(uid, payload, new UserRepository.UserCallback() {
+                            @Override
+                            public void onSuccess(com.example.storythere.api.model.ApiUser apiUser) {
+                                cacheSyncProfile(uid, apiUser.dateOfBirth, apiUser.recommendationAgeBucket);
+                                showSuccessAndNavigate();
+                            }
+
+                            @Override
+                            public void onError(Throwable throwable) {
+                                Log.w("Login", "Failed to update server bucket after login", throwable);
+                                showSuccessAndNavigate();
+                            }
+                        });
+                        return;
+                    }
+                }
+
+                showSuccessAndNavigate();
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                Log.w("Login", "Failed to fetch user profile during login", throwable);
+                showSuccessAndNavigate();
+            }
+        });
+    }
+
+    private User buildSyncPayload(FirebaseUser firebaseUser, String dateOfBirthIso, String recommendationAgeBucket) {
+        User user = new User();
+        user.setUid(firebaseUser.getUid());
+        user.setEmail(firebaseUser.getEmail());
+        user.setDisplayName(firebaseUser.getDisplayName());
+        user.setDateOfBirth(dateOfBirthIso);
+        user.setRecommendationAgeBucket(recommendationAgeBucket);
+        return user;
+    }
+
+    private void cacheSyncProfile(String uid, String dateOfBirthIso, String recommendationAgeBucket) {
+        if (uid == null || uid.trim().isEmpty()) {
+            return;
+        }
+        SharedPreferences prefs = getSharedPreferences(USER_SYNC_PREFS, MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        if (dateOfBirthIso != null && !dateOfBirthIso.trim().isEmpty()) {
+            editor.putString(KEY_DOB_PREFIX + uid, dateOfBirthIso);
+        }
+        if (recommendationAgeBucket != null && !recommendationAgeBucket.trim().isEmpty()) {
+            editor.putString(KEY_BUCKET_PREFIX + uid, recommendationAgeBucket);
+        }
+        editor.apply();
+    }
+
+    private String normalizeDateToIso(String value) {
+        if (!isNotBlank(value)) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            return trimmed;
+        }
+        if (trimmed.matches("\\d{2}\\.\\d{2}\\.\\d{4}")) {
+            try {
+                SimpleDateFormat source = new SimpleDateFormat("dd.MM.yyyy", Locale.US);
+                source.setLenient(false);
+                Date parsed = source.parse(trimmed);
+                if (parsed == null) {
+                    return null;
+                }
+                return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(parsed);
+            } catch (ParseException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private String calculateAgeBucketFromIsoDate(String dateOfBirthIso) {
+        if (!isNotBlank(dateOfBirthIso) || !dateOfBirthIso.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            return null;
+        }
+
+        String[] parts = dateOfBirthIso.split("-");
+        if (parts.length != 3) {
+            return null;
+        }
+        int year = Integer.parseInt(parts[0]);
+        int month = Integer.parseInt(parts[1]);
+        int day = Integer.parseInt(parts[2]);
+
+        Calendar birth = Calendar.getInstance();
+        birth.setLenient(false);
+        try {
+            birth.set(year, month - 1, day, 0, 0, 0);
+            birth.set(Calendar.MILLISECOND, 0);
+            birth.getTime();
+        } catch (Exception e) {
+            return null;
+        }
+
+        Calendar now = Calendar.getInstance();
+        int age = now.get(Calendar.YEAR) - birth.get(Calendar.YEAR);
+        if (now.get(Calendar.MONTH) < birth.get(Calendar.MONTH) ||
+            (now.get(Calendar.MONTH) == birth.get(Calendar.MONTH) &&
+                now.get(Calendar.DAY_OF_MONTH) < birth.get(Calendar.DAY_OF_MONTH))) {
+            age--;
+        }
+
+        if (age < 0) return null;
+        if (age < 18) return "under_18";
+        if (age <= 24) return "18_24";
+        if (age <= 34) return "25_34";
+        if (age <= 44) return "35_44";
+        if (age <= 54) return "45_54";
+        return "55_plus";
+    }
+
+    private boolean isNotBlank(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private void showLoginAnimation() {

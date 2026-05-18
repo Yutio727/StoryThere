@@ -36,6 +36,7 @@ import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.content.SharedPreferences;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import android.content.res.ColorStateList;
 import com.google.firebase.Timestamp;
@@ -43,6 +44,9 @@ import com.example.storythere.data.User;
 import com.example.storythere.data.UserRepository;
 
 public class Registration extends AppCompatActivity {
+    private static final String USER_SYNC_PREFS = "UserSyncPrefs";
+    private static final String KEY_DOB_PREFIX = "dob_";
+    private static final String KEY_BUCKET_PREFIX = "bucket_";
 
     private FirebaseAuth mAuth = FirebaseAuth.getInstance();
     private UserRepository userRepository;
@@ -451,6 +455,9 @@ public class Registration extends AppCompatActivity {
                                             Timestamp.now(), // createdAt
                                             Timestamp.now() // lastLoginAt
                                         );
+                                        String recommendationAgeBucket = calculateAgeBucketFromBirthday(birthday);
+                                        userProfile.setRecommendationAgeBucket(recommendationAgeBucket);
+                                        cacheSyncProfile(user.getUid(), birthday, recommendationAgeBucket);
 
                                         // Sync user profile in backend (MySQL via API)
                                         userRepository.createUser(userProfile, new UserRepository.UserCallback() {
@@ -555,5 +562,63 @@ public class Registration extends AppCompatActivity {
             });
             overlayView.startAnimation(fadeOut);
         }, 3000);
+    }
+
+    private String calculateAgeBucketFromBirthday(String birthday) {
+        if (birthday == null || !birthday.matches("\\d{2}\\.\\d{2}\\.\\d{4}")) {
+            return null;
+        }
+
+        String[] parts = birthday.split("\\.");
+        if (parts.length != 3) {
+            return null;
+        }
+
+        int day = Integer.parseInt(parts[0]);
+        int month = Integer.parseInt(parts[1]);
+        int year = Integer.parseInt(parts[2]);
+
+        Calendar birth = Calendar.getInstance();
+        birth.setLenient(false);
+        try {
+            birth.set(year, month - 1, day, 0, 0, 0);
+            birth.set(Calendar.MILLISECOND, 0);
+            birth.getTime(); // triggers strict validation
+        } catch (Exception e) {
+            return null;
+        }
+
+        Calendar now = Calendar.getInstance();
+        int age = now.get(Calendar.YEAR) - birth.get(Calendar.YEAR);
+        if (now.get(Calendar.MONTH) < birth.get(Calendar.MONTH) ||
+            (now.get(Calendar.MONTH) == birth.get(Calendar.MONTH) &&
+                now.get(Calendar.DAY_OF_MONTH) < birth.get(Calendar.DAY_OF_MONTH))) {
+            age--;
+        }
+
+        if (age < 0) {
+            return null;
+        }
+        if (age < 18) return "under_18";
+        if (age <= 24) return "18_24";
+        if (age <= 34) return "25_34";
+        if (age <= 44) return "35_44";
+        if (age <= 54) return "45_54";
+        return "55_plus";
+    }
+
+    private void cacheSyncProfile(String uid, String birthday, String recommendationAgeBucket) {
+        if (uid == null || uid.trim().isEmpty()) {
+            return;
+        }
+        SharedPreferences prefs = getSharedPreferences(USER_SYNC_PREFS, MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        if (birthday != null && !birthday.trim().isEmpty()) {
+            editor.putString(KEY_DOB_PREFIX + uid, birthday);
+        }
+        if (recommendationAgeBucket != null && !recommendationAgeBucket.trim().isEmpty()) {
+            editor.putString(KEY_BUCKET_PREFIX + uid, recommendationAgeBucket);
+        }
+        editor.apply();
     }
 }

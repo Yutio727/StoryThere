@@ -8,6 +8,7 @@ public class User {
     private String displayName;
     private String photoURL;
     private String dateOfBirth;
+    private String recommendationAgeBucket;
     private String role;
     private Timestamp createdAt;
     private Timestamp lastLoginAt;
@@ -76,6 +77,14 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getRecommendationAgeBucket() {
+        return recommendationAgeBucket;
+    }
+
+    public void setRecommendationAgeBucket(String recommendationAgeBucket) {
+        this.recommendationAgeBucket = recommendationAgeBucket;
     }
 
     public Timestamp getCreatedAt() {

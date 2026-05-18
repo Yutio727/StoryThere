@@ -1,52 +1,66 @@
 package com.example.storythere.data;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.Timestamp;
+import androidx.annotation.NonNull;
+
+import com.example.storythere.api.ApiClient;
+import com.example.storythere.api.ApiService;
+import com.example.storythere.api.model.ApiUser;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class UserRepository {
-    private FirebaseFirestore db;
-    private static final String TAG = "UserRepository";
-    private static final String USERS_COLLECTION = "users";
+    private final ApiService apiService;
+
+    public interface UserCallback {
+        void onSuccess(ApiUser user);
+        void onError(Throwable throwable);
+    }
 
     public UserRepository() {
-        db = FirebaseFirestore.getInstance();
+        apiService = ApiClient.getApiService();
     }
 
-    public void createUser(User user, OnCompleteListener<Void> listener) {
-        db.collection(USERS_COLLECTION).document(user.getUid())
-            .set(user)
-            .addOnCompleteListener(listener);
+    public void syncCurrentUser(@NonNull UserCallback callback) {
+        apiService.syncMe().enqueue(new Callback<ApiUser>() {
+            @Override
+            public void onResponse(@NonNull Call<ApiUser> call, @NonNull Response<ApiUser> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    callback.onSuccess(response.body());
+                } else {
+                    callback.onError(new RuntimeException("API sync failed with code: " + response.code()));
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<ApiUser> call, @NonNull Throwable t) {
+                callback.onError(t);
+            }
+        });
     }
 
-    public void updateUser(User user, OnCompleteListener<Void> listener) {
-        db.collection(USERS_COLLECTION).document(user.getUid())
-            .set(user)
-            .addOnCompleteListener(listener);
+    public void createUser(User user, @NonNull UserCallback callback) {
+        syncCurrentUser(callback);
     }
 
-    public void getUser(String uid, OnCompleteListener<DocumentSnapshot> listener) {
-        db.collection(USERS_COLLECTION).document(uid)
-            .get()
-            .addOnCompleteListener(listener);
+    public void updateUser(User user, @NonNull UserCallback callback) {
+        syncCurrentUser(callback);
     }
 
-    public void updateLastLogin(String uid, OnCompleteListener<Void> listener) {
-        db.collection(USERS_COLLECTION).document(uid)
-            .update("lastLoginAt", Timestamp.now())
-            .addOnCompleteListener(listener);
+    public void getUser(String uid, @NonNull UserCallback callback) {
+        syncCurrentUser(callback);
     }
 
-    public void updateUserRole(String uid, String role, OnCompleteListener<Void> listener) {
-        db.collection(USERS_COLLECTION).document(uid)
-            .update("role", role)
-            .addOnCompleteListener(listener);
+    public void updateLastLogin(String uid, @NonNull UserCallback callback) {
+        syncCurrentUser(callback);
     }
 
-    public void deleteUser(String uid, OnCompleteListener<Void> listener) {
-        db.collection(USERS_COLLECTION).document(uid)
-            .delete()
-            .addOnCompleteListener(listener);
+    public void updateUserRole(String uid, String role, @NonNull UserCallback callback) {
+        callback.onError(new UnsupportedOperationException("updateUserRole is not implemented via API yet."));
     }
-} 
+
+    public void deleteUser(String uid, @NonNull UserCallback callback) {
+        callback.onError(new UnsupportedOperationException("deleteUser is not implemented via API yet."));
+    }
+}

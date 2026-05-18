@@ -10,17 +10,14 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.storythere.R;
+import com.example.storythere.api.ApiClient;
+import com.example.storythere.api.ApiService;
+import com.example.storythere.api.model.ApiBook;
 import com.example.storythere.data.Author;
 import com.example.storythere.data.AuthorRepository;
 import com.example.storythere.data.Book;
 import com.example.storythere.data.BookRepository;
 import com.example.storythere.adapters.RecommendBookAdapter;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QuerySnapshot;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import androidx.annotation.NonNull;
 import androidx.lifecycle.Observer;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +32,9 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.Date;
 import android.database.Cursor;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class AuthorDetailActivity extends AppCompatActivity {
     
@@ -49,7 +49,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
     
     private AuthorRepository authorRepository;
     private BookRepository bookRepository;
-    private FirebaseFirestore firestore;
+    private ApiService apiService;
     private String authorId;
     private BookListViewModel viewModel;
     private boolean isDownloading = false;
@@ -107,7 +107,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
         authorRepository = new AuthorRepository(this);
         bookRepository = new BookRepository(getApplication());
         viewModel = new ViewModelProvider(this).get(BookListViewModel.class);
-        firestore = FirebaseFirestore.getInstance();
+        apiService = ApiClient.getApiService();
     }
     
     private void loadAuthorData() {
@@ -121,7 +121,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
                         getSupportActionBar().setTitle(author.getName());
                     }
                 } else {
-                    // Load from Firebase if not in local database
+                    // Load from backend API if not in local database
                     authorRepository.loadAuthorByIdFromFirebase(authorId);
                 }
             }
@@ -155,14 +155,12 @@ public class AuthorDetailActivity extends AppCompatActivity {
             authorLifeSpan.setVisibility(View.GONE);
         }
         
-        // Display nationality - check both field names
         String nationality = author.getNationality();
-        if (nationality == null || nationality.isEmpty()) {
-            // Try to get nationality from Firebase directly if it's not in the model
-            loadNationalityFromFirebase();
-        } else {
+        if (nationality != null && !nationality.isEmpty()) {
             authorNationality.setText(nationality);
             authorNationality.setVisibility(View.VISIBLE);
+        } else {
+            authorNationality.setVisibility(View.GONE);
         }
         
         String booksText = author.getTotalBooks() + " " + 
@@ -181,192 +179,43 @@ public class AuthorDetailActivity extends AppCompatActivity {
             authorImage.setImageResource(R.drawable.default_author_avatar);
         }
     }
-    
-    private void loadNationalityFromFirebase() {
-        firestore.collection("authors").document(authorId)
-            .get()
-            .addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                @Override
-                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                    if (task.isSuccessful() && task.getResult() != null) {
-                        DocumentSnapshot document = task.getResult();
-                        String nationality = document.getString("nationality");
-                        if (nationality != null && !nationality.isEmpty()) {
-                            authorNationality.setText(nationality);
-                            authorNationality.setVisibility(View.VISIBLE);
-                        } else {
-                            authorNationality.setVisibility(View.GONE);
-                        }
-                    }
-                }
-            });
-    }
-    
+
     private void loadAuthorBooks() {
-        System.out.println("Loading books for author ID: " + authorId);
-        
-        // Search for books by authorID reference field from main books collection
-        loadBooksByAuthorIDReference(new ArrayList<>());
-    }
-    
-    private void loadBooksByAuthorIDReference(List<HomeActivity.RecommendedBook> existingBooks) {
-        // Create a reference to the author document
-        com.google.firebase.firestore.DocumentReference authorRef = firestore.collection("authors").document(authorId);
-        
-        firestore.collection("books")
-            .whereEqualTo("authorID", authorRef)
-            .get()
-            .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-                @Override
-                public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                    if (task.isSuccessful() && task.getResult() != null) {
-                        for (DocumentSnapshot document : task.getResult()) {
-                            String title = document.getString("title");
-                            String author = document.getString("author");
-                            String fileUrl = document.getString("fileUrl");
-                            String fileType = document.getString("fileType");
-                            String image = document.getString("image");
-                            String annotation = document.getString("annotation");
-                            
-                            if (title != null && author != null && fileUrl != null) {
-                                // Check if this book is already in the list
-                                boolean bookExists = false;
-                                for (HomeActivity.RecommendedBook existingBook : existingBooks) {
-                                    if (existingBook.title.equals(title) && existingBook.author.equals(author)) {
-                                        bookExists = true;
-                                        break;
-                                    }
-                                }
-                                
-                                if (!bookExists) {
-                                    existingBooks.add(new HomeActivity.RecommendedBook(
-                                        title, author, fileUrl, fileType, image, annotation
-                                    ));
-                                    System.out.println("Found book in main collection by authorID reference: " + title);
-                                }
-                            }
-                        }
-                        
-                        // Also check the author's books subcollection
-                        loadBooksFromAuthorSubcollection(existingBooks);
-                    } else {
-                        System.err.println("Failed to load books by authorID reference: " + task.getException());
-                        // If query failed, try the author's books subcollection
-                        loadBooksFromAuthorSubcollection(existingBooks);
-                    }
-                }
-            });
-    }
-    
-    private void loadBooksFromAuthorSubcollection(List<HomeActivity.RecommendedBook> existingBooks) {
-        firestore.collection("authors").document(authorId)
-            .collection("books")
-            .get()
-            .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-                @Override
-                public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                    if (task.isSuccessful() && task.getResult() != null) {
-                        System.out.println("Found " + task.getResult().size() + " books in author subcollection");
-                        
-                        // For each book reference in the subcollection, get the full book data
-                        for (DocumentSnapshot bookRef : task.getResult()) {
-                            String bookId = bookRef.getString("bookId");
-                            if (bookId != null) {
-                                // Get the full book data from the main books collection
-                                firestore.collection("books").document(bookId)
-                                    .get()
-                                    .addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                                        @Override
-                                        public void onComplete(@NonNull Task<DocumentSnapshot> bookTask) {
-                                            if (bookTask.isSuccessful() && bookTask.getResult() != null) {
-                                                DocumentSnapshot bookDoc = bookTask.getResult();
-                                                String title = bookDoc.getString("title");
-                                                String author = bookDoc.getString("author");
-                                                String fileUrl = bookDoc.getString("fileUrl");
-                                                String fileType = bookDoc.getString("fileType");
-                                                String image = bookDoc.getString("image");
-                                                String annotation = bookDoc.getString("annotation");
-                                                
-                                                if (title != null && author != null && fileUrl != null) {
-                                                    // Check if this book is already in the list
-                                                    boolean bookExists = false;
-                                                    for (HomeActivity.RecommendedBook existingBook : existingBooks) {
-                                                        if (existingBook.title.equals(title) && existingBook.author.equals(author)) {
-                                                            bookExists = true;
-                                                            break;
-                                                        }
-                                                    }
-                                                    
-                                                    if (!bookExists) {
-                                                        existingBooks.add(new HomeActivity.RecommendedBook(
-                                                            title, author, fileUrl, fileType, image, annotation
-                                                        ));
-                                                        System.out.println("Added book from subcollection: " + title);
-                                                    }
-                                                    
-                                                    // Update the adapter with all books
-                                                    booksAdapter.updateBooks(existingBooks);
-                                                }
-                                            }
-                                        }
-                                    });
-                            }
-                        }
-                        
-                        // If no books found in subcollection, update with existing books
-                        if (task.getResult().isEmpty() && !existingBooks.isEmpty()) {
-                            booksAdapter.updateBooks(existingBooks);
-                        } else if (task.getResult().isEmpty() && existingBooks.isEmpty()) {
-                            // If no books found in either location, try by author name
-                            loadBooksByAuthorName();
-                        }
-                    } else {
-                        System.err.println("Failed to load books from author subcollection: " + task.getException());
-                        // Update with existing books if any
-                        if (!existingBooks.isEmpty()) {
-                            booksAdapter.updateBooks(existingBooks);
-                        } else {
-                            // If no books found in either location, try by author name
-                            loadBooksByAuthorName();
-                        }
-                    }
-                }
-            });
-    }
-    
-    private void loadBooksByAuthorName() {
-        // Get author name first, then search books by author name
-        authorRepository.getAuthorById(authorId).observe(this, new Observer<Author>() {
+        long parsedAuthorId;
+        try {
+            parsedAuthorId = Long.parseLong(authorId);
+        } catch (NumberFormatException e) {
+            Log.e("AuthorDetailActivity", "Invalid authorId: " + authorId);
+            booksAdapter.updateBooks(new ArrayList<>());
+            return;
+        }
+
+        apiService.getAuthorBooks(parsedAuthorId, 50, 0).enqueue(new Callback<List<ApiBook>>() {
             @Override
-            public void onChanged(Author author) {
-                if (author != null && author.getName() != null) {
-                    firestore.collection("books")
-                        .whereEqualTo("author", author.getName())
-                        .get()
-                        .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-                            @Override
-                            public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                                if (task.isSuccessful() && task.getResult() != null) {
-                                    List<HomeActivity.RecommendedBook> books = new ArrayList<>();
-                                    for (DocumentSnapshot document : task.getResult()) {
-                                        String title = document.getString("title");
-                                        String authorName = document.getString("author");
-                                        String fileUrl = document.getString("fileUrl");
-                                        String fileType = document.getString("fileType");
-                                        String image = document.getString("image");
-                                        String annotation = document.getString("annotation");
-                                        
-                                        if (title != null && authorName != null && fileUrl != null) {
-                                            books.add(new HomeActivity.RecommendedBook(
-                                                title, authorName, fileUrl, fileType, image, annotation
-                                            ));
-                                        }
-                                    }
-                                    booksAdapter.updateBooks(books);
-                                }
-                            }
-                        });
+            public void onResponse(Call<List<ApiBook>> call, Response<List<ApiBook>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    List<HomeActivity.RecommendedBook> books = new ArrayList<>();
+                    for (ApiBook apiBook : response.body()) {
+                        books.add(new HomeActivity.RecommendedBook(
+                            apiBook.title,
+                            apiBook.author,
+                            apiBook.fileUrl,
+                            apiBook.fileType,
+                            apiBook.image,
+                            apiBook.annotation
+                        ));
+                    }
+                    booksAdapter.updateBooks(books);
+                } else {
+                    Log.w("AuthorDetailActivity", "Failed to load author books from API. code=" + response.code());
+                    booksAdapter.updateBooks(new ArrayList<>());
                 }
+            }
+
+            @Override
+            public void onFailure(Call<List<ApiBook>> call, Throwable t) {
+                Log.w("AuthorDetailActivity", "Failed to load author books from API", t);
+                booksAdapter.updateBooks(new ArrayList<>());
             }
         });
     }

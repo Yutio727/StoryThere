@@ -23,9 +23,6 @@ import com.google.firebase.auth.FirebaseAuth;
 import android.widget.ProgressBar;
 import com.google.firebase.auth.FirebaseUser;
 import com.example.storythere.data.UserRepository;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import androidx.annotation.NonNull;
 import android.app.AlertDialog;
 import android.view.LayoutInflater;
 import android.widget.Toast;
@@ -385,26 +382,18 @@ public class Login extends AppCompatActivity {
                         if (task.isSuccessful()) {
                             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
                             if (user != null) {
-                                // Update lastLoginAt in Firestore
-                                userRepository.updateLastLogin(user.getUid(), new OnCompleteListener<Void>() {
+                                // Sync user profile/session with backend (MySQL via API)
+                                userRepository.updateLastLogin(user.getUid(), new UserRepository.UserCallback() {
                                     @Override
-                                    public void onComplete(@NonNull Task<Void> updateTask) {
-                                        if (updateTask.isSuccessful()) {
-                                            Log.d("Login", "Last login timestamp updated successfully");
-                                        } else {
-                                            Log.w("Login", "Failed to update last login timestamp", updateTask.getException());
-                                        }
-                                        
-                                        // Continue with success flow
-                                        user.getIdToken(false).addOnCompleteListener(tokenTask -> {
-                                            if (tokenTask.isSuccessful() && tokenTask.getResult() != null) {
-                                                String token = tokenTask.getResult().getToken();
-                                                Log.d("Login", "Login successful. Token: " + token);
-                                            } else {
-                                                Log.w("Login", "Login successful, but failed to get token.");
-                                            }
-                                        });
-                                        
+                                    public void onSuccess(com.example.storythere.api.model.ApiUser apiUser) {
+                                        Log.d("Login", "User synced with backend successfully");
+                                        showSuccessAndNavigate();
+                                    }
+
+                                    @Override
+                                    public void onError(Throwable throwable) {
+                                        Log.w("Login", "Failed to sync user with backend", throwable);
+                                        // Continue login flow even if sync fails
                                         showSuccessAndNavigate();
                                     }
                                 });

@@ -452,33 +452,18 @@ public class Registration extends AppCompatActivity {
                                             Timestamp.now() // lastLoginAt
                                         );
 
-                                        // Save to Firestore
-                                        userRepository.createUser(userProfile, new OnCompleteListener<Void>() {
+                                        // Sync user profile in backend (MySQL via API)
+                                        userRepository.createUser(userProfile, new UserRepository.UserCallback() {
                                             @Override
-                                            public void onComplete(@NonNull Task<Void> profileTask) {
-                                                if (profileTask.isSuccessful()) {
-                                                    Log.d("Registration", "User profile saved to Firestore successfully");
-                                                } else {
-                                                    Log.w("Registration", "Failed to save user profile to Firestore", profileTask.getException());
-                                                }
-                                                
-                                                // Update Firebase Auth display name
-                                                com.google.firebase.auth.UserProfileChangeRequest profileUpdates = 
-                                                    new com.google.firebase.auth.UserProfileChangeRequest.Builder()
-                                                        .setDisplayName(username)
-                                                        .build();
-                                                
-                                                user.updateProfile(profileUpdates)
-                                                    .addOnCompleteListener(authProfileTask -> {
-                                                        if (authProfileTask.isSuccessful()) {
-                                                            Log.d("Registration", "Firebase Auth profile updated successfully");
-                                                        } else {
-                                                            Log.w("Registration", "Failed to update Firebase Auth profile", authProfileTask.getException());
-                                                        }
-                                                        
-                                                        // Continue with success flow regardless of profile update
-                                                        showSuccessAndNavigate();
-                                                    });
+                                            public void onSuccess(com.example.storythere.api.model.ApiUser apiUser) {
+                                                Log.d("Registration", "User profile synced with backend successfully");
+                                                updateFirebaseAuthProfile(user, username);
+                                            }
+
+                                            @Override
+                                            public void onError(Throwable throwable) {
+                                                Log.w("Registration", "Failed to sync user profile with backend", throwable);
+                                                updateFirebaseAuthProfile(user, username);
                                             }
                                         });
                                     } else {
@@ -509,6 +494,23 @@ public class Registration extends AppCompatActivity {
 
     private void reload() {
         // TODO: Optionally reload user or refresh UI
+    }
+
+    private void updateFirebaseAuthProfile(FirebaseUser user, String username) {
+        com.google.firebase.auth.UserProfileChangeRequest profileUpdates =
+            new com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                .setDisplayName(username)
+                .build();
+
+        user.updateProfile(profileUpdates)
+            .addOnCompleteListener(authProfileTask -> {
+                if (authProfileTask.isSuccessful()) {
+                    Log.d("Registration", "Firebase Auth profile updated successfully");
+                } else {
+                    Log.w("Registration", "Failed to update Firebase Auth profile", authProfileTask.getException());
+                }
+                showSuccessAndNavigate();
+            });
     }
 
     private void showSuccessAndNavigate() {

@@ -10,9 +10,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 
+import com.example.storythere.api.ApiClient;
+import com.example.storythere.api.ApiService;
+import com.example.storythere.api.model.ApiBook;
 import com.example.storythere.R;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.DocumentSnapshot;
 import android.widget.EditText;
 import android.app.DownloadManager;
 import android.net.Uri;
@@ -30,9 +31,6 @@ import android.widget.Button;
 import com.example.storythere.data.UserRepository;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.storythere.adapters.RecommendBookAdapter;
@@ -42,6 +40,9 @@ import androidx.lifecycle.Observer;
 import java.io.File;
 import java.io.InputStream;
 import java.util.Date;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 
 public class HomeActivity extends AppCompatActivity {
@@ -248,39 +249,29 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void setupAdminButton() {
-        // Check if current user is admin by checking their role in Firestore
+        // Check if current user is admin by checking role from backend API
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null && adminAddBookButton != null) {
-            userRepository.getUser(currentUser.getUid(), new OnCompleteListener<DocumentSnapshot>() {
+            userRepository.getUser(currentUser.getUid(), new UserRepository.UserCallback() {
                 @Override
-                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                    if (task.isSuccessful() && task.getResult() != null) {
-                        DocumentSnapshot document = task.getResult();
-                        if (document.exists()) {
-                            String userRole = document.getString("role");
-                            if ("admin".equals(userRole)) {
-                                // Show admin button for admin users
-                                adminAddBookButton.setVisibility(View.VISIBLE);
-                                adminAddBookButton.setOnClickListener(v -> {
-                                    Intent intent = new Intent(HomeActivity.this, AddBookActivity.class);
-                                    startActivity(intent);
-                                });
-                                Log.d("HomeActivity", "Admin button shown for user: " + currentUser.getEmail());
-                            } else {
-                                // Hide admin button for non-admin users
-                                adminAddBookButton.setVisibility(View.GONE);
-                                Log.d("HomeActivity", "Admin button hidden for user: " + currentUser.getEmail());
-                            }
-                        } else {
-                            // Document doesn't exist, hide admin button
-                            adminAddBookButton.setVisibility(View.GONE);
-                            Log.d("HomeActivity", "User document not found, hiding admin button");
-                        }
+                public void onSuccess(com.example.storythere.api.model.ApiUser user) {
+                    if ("admin".equals(user.role)) {
+                        adminAddBookButton.setVisibility(View.VISIBLE);
+                        adminAddBookButton.setOnClickListener(v -> {
+                            Intent intent = new Intent(HomeActivity.this, AddBookActivity.class);
+                            startActivity(intent);
+                        });
+                        Log.d("HomeActivity", "Admin button shown for user: " + currentUser.getEmail());
                     } else {
-                        // Error getting user data, hide admin button
                         adminAddBookButton.setVisibility(View.GONE);
-                        Log.w("HomeActivity", "Error getting user data", task.getException());
+                        Log.d("HomeActivity", "Admin button hidden for user: " + currentUser.getEmail());
                     }
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    adminAddBookButton.setVisibility(View.GONE);
+                    Log.w("HomeActivity", "Error getting user role from API", throwable);
                 }
             });
         } else {
@@ -312,26 +303,34 @@ public class HomeActivity extends AppCompatActivity {
         RecyclerView recyclerView = findViewById(R.id.recycler_recommend_books);
         recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
 
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("books")
-          .limit(7)
-          .get()
-          .addOnSuccessListener(querySnapshot -> {
-              List<RecommendedBook> bookList = new ArrayList<>();
-              for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
-                  String title = doc.getString("title");
-                  String author = doc.getString("author");
-                  String fileUrl = doc.getString("fileUrl");
-                  String fileType = doc.getString("fileType");
-                  String image = doc.getString("image");
-                  String annotation = doc.getString("annotation");
-                  bookList.add(new RecommendedBook(title, author, fileUrl, fileType, image, annotation));
-              }
-              RecommendBookAdapter adapter = new RecommendBookAdapter(bookList, book -> {
-                  handleRecommendedBookClick(book);
-              });
-              recyclerView.setAdapter(adapter);
-          });
+        ApiService apiService = ApiClient.getApiService();
+        apiService.getBooks(7, 0).enqueue(new Callback<List<ApiBook>>() {
+            @Override
+            public void onResponse(Call<List<ApiBook>> call, Response<List<ApiBook>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    List<RecommendedBook> bookList = new ArrayList<>();
+                    for (ApiBook book : response.body()) {
+                        bookList.add(new RecommendedBook(
+                            book.title,
+                            book.author,
+                            book.fileUrl,
+                            book.fileType,
+                            book.image,
+                            book.annotation
+                        ));
+                    }
+                    RecommendBookAdapter adapter = new RecommendBookAdapter(bookList, HomeActivity.this::handleRecommendedBookClick);
+                    recyclerView.setAdapter(adapter);
+                } else {
+                    Log.w("HomeActivity", "Failed to load books from API. code=" + response.code());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<ApiBook>> call, Throwable t) {
+                Log.w("HomeActivity", "Failed to load books from API", t);
+            }
+        });
     }
 
     private void handleRecommendedBookClick(RecommendedBook book) {

@@ -22,6 +22,8 @@ android {
         properties.load(project.rootProject.file("local.properties").newDataInputStream())
         buildConfigField "String", "GIGACHAT_DEFAULT_KEY", "\"${properties.getProperty("GIGACHAT_DEFAULT_KEY")}\""
         buildConfigField "String", "HUGGINGFACE_API_KEY", "\"${properties.getProperty("HUGGINGFACE_API_KEY")}\""
+        def apiBaseUrl = properties.getProperty("STORYTHERE_API_BASE_URL", "http://10.0.2.2:8000/")
+        buildConfigField "String", "STORYTHERE_API_BASE_URL", "\"${apiBaseUrl}\""
     }
 
     buildTypes {

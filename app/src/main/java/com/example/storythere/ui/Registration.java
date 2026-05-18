@@ -42,6 +42,7 @@ import android.content.res.ColorStateList;
 import com.google.firebase.Timestamp;
 import com.example.storythere.data.User;
 import com.example.storythere.data.UserRepository;
+import android.view.inputmethod.InputMethodManager;
 
 public class Registration extends AppCompatActivity {
     private static final String USER_SYNC_PREFS = "UserSyncPrefs";
@@ -57,6 +58,8 @@ public class Registration extends AppCompatActivity {
     private ImageView overlayResultIcon;
     private TextView overlayResultText;
     private Handler handler = new Handler();
+    private View registerButton;
+    private boolean isRegistrationInProgress = false;
 
 
     @Override
@@ -347,9 +350,16 @@ public class Registration extends AppCompatActivity {
         overlayResultIcon = findViewById(R.id.overlayResultIcon);
         overlayResultText = findViewById(R.id.overlayResultText);
 
-        findViewById(R.id.btnRegister).setOnClickListener(new View.OnClickListener() {
+        registerButton = findViewById(R.id.btnRegister);
+        registerButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (isRegistrationInProgress) {
+                    return;
+                }
+                hideKeyboard();
+                setRegistrationInProgress(true);
+
                 String username = usernameEdit.getText() != null ? usernameEdit.getText().toString().trim() : "";
                 String birthday = birthdayEdit.getText() != null ? birthdayEdit.getText().toString().trim() : "";
                 String email = emailEdit.getText() != null ? emailEdit.getText().toString().trim() : "";
@@ -414,6 +424,7 @@ public class Registration extends AppCompatActivity {
                 if (!valid) {
                     Toast.makeText(Registration.this, getString(R.string.please_fill_all_fields_correctly), Toast.LENGTH_SHORT).show();
                     Log.d("Registration", "Unfilled/invalid fields: username=" + username + ", birthday=" + birthday + ", email=" + email + ", password=" + password + ", confirmPassword=" + confirmPassword);
+                    setRegistrationInProgress(false);
                     return;
                 }
                 if (!password.equals(confirmPassword)) {
@@ -423,6 +434,7 @@ public class Registration extends AppCompatActivity {
                     confirmPasswordEdit.setTextColor(colorRed);
                     Toast.makeText(Registration.this, getString(R.string.passwords_do_not_match), Toast.LENGTH_SHORT).show();
                     Log.d("Registration", "Passwords do not match");
+                    setRegistrationInProgress(false);
                     return;
                 }
                 // Show overlay with fade-in animation
@@ -556,12 +568,32 @@ public class Registration extends AppCompatActivity {
                 @Override
                 public void onAnimationEnd(Animation animation) {
                     overlayView.setVisibility(View.GONE);
+                    setRegistrationInProgress(false);
                 }
                 @Override
                 public void onAnimationRepeat(Animation animation) {}
             });
             overlayView.startAnimation(fadeOut);
         }, 3000);
+    }
+
+    private void setRegistrationInProgress(boolean inProgress) {
+        isRegistrationInProgress = inProgress;
+        if (registerButton != null) {
+            registerButton.setEnabled(!inProgress);
+        }
+    }
+
+    private void hideKeyboard() {
+        View currentFocus = getCurrentFocus();
+        if (currentFocus == null) {
+            return;
+        }
+        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.hideSoftInputFromWindow(currentFocus.getWindowToken(), 0);
+        }
+        currentFocus.clearFocus();
     }
 
     private String calculateAgeBucketFromBirthday(String birthday) {

@@ -34,6 +34,7 @@ import android.view.LayoutInflater;
 import android.widget.Toast;
 import com.google.android.material.button.MaterialButton;
 import android.content.SharedPreferences;
+import android.view.inputmethod.InputMethodManager;
 
 public class Login extends AppCompatActivity {
     private static final String USER_SYNC_PREFS = "UserSyncPrefs";
@@ -51,11 +52,13 @@ public class Login extends AppCompatActivity {
     private UserRepository userRepository;
     private AlertDialog offlineModeDialog;
     private boolean isLoginInProgress = false;
+    private boolean isAuthRequestInProgress = false;
     private boolean isAnimationInProgress = false;
     private int retryAttempts = 0;
     private static final int MAX_RETRY_ATTEMPTS = 3;
     private static final int RETRY_DELAY_MS = 4000; // 4 seconds
     private boolean isActivityDestroyed = false; // Add flag to track activity state
+    private View loginButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -154,17 +157,17 @@ public class Login extends AppCompatActivity {
         });
 
         // Login button logic
-        findViewById(R.id.btnLogin).setOnClickListener(new View.OnClickListener() {
+        loginButton = findViewById(R.id.btnLogin);
+        loginButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 // Prevent multiple clicks during animation or login process
-                if (isLoginInProgress || isAnimationInProgress || isActivityDestroyed) {
+                if (isAuthRequestInProgress || isAnimationInProgress || isActivityDestroyed) {
                     Log.d("Login", "Login attempt blocked - already in progress or activity destroyed");
                     return;
                 }
-                
-                // Disable the button immediately to prevent multiple clicks
-                v.setEnabled(false);
+                hideKeyboard();
+                setAuthRequestInProgress(true);
                 
                 String email = emailEdit.getText() != null ? emailEdit.getText().toString().trim() : "";
                 String password = passwordEdit.getText() != null ? passwordEdit.getText().toString().trim() : "";
@@ -185,19 +188,18 @@ public class Login extends AppCompatActivity {
                 }
                 if (!valid) {
                     android.widget.Toast.makeText(Login.this, getString(R.string.please_fill_all_fields_correctly), android.widget.Toast.LENGTH_SHORT).show();
-                    v.setEnabled(true); // Re-enable button
+                    setAuthRequestInProgress(false);
                     return;
                 }
                 
                 // Check internet connectivity before attempting login
                 if (!NetworkUtils.isInternetAvailable(Login.this)) {
                     showOfflineModeDialog(email, password);
-                    v.setEnabled(true); // Re-enable button after showing dialog
+                    setAuthRequestInProgress(false);
                     return;
                 }
                 
                 performLogin(email, password);
-                // Button will be re-enabled in performLogin completion or error handling
             }
         });
 
@@ -280,7 +282,7 @@ public class Login extends AppCompatActivity {
                 public void onAnimationEnd(Animation animation) {
                     overlayView.setVisibility(View.GONE);
                     isAnimationInProgress = false;
-                    isLoginInProgress = false;
+                    setAuthRequestInProgress(false);
                 }
                 @Override
                 public void onAnimationRepeat(Animation animation) {}
@@ -372,7 +374,6 @@ public class Login extends AppCompatActivity {
     }
 
     private void performLogin(String email, String password) {
-        isLoginInProgress = true;
         retryAttempts = 0; // Reset retry attempts on successful network check
         
         // Show overlay with fade-in animation
@@ -384,10 +385,6 @@ public class Login extends AppCompatActivity {
                     @Override
                     public void onComplete(@androidx.annotation.NonNull com.google.android.gms.tasks.Task<com.google.firebase.auth.AuthResult> task) {
                         overlayProgressBar.setVisibility(View.GONE);
-                        isLoginInProgress = false;
-                        
-                        // Re-enable the login button
-                        findViewById(R.id.btnLogin).setEnabled(true);
                         
                         if (task.isSuccessful()) {
                             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
@@ -403,6 +400,7 @@ public class Login extends AppCompatActivity {
                                 exception.getMessage().contains("Network") ||
                                 exception.getMessage().contains("timeout") ||
                                 exception.getMessage().contains("connection"))) {
+                                setAuthRequestInProgress(false);
                                 showOfflineModeDialog(email, password);
                             } else {
                                 showErrorAndStay(exception);
@@ -410,6 +408,26 @@ public class Login extends AppCompatActivity {
                         }
                     }
                 });
+    }
+
+    private void setAuthRequestInProgress(boolean inProgress) {
+        isAuthRequestInProgress = inProgress;
+        isLoginInProgress = inProgress;
+        if (loginButton != null) {
+            loginButton.setEnabled(!inProgress);
+        }
+    }
+
+    private void hideKeyboard() {
+        View currentFocus = getCurrentFocus();
+        if (currentFocus == null) {
+            return;
+        }
+        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.hideSoftInputFromWindow(currentFocus.getWindowToken(), 0);
+        }
+        currentFocus.clearFocus();
     }
 
     private void handlePostLoginSync(FirebaseUser firebaseUser) {

@@ -1,12 +1,17 @@
 package com.example.storythere.ui;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 
@@ -42,6 +47,7 @@ import java.util.Date;
 
 
 public class HomeActivity extends AppCompatActivity {
+    private static final int PERMISSION_REQUEST_CODE = 1204;
     
     private ImageView iconHome, iconSearch, iconMyBooks, iconProfile;
     private TextView textHome, textSearch, textMyBooks, textProfile;
@@ -324,6 +330,10 @@ public class HomeActivity extends AppCompatActivity {
 
     private void handleRecommendedBookClick(RecommendedBook book) {
         if (book == null) return;
+        if (!hasStoragePermission()) {
+            requestStoragePermission();
+            return;
+        }
         String bookTitle = book.title != null ? book.title : "Unknown Title";
         String bookAuthor = book.author != null ? book.author : "Unknown Author";
         String fileUrl = book.fileUrl;
@@ -664,6 +674,28 @@ public class HomeActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    private boolean hasStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        }
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+            == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } else {
+            ActivityCompat.requestPermissions(
+                this,
+                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                PERMISSION_REQUEST_CODE
+            );
+        }
     }
 
     private void showOfflineMode() {

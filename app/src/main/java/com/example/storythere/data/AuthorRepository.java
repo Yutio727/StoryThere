@@ -54,6 +54,13 @@ public class AuthorRepository {
         executorService.execute(() -> authorDao.insertAuthors(authors));
     }
 
+    public void replaceAllAuthors(List<Author> authors) {
+        executorService.execute(() -> {
+            authorDao.deleteAllAuthors();
+            authorDao.insertAuthors(authors);
+        });
+    }
+
     public void updateAuthor(Author author) {
         executorService.execute(() -> authorDao.updateAuthor(author));
     }
@@ -72,7 +79,7 @@ public class AuthorRepository {
                     for (ApiAuthor apiAuthor : response.body()) {
                         authors.add(mapApiAuthor(apiAuthor));
                     }
-                    insertAuthors(authors);
+                    replaceAllAuthors(authors);
                 }
             }
 

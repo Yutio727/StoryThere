@@ -77,15 +77,10 @@ public class Login extends AppCompatActivity {
             getSupportActionBar().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(getResources().getColor(R.color.progress_blue)));
         }
 
-        // Check internet connectivity immediately on startup
-        if (!NetworkUtils.isInternetAvailable(Login.this)) {
-            showOfflineModeDialogOnStartup();
-            return;
-        }
-
         // Check if user is already authenticated
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
+            PersonalDataConsentActivity.markAccepted(this);
             user.getIdToken(false).addOnCompleteListener(task -> {
                 if (task.isSuccessful() && task.getResult() != null) {
                     String token = task.getResult().getToken();
@@ -96,6 +91,18 @@ public class Login extends AppCompatActivity {
                 startActivity(new Intent(Login.this, HomeActivity.class));
                 finish();
             });
+            return;
+        }
+
+        if (!PersonalDataConsentActivity.isAccepted(this)) {
+            startActivity(new Intent(Login.this, PersonalDataConsentActivity.class));
+            finish();
+            return;
+        }
+
+        // Check internet connectivity immediately on startup
+        if (!NetworkUtils.isInternetAvailable(Login.this)) {
+            showOfflineModeDialogOnStartup();
             return;
         }
 
@@ -244,6 +251,7 @@ public class Login extends AppCompatActivity {
     }
 
     private void showSuccessAndNavigate() {
+        PersonalDataConsentActivity.markAccepted(this);
         overlayAppIcon.setVisibility(View.GONE);
         overlayResultIcon.setImageResource(R.drawable.ic_check_circle);
         overlayResultIcon.setVisibility(View.VISIBLE);

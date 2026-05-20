@@ -73,7 +73,7 @@
     <string name="send">Отправить</string>
     <string name="home">Главная</string>
     <string name="search">Поиск</string>
-    <string name="my_books">Мои книги</string>
+    <string name="my_books">Книги</string>
     <string name="profile">Профиль</string>
     <string name="settings">Настройки</string>
     <string name="theme">Тема</string>
@@ -212,4 +212,9 @@
     <string name="time">", Время: "</string>
     <string name="label">", Пометка: "</string>
     <string name="go_to_text">Перейти к тексту: начать читать</string>
+    <string name="personal_data_consent_title">Согласие на обработку персональных данных</string>
+    <string name="personal_data_consent_body">Для использования StoryThere необходимо дать согласие на обработку персональных данных, которые нужны для создания аккаунта, авторизации, синхронизации профиля, управления библиотекой, рекомендаций и поддержки работы приложения.\n\nStoryThere может обрабатывать ваш email, отображаемое имя, дату рождения, идентификатор пользователя Firebase, данные профиля, действия с библиотекой, прогресс чтения, оценки и технические данные, необходимые для работы приложения.\n\nДанные используются для предоставления функций приложения, защиты аккаунта, синхронизации с сервером, улучшения рекомендаций и стабильной работы сервиса.</string>
+    <string name="personal_data_consent_checkbox">Я согласен(на) на обработку моих персональных данных.</string>
+    <string name="personal_data_consent_accept">Принять и продолжить</string>
+    <string name="personal_data_consent_decline">Отказаться</string>
 </resources>

@@ -12,7 +12,7 @@
     android:orientation="vertical"
     android:padding="24dp"
     android:gravity="center_horizontal"
-    android:background="@drawable/dialog_content_background">
+    android:background="@drawable/ic_dialog_content">
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnDialogGenerateCover"

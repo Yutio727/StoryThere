@@ -217,4 +217,12 @@
     <string name="personal_data_consent_checkbox">Я согласен(на) на обработку моих персональных данных.</string>
     <string name="personal_data_consent_accept">Принять и продолжить</string>
     <string name="personal_data_consent_decline">Отказаться</string>
+    <string name="catalog">Каталог</string>
+    <string name="books_catalog_tab">Книги</string>
+    <string name="audiobooks_catalog_tab">Аудиокниги</string>
+    <string name="authors_catalog_tab">Авторы</string>
+    <string name="audiobooks_catalog_placeholder">Аудиокниги появятся здесь позже.</string>
+    <string name="catalog_load_failed">Не удалось загрузить данные каталога</string>
+    <string name="catalog_books_empty">Книги не найдены</string>
+    <string name="catalog_authors_empty">Авторы не найдены</string>
 </resources>

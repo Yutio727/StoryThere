@@ -36,8 +36,8 @@ import android.util.Log;
 
 public class ProfileActivity extends AppCompatActivity {
     
-    private ImageView iconHome, iconSearch, iconMyBooks, iconProfile;
-    private TextView textHome, textSearch, textMyBooks, textProfile;
+    private ImageView iconHome, iconSearch, iconMyBooks, iconCatalog, iconProfile;
+    private TextView textHome, textSearch, textMyBooks, textCatalog, textProfile;
     
     // Profile views
     private TextView userName, userEmail, currentTheme, currentLanguage, joinDate;
@@ -79,7 +79,7 @@ public class ProfileActivity extends AppCompatActivity {
             showAndFadeOutThemeOverlayAfterRecreate();
         }
         setupBottomNavigation();
-        setSelectedTab(3); // Profile is selected
+        setSelectedTab(4); // Profile is selected
         
         // Load user data from Firebase
         loadUserData();
@@ -131,10 +131,12 @@ public class ProfileActivity extends AppCompatActivity {
         iconHome = findViewById(R.id.icon_home);
         iconSearch = findViewById(R.id.icon_search);
         iconMyBooks = findViewById(R.id.icon_my_books);
+        iconCatalog = findViewById(R.id.icon_catalog);
         iconProfile = findViewById(R.id.icon_profile);
         textHome = findViewById(R.id.text_home);
         textSearch = findViewById(R.id.text_search);
         textMyBooks = findViewById(R.id.text_my_books);
+        textCatalog = findViewById(R.id.text_catalog);
         textProfile = findViewById(R.id.text_profile);
 
         // Profile sections for theme adaptation
@@ -524,6 +526,15 @@ public class ProfileActivity extends AppCompatActivity {
             startActivity(intent);
             finish();
         });
+
+        findViewById(R.id.nav_catalog).setOnClickListener(v -> {
+            Intent intent = new Intent(this, CatalogActivity.class);
+            if (isOfflineMode) {
+                intent.putExtra("offline_mode", true);
+            }
+            startActivity(intent);
+            finish();
+        });
         
         findViewById(R.id.nav_profile).setOnClickListener(v -> {
             // Already on profile, do nothing
@@ -554,7 +565,12 @@ public class ProfileActivity extends AppCompatActivity {
                 textMyBooks.setTextColor(selectedColor);
                 textMyBooks.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_bold));
                 break;
-            case 3: // Profile
+            case 3: // Catalog
+                iconCatalog.setColorFilter(selectedColor);
+                textCatalog.setTextColor(selectedColor);
+                textCatalog.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_bold));
+                break;
+            case 4: // Profile
                 iconProfile.setColorFilter(selectedColor);
                 textProfile.setTextColor(selectedColor);
                 textProfile.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_bold));
@@ -570,17 +586,20 @@ public class ProfileActivity extends AppCompatActivity {
         iconHome.setColorFilter(unselectedColor);
         iconSearch.setColorFilter(unselectedColor);
         iconMyBooks.setColorFilter(unselectedColor);
+        iconCatalog.setColorFilter(unselectedColor);
         iconProfile.setColorFilter(unselectedColor);
         
         // Reset all texts to default color and normal weight
         textHome.setTextColor(unselectedColor);
         textSearch.setTextColor(unselectedColor);
         textMyBooks.setTextColor(unselectedColor);
+        textCatalog.setTextColor(unselectedColor);
         textProfile.setTextColor(unselectedColor);
         
         textHome.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
         textSearch.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
         textMyBooks.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
+        textCatalog.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
         textProfile.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
     }
     
@@ -724,4 +743,4 @@ public class ProfileActivity extends AppCompatActivity {
         }
         return null;
     }
-} 
+}

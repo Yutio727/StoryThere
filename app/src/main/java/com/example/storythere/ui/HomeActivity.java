@@ -49,8 +49,8 @@ import java.util.Date;
 public class HomeActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 1204;
     
-    private ImageView iconHome, iconSearch, iconMyBooks, iconProfile;
-    private TextView textHome, textSearch, textMyBooks, textProfile;
+    private ImageView iconHome, iconSearch, iconMyBooks, iconCatalog, iconProfile;
+    private TextView textHome, textSearch, textMyBooks, textCatalog, textProfile;
     private String recommendedFileUrl = null;
     private String recommendedFileType = null;
     private String recommendedTitle = null;
@@ -108,11 +108,13 @@ public class HomeActivity extends AppCompatActivity {
         iconHome = findViewById(R.id.icon_home);
         iconSearch = findViewById(R.id.icon_search);
         iconMyBooks = findViewById(R.id.icon_my_books);
+        iconCatalog = findViewById(R.id.icon_catalog);
         iconProfile = findViewById(R.id.icon_profile);
         
         textHome = findViewById(R.id.text_home);
         textSearch = findViewById(R.id.text_search);
         textMyBooks = findViewById(R.id.text_my_books);
+        textCatalog = findViewById(R.id.text_catalog);
         textProfile = findViewById(R.id.text_profile);
         
         adminAddBookButton = findViewById(R.id.button_admin_add_book);
@@ -137,6 +139,15 @@ public class HomeActivity extends AppCompatActivity {
         
         findViewById(R.id.nav_my_books).setOnClickListener(v -> {
             Intent intent = new Intent(this, MainActivity.class);
+            if (isOfflineMode) {
+                intent.putExtra("offline_mode", true);
+            }
+            startActivity(intent);
+            finish();
+        });
+
+        findViewById(R.id.nav_catalog).setOnClickListener(v -> {
+            Intent intent = new Intent(this, CatalogActivity.class);
             if (isOfflineMode) {
                 intent.putExtra("offline_mode", true);
             }
@@ -179,7 +190,12 @@ public class HomeActivity extends AppCompatActivity {
                 textMyBooks.setTextColor(selectedColor);
                 textMyBooks.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_bold));
                 break;
-            case 3: // Profile
+            case 3: // Catalog
+                iconCatalog.setColorFilter(selectedColor);
+                textCatalog.setTextColor(selectedColor);
+                textCatalog.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_bold));
+                break;
+            case 4: // Profile
                 iconProfile.setColorFilter(selectedColor);
                 textProfile.setTextColor(selectedColor);
                 textProfile.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_bold));
@@ -195,17 +211,20 @@ public class HomeActivity extends AppCompatActivity {
         iconHome.setColorFilter(unselectedColor);
         iconSearch.setColorFilter(unselectedColor);
         iconMyBooks.setColorFilter(unselectedColor);
+        iconCatalog.setColorFilter(unselectedColor);
         iconProfile.setColorFilter(unselectedColor);
         
         // Reset all texts to default color and normal weight
         textHome.setTextColor(unselectedColor);
         textSearch.setTextColor(unselectedColor);
         textMyBooks.setTextColor(unselectedColor);
+        textCatalog.setTextColor(unselectedColor);
         textProfile.setTextColor(unselectedColor);
         
         textHome.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
         textSearch.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
         textMyBooks.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
+        textCatalog.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
         textProfile.setTypeface(ResourcesCompat.getFont(this, R.font.montserrat_regular));
     }
     

@@ -218,4 +218,12 @@
     <string name="personal_data_consent_checkbox">I agree to the processing of my personal data.</string>
     <string name="personal_data_consent_accept">Accept and continue</string>
     <string name="personal_data_consent_decline">Decline</string>
+    <string name="catalog">Catalog</string>
+    <string name="books_catalog_tab">Books</string>
+    <string name="audiobooks_catalog_tab">Audiobooks</string>
+    <string name="authors_catalog_tab">Authors</string>
+    <string name="audiobooks_catalog_placeholder">Audiobooks will be available here later.</string>
+    <string name="catalog_load_failed">Could not load catalog data</string>
+    <string name="catalog_books_empty">No books found</string>
+    <string name="catalog_authors_empty">No authors found</string>
 </resources>

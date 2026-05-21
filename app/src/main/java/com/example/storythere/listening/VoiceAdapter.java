@@ -52,19 +52,19 @@ public class VoiceAdapter extends RecyclerView.Adapter<VoiceAdapter.VoiceViewHol
             iconDrawableResId = R.drawable.storythere_icon;
         } else if (voiceName.equals("ru-ru-x-ruf-local")) {
             displayedVoiceName = "Ярослав";
-            iconDrawableResId = R.drawable.dictor_yaroslav_icon;
+            iconDrawableResId = R.drawable.ic_dictor_yaroslav;
         } else if (voiceName.equals("ru-ru-x-rud-network")) {
             displayedVoiceName = "Артем (требуется интернет)";
-            iconDrawableResId = R.drawable.dictor_artem_icon;
+            iconDrawableResId = R.drawable.ic_dictor_artem;
         } else if (voiceName.equals("en-us-x-tpf-local")) {
             displayedVoiceName = "Anna";
-            iconDrawableResId = R.drawable.dictor_anna_icon;
+            iconDrawableResId = R.drawable.ic_dictor_anna;
         } else if (voiceName.equals("en-au-x-auc-local")) {
             displayedVoiceName = "Barbara";
-            iconDrawableResId = R.drawable.dictor_barbara_icon;
+            iconDrawableResId = R.drawable.ic_dictor_barbara;
         } else if (voiceName.equals("en-gb-x-gbd-local")) {
             displayedVoiceName = "Oliver";
-            iconDrawableResId = R.drawable.dictor_oliver_icon;
+            iconDrawableResId = R.drawable.ic_dictor_oliver;
         } else {
             // Fallback for other voices (if any are shown)
             displayedVoiceName = voiceName;

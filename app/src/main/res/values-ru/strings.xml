@@ -225,4 +225,19 @@
     <string name="catalog_load_failed">Не удалось загрузить данные каталога</string>
     <string name="catalog_books_empty">Книги не найдены</string>
     <string name="catalog_authors_empty">Авторы не найдены</string>
+    <string name="onboarding_step_format">%1$d / %2$d</string>
+    <string name="onboarding_back">Назад</string>
+    <string name="onboarding_next">Далее</string>
+    <string name="onboarding_start">Начать</string>
+    <string name="onboarding_finish">Готово</string>
+    <string name="onboarding_welcome_title">Добро пожаловать в\nStoryThere</string>
+    <string name="onboarding_welcome_subtitle">Выберите немного авторов, книг и жанров, чтобы первые рекомендации сразу были ближе к вашему вкусу.</string>
+    <string name="onboarding_authors_title">Выберите авторов</string>
+    <string name="onboarding_authors_subtitle">Выберите любых авторов, которые вам нравятся.</string>
+    <string name="onboarding_books_title">Выберите книги</string>
+    <string name="onboarding_books_subtitle">Можно выбрать любое количество книг.</string>
+    <string name="onboarding_genres_title">Выберите жанры</string>
+    <string name="onboarding_genres_subtitle">Отметьте жанры, которые сейчас кажутся интересными.</string>
+    <string name="onboarding_done_title">Готово!</string>
+    <string name="onboarding_done_subtitle">Готовим ваши первые рекомендации.</string>
 </resources>

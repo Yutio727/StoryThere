@@ -56,11 +56,11 @@ public class CatalogActivity extends AppCompatActivity {
     private static final int TAB_AUDIOBOOKS = 1;
     private static final int TAB_AUTHORS = 2;
     private static final int PAGE_SIZE = 30;
-    private static final int BOOK_GRID_SPACING_DP = 28;
+    private static final int BOOK_GRID_SPACING_DP = 40;
     private static final int AUTHOR_GRID_SPACING_DP = 20;
-    private static final int BOOK_RECYCLER_PADDING_START_DP = 40;
+    private static final int BOOK_RECYCLER_PADDING_START_DP = 32;
     private static final int BOOK_RECYCLER_PADDING_TOP_DP = 16;
-    private static final int BOOK_RECYCLER_PADDING_END_DP = 20;
+    private static final int BOOK_RECYCLER_PADDING_END_DP = 14;
     private static final int BOOK_RECYCLER_PADDING_BOTTOM_DP = 16;
     private static final int AUTHOR_RECYCLER_PADDING_START_DP = 18;
     private static final int AUTHOR_RECYCLER_PADDING_TOP_DP = 16;

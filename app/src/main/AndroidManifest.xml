@@ -25,6 +25,11 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
         <activity
+            android:name=".ui.OnboardingActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.StoryThere.NoActionBar" />
+        <activity
             android:name=".ui.ResetPassword"
             android:exported="false" />
         <activity

@@ -226,4 +226,19 @@
     <string name="catalog_load_failed">Could not load catalog data</string>
     <string name="catalog_books_empty">No books found</string>
     <string name="catalog_authors_empty">No authors found</string>
+    <string name="onboarding_step_format">%1$d / %2$d</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_start">Start</string>
+    <string name="onboarding_finish">Done</string>
+    <string name="onboarding_welcome_title">Welcome to\nStoryThere</string>
+    <string name="onboarding_welcome_subtitle">Choose a few authors, books, and genres so recommendations can start closer to your taste.</string>
+    <string name="onboarding_authors_title">Choose authors</string>
+    <string name="onboarding_authors_subtitle">Choose any authors you like.</string>
+    <string name="onboarding_books_title">Choose books</string>
+    <string name="onboarding_books_subtitle">You can choose as many books as you like.</string>
+    <string name="onboarding_genres_title">Choose genres</string>
+    <string name="onboarding_genres_subtitle">Pick the genres that feel interesting right now.</string>
+    <string name="onboarding_done_title">Done!</string>
+    <string name="onboarding_done_subtitle">We are preparing your first recommendations.</string>
 </resources>

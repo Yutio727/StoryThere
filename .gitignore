@@ -25,23 +25,4 @@ local_config.properties
 /secret.txt
 
 # Files that are not supposed to be in this project
-/miscFiles/storythereAPI/auth.py
-/miscFiles/api_example/database.py
-/miscFiles/storythereAPI/database.py
-/miscFiles/full_firebase_export.json
-/miscFiles/genres.csv
-/miscFiles/genres_seed_data.sql
-/miscFiles/interactions.csv
-/miscFiles/items.csv
-/miscFiles/api_example/main.py
-/miscFiles/storythereAPI/main.py
-/miscFiles/api_example/n8n_api.py
-/miscFiles/storythereAPI/README.md
-/miscFiles/storythereAPI/repositories.py
-/miscFiles/storythereAPI/requirements.txt
-/miscFiles/storythereAPI/schemas.py
-/miscFiles/storythere_schema.sql
-/miscFiles/storythere_seed_data.sql
-/miscFiles/Two_Towers_recommend.ipynb
-/miscFiles/twotower_serve.py
-/miscFiles/users.csv
+/miscFiles

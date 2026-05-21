@@ -540,7 +540,11 @@ public class Registration extends AppCompatActivity {
         overlayResultText.setTextColor(getResources().getColor(R.color.progress_blue));
         overlayResultText.setVisibility(View.VISIBLE);
         handler.postDelayed(() -> {
-            Intent intent = new Intent(Registration.this, Login.class);
+            FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            Class<?> destination = OnboardingActivity.isCompleted(this, currentUser)
+                ? HomeActivity.class
+                : OnboardingActivity.class;
+            Intent intent = new Intent(Registration.this, destination);
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
             finish();

@@ -16,6 +16,9 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 
 import com.example.storythere.R;
+import com.example.storythere.api.ApiClient;
+import com.example.storythere.api.ApiService;
+import com.example.storythere.api.model.ApiAudiobook;
 import android.widget.EditText;
 import android.app.DownloadManager;
 import android.net.Uri;
@@ -45,6 +48,10 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.Date;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 
 public class HomeActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 1204;
@@ -71,6 +78,7 @@ public class HomeActivity extends AppCompatActivity {
     private UserRepository userRepository;
     private AuthorRepository authorRepository;
     private RemoteBookRepository remoteBookRepository;
+    private ApiService apiService;
     private AuthorAdapter authorAdapter;
     
     @Override
@@ -98,9 +106,11 @@ public class HomeActivity extends AppCompatActivity {
         userRepository = new UserRepository();
         authorRepository = new AuthorRepository(this);
         remoteBookRepository = new RemoteBookRepository(this);
+        apiService = ApiClient.getApiService();
         
         setupAdminButton();
         setupRecommendedBooksRecycler();
+        setupRecommendedAudiobooksRecycler();
         setupAuthorsRecycler();
     }
     
@@ -306,19 +316,36 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     public static class RecommendedBook {
+        public long id;
         public String title;
         public String author;
         public String fileUrl;
         public String fileType;
         public String image;
         public String annotation;
+        public boolean isAudiobook;
+        public String audioUrl;
+        public String audioType;
+        public int durationSeconds;
+
         public RecommendedBook(String title, String author, String fileUrl, String fileType, String image, String annotation) {
+            this(-1L, title, author, fileUrl, fileType, image, annotation, false, null, null, 0);
+        }
+
+        public RecommendedBook(long id, String title, String author, String fileUrl, String fileType, String image,
+                               String annotation, boolean isAudiobook, String audioUrl, String audioType,
+                               int durationSeconds) {
+            this.id = id;
             this.title = title;
             this.author = author;
             this.fileUrl = fileUrl;
             this.fileType = fileType;
             this.image = image;
             this.annotation = annotation;
+            this.isAudiobook = isAudiobook;
+            this.audioUrl = audioUrl;
+            this.audioType = audioType;
+            this.durationSeconds = durationSeconds;
         }
     }
 
@@ -347,8 +374,54 @@ public class HomeActivity extends AppCompatActivity {
         remoteBookRepository.loadRecommendedBooksFromApi(7);
     }
 
+    private void setupRecommendedAudiobooksRecycler() {
+        RecyclerView recyclerView = findViewById(R.id.recycler_recommend_audiobooks);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        RecommendBookAdapter adapter = new RecommendBookAdapter(new ArrayList<>(), HomeActivity.this::handleRecommendedBookClick);
+        recyclerView.setAdapter(adapter);
+
+        apiService.getAudiobooks(7, 0).enqueue(new Callback<List<ApiAudiobook>>() {
+            @Override
+            public void onResponse(Call<List<ApiAudiobook>> call, Response<List<ApiAudiobook>> response) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    Log.w("HomeActivity", "Failed to load audiobook recommendations: " + response.code());
+                    return;
+                }
+
+                List<RecommendedBook> audiobookList = new ArrayList<>();
+                for (ApiAudiobook audiobook : response.body()) {
+                    String audioType = audiobook.audioType != null ? audiobook.audioType : "mp3";
+                    int durationSeconds = audiobook.durationSeconds != null ? audiobook.durationSeconds : 0;
+                    audiobookList.add(new RecommendedBook(
+                        audiobook.id,
+                        audiobook.title,
+                        audiobook.author,
+                        audiobook.audioUrl,
+                        audioType,
+                        audiobook.image,
+                        audiobook.annotation,
+                        true,
+                        audiobook.audioUrl,
+                        audioType,
+                        durationSeconds
+                    ));
+                }
+                adapter.updateBooks(audiobookList);
+            }
+
+            @Override
+            public void onFailure(Call<List<ApiAudiobook>> call, Throwable t) {
+                Log.w("HomeActivity", "Error loading audiobook recommendations", t);
+            }
+        });
+    }
+
     private void handleRecommendedBookClick(RecommendedBook book) {
         if (book == null) return;
+        if (book.isAudiobook) {
+            openAudiobookOptionsActivity(book);
+            return;
+        }
         if (!hasStoragePermission()) {
             requestStoragePermission();
             return;
@@ -673,6 +746,28 @@ public class HomeActivity extends AppCompatActivity {
         intent.putExtra("title", title);
         intent.putExtra("annotation", annotation);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(intent);
+    }
+
+    private void openAudiobookOptionsActivity(RecommendedBook book) {
+        String audioUrl = book.audioUrl != null ? book.audioUrl : book.fileUrl;
+        if (audioUrl == null || audioUrl.trim().isEmpty()) {
+            Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent intent = new Intent(this, BookOptionsActivity.class);
+        intent.setData(Uri.parse(audioUrl));
+        intent.putExtra("isAudiobook", true);
+        intent.putExtra("audiobookId", book.id);
+        intent.putExtra("audioUrl", audioUrl);
+        intent.putExtra("audioType", book.audioType != null ? book.audioType : book.fileType);
+        intent.putExtra("fileType", book.fileType);
+        intent.putExtra("durationSeconds", book.durationSeconds);
+        intent.putExtra("title", book.title);
+        intent.putExtra("author", book.author);
+        intent.putExtra("annotation", book.annotation);
+        intent.putExtra("previewImagePath", book.image);
         startActivity(intent);
     }
 

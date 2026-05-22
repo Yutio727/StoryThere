@@ -34,6 +34,7 @@ import com.example.storythere.adapters.RecommendBookAdapter;
 import com.example.storythere.api.ApiClient;
 import com.example.storythere.api.ApiService;
 import com.example.storythere.api.model.ApiAuthor;
+import com.example.storythere.api.model.ApiAudiobook;
 import com.example.storythere.api.model.ApiBook;
 import com.example.storythere.data.Author;
 import com.example.storythere.data.Book;
@@ -78,19 +79,24 @@ public class CatalogActivity extends AppCompatActivity {
     private BookRepository bookRepository;
     private BookListViewModel viewModel;
     private RecommendBookAdapter booksAdapter;
+    private RecommendBookAdapter audiobooksAdapter;
     private AuthorAdapter authorsAdapter;
     private GridSpacingItemDecoration gridSpacingItemDecoration;
     private final List<HomeActivity.RecommendedBook> books = new ArrayList<>();
+    private final List<HomeActivity.RecommendedBook> audiobooks = new ArrayList<>();
     private final List<Author> authors = new ArrayList<>();
 
     private int currentTab = TAB_BOOKS;
     private int booksOffset = 0;
+    private int audiobooksOffset = 0;
     private int authorsOffset = 0;
     private boolean isBooksLoading = false;
+    private boolean isAudiobooksLoading = false;
     private boolean isAuthorsLoading = false;
     private boolean isDownloading = false;
     private boolean isCheckingBook = false;
     private boolean hasMoreBooks = true;
+    private boolean hasMoreAudiobooks = true;
     private boolean hasMoreAuthors = true;
 
     @Override
@@ -130,6 +136,7 @@ public class CatalogActivity extends AppCompatActivity {
         catalogTabLayout = findViewById(R.id.catalogTabLayout);
 
         booksAdapter = new RecommendBookAdapter(books, this::handleRecommendedBookClick);
+        audiobooksAdapter = new RecommendBookAdapter(audiobooks, this::handleRecommendedBookClick);
         authorsAdapter = new AuthorAdapter(this, authors);
     }
 
@@ -145,7 +152,7 @@ public class CatalogActivity extends AppCompatActivity {
                         showBooksTab();
                         break;
                     case TAB_AUDIOBOOKS:
-                        showAudiobooksPlaceholder();
+                        showAudiobooksTab();
                         break;
                     case TAB_AUTHORS:
                         showAuthorsTab();
@@ -220,12 +227,23 @@ public class CatalogActivity extends AppCompatActivity {
         }
     }
 
-    private void showAudiobooksPlaceholder() {
+    private void showAudiobooksTab() {
         currentTab = TAB_AUDIOBOOKS;
-        catalogProgressBar.setVisibility(View.GONE);
-        catalogRecyclerView.setVisibility(View.GONE);
-        catalogMessage.setText(R.string.audiobooks_catalog_placeholder);
-        catalogMessage.setVisibility(View.VISIBLE);
+        catalogMessage.setVisibility(View.GONE);
+        catalogRecyclerView.setVisibility(View.VISIBLE);
+        catalogRecyclerView.setLayoutManager(new GridLayoutManager(this, 2));
+        setRecyclerPadding(
+            BOOK_RECYCLER_PADDING_START_DP,
+            BOOK_RECYCLER_PADDING_TOP_DP,
+            BOOK_RECYCLER_PADDING_END_DP,
+            BOOK_RECYCLER_PADDING_BOTTOM_DP
+        );
+        setGridSpacing(BOOK_GRID_SPACING_DP);
+        catalogRecyclerView.setAdapter(audiobooksAdapter);
+        audiobooksAdapter.updateBooks(audiobooks);
+        if (audiobooks.isEmpty()) {
+            loadAudiobooksPage();
+        }
     }
 
     private void setRecyclerPadding(int startDp, int topDp, int endDp, int bottomDp) {
@@ -253,6 +271,8 @@ public class CatalogActivity extends AppCompatActivity {
     private void loadNextPageForCurrentTab() {
         if (currentTab == TAB_BOOKS) {
             loadBooksPage();
+        } else if (currentTab == TAB_AUDIOBOOKS) {
+            loadAudiobooksPage();
         } else if (currentTab == TAB_AUTHORS) {
             loadAuthorsPage();
         }
@@ -288,6 +308,42 @@ public class CatalogActivity extends AppCompatActivity {
             @Override
             public void onFailure(@NonNull Call<List<ApiBook>> call, @NonNull Throwable t) {
                 isBooksLoading = false;
+                updateLoadingState();
+                showErrorIfEmpty(R.string.catalog_load_failed);
+            }
+        });
+    }
+
+    private void loadAudiobooksPage() {
+        if (isAudiobooksLoading || !hasMoreAudiobooks) {
+            return;
+        }
+        isAudiobooksLoading = true;
+        updateLoadingState();
+
+        apiService.getAudiobooks(PAGE_SIZE, audiobooksOffset).enqueue(new Callback<List<ApiAudiobook>>() {
+            @Override
+            public void onResponse(@NonNull Call<List<ApiAudiobook>> call, @NonNull Response<List<ApiAudiobook>> response) {
+                isAudiobooksLoading = false;
+                updateLoadingState();
+                if (!response.isSuccessful() || response.body() == null) {
+                    showErrorIfEmpty(R.string.catalog_load_failed);
+                    return;
+                }
+
+                List<ApiAudiobook> page = response.body();
+                for (ApiAudiobook apiAudiobook : page) {
+                    audiobooks.add(mapApiAudiobook(apiAudiobook));
+                }
+                audiobooksOffset += page.size();
+                hasMoreAudiobooks = page.size() == PAGE_SIZE;
+                audiobooksAdapter.updateBooks(audiobooks);
+                showEmptyIfNeeded();
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<List<ApiAudiobook>> call, @NonNull Throwable t) {
+                isAudiobooksLoading = false;
                 updateLoadingState();
                 showErrorIfEmpty(R.string.catalog_load_failed);
             }
@@ -341,6 +397,24 @@ public class CatalogActivity extends AppCompatActivity {
         );
     }
 
+    private HomeActivity.RecommendedBook mapApiAudiobook(ApiAudiobook apiAudiobook) {
+        String audioType = apiAudiobook.audioType != null ? apiAudiobook.audioType : "mp3";
+        int durationSeconds = apiAudiobook.durationSeconds != null ? apiAudiobook.durationSeconds : 0;
+        return new HomeActivity.RecommendedBook(
+            apiAudiobook.id,
+            apiAudiobook.title,
+            apiAudiobook.author,
+            apiAudiobook.audioUrl,
+            audioType,
+            apiAudiobook.image,
+            apiAudiobook.annotation,
+            true,
+            apiAudiobook.audioUrl,
+            audioType,
+            durationSeconds
+        );
+    }
+
     private Author mapApiAuthor(ApiAuthor apiAuthor) {
         Author author = new Author();
         author.setAuthorId(String.valueOf(apiAuthor.id));
@@ -355,13 +429,20 @@ public class CatalogActivity extends AppCompatActivity {
     }
 
     private void updateLoadingState() {
-        boolean isLoading = (currentTab == TAB_BOOKS && isBooksLoading) || (currentTab == TAB_AUTHORS && isAuthorsLoading);
+        boolean isLoading = (currentTab == TAB_BOOKS && isBooksLoading)
+            || (currentTab == TAB_AUDIOBOOKS && isAudiobooksLoading)
+            || (currentTab == TAB_AUTHORS && isAuthorsLoading);
         catalogProgressBar.setVisibility(isLoading && currentItemCount() == 0 ? View.VISIBLE : View.GONE);
     }
 
     private void showEmptyIfNeeded() {
         if (currentTab == TAB_BOOKS && books.isEmpty()) {
             catalogMessage.setText(R.string.catalog_books_empty);
+            catalogMessage.setVisibility(View.VISIBLE);
+            return;
+        }
+        if (currentTab == TAB_AUDIOBOOKS && audiobooks.isEmpty()) {
+            catalogMessage.setText(R.string.catalog_audiobooks_empty);
             catalogMessage.setVisibility(View.VISIBLE);
             return;
         }
@@ -387,6 +468,9 @@ public class CatalogActivity extends AppCompatActivity {
         if (currentTab == TAB_BOOKS) {
             return books.size();
         }
+        if (currentTab == TAB_AUDIOBOOKS) {
+            return audiobooks.size();
+        }
         if (currentTab == TAB_AUTHORS) {
             return authors.size();
         }
@@ -395,6 +479,10 @@ public class CatalogActivity extends AppCompatActivity {
 
     private void handleRecommendedBookClick(HomeActivity.RecommendedBook book) {
         if (book == null) return;
+        if (book.isAudiobook) {
+            openAudiobookOptionsActivity(book);
+            return;
+        }
         if (!hasStoragePermission()) {
             requestStoragePermission();
             return;
@@ -629,6 +717,28 @@ public class CatalogActivity extends AppCompatActivity {
         intent.putExtra("title", title);
         intent.putExtra("annotation", annotation);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(intent);
+    }
+
+    private void openAudiobookOptionsActivity(HomeActivity.RecommendedBook book) {
+        String audioUrl = book.audioUrl != null ? book.audioUrl : book.fileUrl;
+        if (audioUrl == null || audioUrl.trim().isEmpty()) {
+            Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent intent = new Intent(this, BookOptionsActivity.class);
+        intent.setData(Uri.parse(audioUrl));
+        intent.putExtra("isAudiobook", true);
+        intent.putExtra("audiobookId", book.id);
+        intent.putExtra("audioUrl", audioUrl);
+        intent.putExtra("audioType", book.audioType != null ? book.audioType : book.fileType);
+        intent.putExtra("fileType", book.fileType);
+        intent.putExtra("durationSeconds", book.durationSeconds);
+        intent.putExtra("title", book.title);
+        intent.putExtra("author", book.author);
+        intent.putExtra("annotation", book.annotation);
+        intent.putExtra("previewImagePath", book.image);
         startActivity(intent);
     }
 

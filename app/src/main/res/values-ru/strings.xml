@@ -92,6 +92,8 @@
     <string name="book_cover">Обложка книги</string>
     <string name="find_your_awesome_book">Найти лучшую книгу</string>
     <string name="we_recommend">Мы рекомендуем</string>
+    <string name="recommend_books">Рекомендуем книги</string>
+    <string name="recommend_audiobooks">Рекомендуем аудиокниги</string>
     <string name="exclusives">Авторы</string>
     <string name="authors">Авторы</string>
     <string name="downloading">Загрузка книги...</string>
@@ -224,7 +226,9 @@
     <string name="audiobooks_catalog_placeholder">Аудиокниги появятся здесь позже.</string>
     <string name="catalog_load_failed">Не удалось загрузить данные каталога</string>
     <string name="catalog_books_empty">Книги не найдены</string>
+    <string name="catalog_audiobooks_empty">Аудиокниги не найдены</string>
     <string name="catalog_authors_empty">Авторы не найдены</string>
+    <string name="audio_duration">Длительность: </string>
     <string name="onboarding_step_format">%1$d / %2$d</string>
     <string name="onboarding_back">Назад</string>
     <string name="onboarding_next">Далее</string>

@@ -17,6 +17,7 @@ import com.example.storythere.R;
 import com.example.storythere.ai.GigaChatService;
 import com.example.storythere.ai.HuggingFaceService;
 import com.example.storythere.listening.AudioReaderActivity;
+import com.example.storythere.listening.AudiobookPlayerActivity;
 import com.example.storythere.data.Book;
 import com.example.storythere.data.BookRepository;
 import android.app.AlertDialog;
@@ -86,6 +87,7 @@ public class BookOptionsActivity extends AppCompatActivity {
     private MaterialButton btnSummarize;
     private MaterialButton stickyBtnReadMode;
     private MaterialButton stickyBtnListenMode;
+    private LinearLayout readingModeButtons;
     private LinearLayout stickyReadingModeButtons;
     private ScrollView scrollView;
     private Toolbar toolbar;
@@ -97,6 +99,13 @@ public class BookOptionsActivity extends AppCompatActivity {
     private ConnectivityManager.NetworkCallback networkCallback;
     private ProgressBar bookAnnotationProgressBar;
     private TextView bookAnnotationProgressStatus;
+    private boolean isAudiobook = false;
+    private long audiobookId = -1L;
+    private String audioUrl;
+    private String audioType;
+    private int durationSeconds = 0;
+    private String authorFromIntent;
+    private String previewImagePathFromIntent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -117,7 +126,16 @@ public class BookOptionsActivity extends AppCompatActivity {
             contentUri = intent.getData();
             fileType = intent.getStringExtra("fileType");
             title = intent.getStringExtra("title");
-            String annotation = intent.getStringExtra("annotation");
+            isAudiobook = intent.getBooleanExtra("isAudiobook", false);
+            audiobookId = intent.getLongExtra("audiobookId", -1L);
+            audioUrl = intent.getStringExtra("audioUrl");
+            audioType = intent.getStringExtra("audioType");
+            durationSeconds = intent.getIntExtra("durationSeconds", 0);
+            authorFromIntent = intent.getStringExtra("author");
+            previewImagePathFromIntent = intent.getStringExtra("previewImagePath");
+            if (isAudiobook && (fileType == null || fileType.trim().isEmpty())) {
+                fileType = audioType != null ? audioType : "mp3";
+            }
 
             if (title != null && getSupportActionBar() != null) {
                 getSupportActionBar().setTitle(title);
@@ -136,6 +154,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         btnSummarize = findViewById(R.id.btnSummarize);
         stickyBtnReadMode = findViewById(R.id.stickyBtnReadMode);
         stickyBtnListenMode = findViewById(R.id.stickyBtnListenMode);
+        readingModeButtons = findViewById(R.id.readingModeButtons);
         stickyReadingModeButtons = findViewById(R.id.stickyReadingModeButtons);
         scrollView = findViewById(R.id.scrollView);
         scaleAnimation = AnimationUtils.loadAnimation(this, R.anim.button_scale);
@@ -148,13 +167,18 @@ public class BookOptionsActivity extends AppCompatActivity {
             updateAnnotationDisplay(annotation);
         }
 
+        if (isAudiobook) {
+            isReadModeSelected = false;
+            bindAudiobookInfo();
+        }
+
         // Get file path from intent
         if (intent != null && intent.getData() != null) {
             filePath = intent.getData().toString();
         }
         // Fetch book info from repository
         bookRepository = new BookRepository(getApplication());
-        if (filePath != null) {
+        if (!isAudiobook && filePath != null) {
             bookRepository.getBookByPath(filePath).observe(this, new Observer<Book>() {
                 @Override
                 public void onChanged(Book book) {
@@ -214,6 +238,10 @@ public class BookOptionsActivity extends AppCompatActivity {
 
         // Set up footer button click listener
         footerButton.setOnClickListener(v -> {
+            if (isAudiobook) {
+                openAudiobookPlayer();
+                return;
+            }
             if (isReadModeSelected) {
                 if ("pdf".equals(fileType)) {
                     // Open PDF in ViewerActivity
@@ -496,7 +524,9 @@ public class BookOptionsActivity extends AppCompatActivity {
         );
 
         // Setup book cover click listener
-        bookCoverImage.setOnClickListener(v -> showCoverOptionsDialog());
+        if (!isAudiobook) {
+            bookCoverImage.setOnClickListener(v -> showCoverOptionsDialog());
+        }
 
         // Initial update of book info text based on default mode
         updateBookReadingTimeText();
@@ -507,27 +537,70 @@ public class BookOptionsActivity extends AppCompatActivity {
         // Setup scroll listener for sticky header
         setupScrollListener();
 
-        // Set click listeners for viewing mode buttons
-        btnReadMode.setOnClickListener(v -> {
-            isReadModeSelected = true;
-            updateButtonStates(true);
-        });
+        if (!isAudiobook) {
+            // Set click listeners for viewing mode buttons
+            btnReadMode.setOnClickListener(v -> {
+                isReadModeSelected = true;
+                updateButtonStates(true);
+            });
 
-        btnListenMode.setOnClickListener(v -> {
-            isReadModeSelected = false;
-            updateButtonStates(false);
-        });
+            btnListenMode.setOnClickListener(v -> {
+                isReadModeSelected = false;
+                updateButtonStates(false);
+            });
 
-        // Set click listeners for sticky viewing mode buttons
-        stickyBtnReadMode.setOnClickListener(v -> {
-            isReadModeSelected = true;
-            updateButtonStates(true);
-        });
+            // Set click listeners for sticky viewing mode buttons
+            stickyBtnReadMode.setOnClickListener(v -> {
+                isReadModeSelected = true;
+                updateButtonStates(true);
+            });
 
-        stickyBtnListenMode.setOnClickListener(v -> {
-            isReadModeSelected = false;
-            updateButtonStates(false);
-        });
+            stickyBtnListenMode.setOnClickListener(v -> {
+                isReadModeSelected = false;
+                updateButtonStates(false);
+            });
+        }
+    }
+
+    private void bindAudiobookInfo() {
+        if (authorFromIntent != null && !authorFromIntent.trim().isEmpty()) {
+            bookAuthorText.setText(authorFromIntent);
+        } else {
+            bookAuthorText.setText(R.string.unknown_author);
+        }
+
+        if (previewImagePathFromIntent != null && !previewImagePathFromIntent.trim().isEmpty()) {
+            Glide.with(this)
+                .load(previewImagePathFromIntent)
+                .placeholder(R.drawable.ic_book_placeholder)
+                .error(R.drawable.ic_book_placeholder)
+                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
+                .skipMemoryCache(false)
+                .into(bookCoverImage);
+        } else {
+            bookCoverImage.setImageResource(R.drawable.ic_book_placeholder);
+        }
+    }
+
+    private void openAudiobookPlayer() {
+        Uri playbackUri = contentUri;
+        if (playbackUri == null && audioUrl != null && !audioUrl.trim().isEmpty()) {
+            playbackUri = Uri.parse(audioUrl);
+        }
+        if (playbackUri == null) {
+            Toast.makeText(this, R.string.error_launching_audio_reader, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent audioIntent = new Intent(this, AudiobookPlayerActivity.class);
+        audioIntent.setData(playbackUri);
+        audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_AUDIOBOOK_ID, audiobookId);
+        audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_AUDIO_URL, playbackUri.toString());
+        audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_TITLE, title);
+        audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_AUTHOR, authorFromIntent);
+        audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_PREVIEW_IMAGE_PATH, previewImagePathFromIntent);
+        audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_DURATION_SECONDS, durationSeconds);
+        startActivity(audioIntent);
     }
 
     private void showCoverOptionsDialog() {
@@ -650,6 +723,15 @@ public class BookOptionsActivity extends AppCompatActivity {
                 android.content.res.Configuration.UI_MODE_NIGHT_MASK)
                 == android.content.res.Configuration.UI_MODE_NIGHT_YES;
 
+        if (isAudiobook) {
+            readingModeButtons.setVisibility(View.GONE);
+            stickyReadingModeButtons.setVisibility(View.GONE);
+
+            footerButton.setText(R.string.start_listening);
+            footerButton.setTypeface(Typeface.create(getResources().getFont(R.font.montserrat), Typeface.BOLD));
+            return;
+        }
+
         if (isReadMode) {
             // Update regular buttons
             btnReadMode.setEnabled(false);
@@ -707,6 +789,14 @@ public class BookOptionsActivity extends AppCompatActivity {
         }
     }
 
+    private void removeStartMargin(View view) {
+        if (view.getLayoutParams() instanceof LinearLayout.LayoutParams) {
+            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) view.getLayoutParams();
+            params.setMarginStart(0);
+            view.setLayoutParams(params);
+        }
+    }
+
     // Helper to check if readingStats starts with a number (for word/page count)
     private boolean isCountReadingStats(String readingStats) {
         if (readingStats == null) return false;
@@ -721,6 +811,17 @@ public class BookOptionsActivity extends AppCompatActivity {
 
     // Helper method to update the viewing time text based on selected mode
     private void updateBookReadingTimeText() {
+        if (isAudiobook) {
+            if (durationSeconds > 0) {
+                String duration = formatTime(durationSeconds);
+                bookReadingTimeText.setText(getString(R.string.audio_duration) + duration);
+                bookEstimatedTimeText.setText("");
+            } else {
+                bookReadingTimeText.setText("");
+                bookEstimatedTimeText.setText(R.string.estimated_time_uncalc);
+            }
+            return;
+        }
         if (currentBook != null) {
             int estimatedMinutes = -1;
             if (isReadModeSelected) {
@@ -817,6 +918,10 @@ public class BookOptionsActivity extends AppCompatActivity {
     }
 
     private void setupButtonAnimations() {
+        if (isAudiobook) {
+            return;
+        }
+
         btnReadMode.setOnClickListener(v -> {
             if (!isReadModeSelected) {
                 btnReadMode.startAnimation(scaleAnimation);
@@ -1137,10 +1242,16 @@ public class BookOptionsActivity extends AppCompatActivity {
     }
 
     private void setupScrollListener() {
+        if (isAudiobook) {
+            stickyReadingModeButtons.setVisibility(View.GONE);
+            return;
+        }
+
         scrollView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
             // Get the position of the regular viewing mode buttons (not the sticky ones)
             int[] location = new int[2];
-            btnReadMode.getLocationInWindow(location);
+            View anchorButton = isAudiobook ? btnListenMode : btnReadMode;
+            anchorButton.getLocationInWindow(location);
             int buttonTop = location[1];
             
             // Check if buttons are visible (below toolbar)
@@ -1156,7 +1267,8 @@ public class BookOptionsActivity extends AppCompatActivity {
         scrollView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
             // Get the position of the regular viewing mode buttons (not the sticky ones)
             int[] location = new int[2];
-            btnReadMode.getLocationInWindow(location);
+            View anchorButton = isAudiobook ? btnListenMode : btnReadMode;
+            anchorButton.getLocationInWindow(location);
             int buttonTop = location[1];
             
             // Check if buttons are visible (below toolbar)
@@ -1169,4 +1281,4 @@ public class BookOptionsActivity extends AppCompatActivity {
             }
         });
     }
-} 
+}

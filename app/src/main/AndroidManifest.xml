@@ -125,7 +125,7 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar" />
         <activity
-            android:name=".listening.AudioReaderActivity"
+            android:name=".listening.AudiobookPlayerActivity"
             android:exported="true"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.StoryThere.NoActionBar">
@@ -139,6 +139,11 @@
                 <data android:mimeType="audio/*" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".listening.AudioReaderActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.StoryThere.NoActionBar" />
     </application>
 
 </manifest>

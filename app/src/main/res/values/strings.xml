@@ -91,6 +91,8 @@
     <string name="book_cover">Book cover</string>
     <string name="find_your_awesome_book">Find your awesome book</string>
     <string name="we_recommend">We recommend</string>
+    <string name="recommend_books">Recommended books</string>
+    <string name="recommend_audiobooks">Recommended audiobooks</string>
     <string name="exclusives">Authors</string>
     <string name="authors">Authors</string>
     <string name="downloading">Downloading book...</string>
@@ -225,7 +227,9 @@
     <string name="audiobooks_catalog_placeholder">Audiobooks will be available here later.</string>
     <string name="catalog_load_failed">Could not load catalog data</string>
     <string name="catalog_books_empty">No books found</string>
+    <string name="catalog_audiobooks_empty">No audiobooks found</string>
     <string name="catalog_authors_empty">No authors found</string>
+    <string name="audio_duration">Duration: </string>
     <string name="onboarding_step_format">%1$d / %2$d</string>
     <string name="onboarding_back">Back</string>
     <string name="onboarding_next">Next</string>

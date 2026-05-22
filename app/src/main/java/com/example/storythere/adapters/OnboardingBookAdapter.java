@@ -7,11 +7,13 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.storythere.R;
 import com.example.storythere.api.model.ApiBook;
+import com.google.android.material.card.MaterialCardView;
 
 import java.util.HashSet;
 import java.util.List;
@@ -35,7 +37,7 @@ public class OnboardingBookAdapter extends RecyclerView.Adapter<OnboardingBookAd
     @NonNull
     @Override
     public BookViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_recommend_book, parent, false);
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_onboarding_book, parent, false);
         return new BookViewHolder(view);
     }
 
@@ -78,10 +80,14 @@ public class OnboardingBookAdapter extends RecyclerView.Adapter<OnboardingBookAd
                 ? book.authorName
                 : book.author;
             author.setText(authorText);
-            itemView.setBackgroundResource(selected
-                ? R.drawable.onboarding_selected_book_background
-                : R.drawable.onboarding_unselected_book_background);
             itemView.setAlpha(selected ? 1f : 0.88f);
+
+            if (itemView instanceof MaterialCardView) {
+                MaterialCardView card = (MaterialCardView) itemView;
+                card.setStrokeColor(ContextCompat.getColor(itemView.getContext(), selected ? R.color.progress_blue : R.color.textfield_stroke));
+                card.setStrokeWidth(selected ? dpToPx(2) : dpToPx(1));
+                card.setCardBackgroundColor(ContextCompat.getColor(itemView.getContext(), selected ? R.color.background_blue : R.color.background_activity));
+            }
 
             Glide.with(itemView.getContext())
                 .load(book.image)
@@ -90,6 +96,10 @@ public class OnboardingBookAdapter extends RecyclerView.Adapter<OnboardingBookAd
                 .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                 .skipMemoryCache(false)
                 .into(cover);
+        }
+
+        private int dpToPx(int dp) {
+            return Math.round(dp * itemView.getContext().getResources().getDisplayMetrics().density);
         }
     }
 }

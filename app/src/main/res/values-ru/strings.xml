@@ -36,6 +36,10 @@
     <string name="registration">Регистрация</string>
     <string name="username">Имя пользователя</string>
     <string name="birthday">Дата Рождения</string>
+    <string name="gender">Пол</string>
+    <string name="gender_not_specified">Не указывать</string>
+    <string name="gender_male">Мужской</string>
+    <string name="gender_female">Женский</string>
     <string name="confirm_password">Повторите пароль</string>
     <string name="registration_title">Регистрация</string>
     <string name="already_have_account">Уже есть аккаунт?</string>

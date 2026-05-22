@@ -8,4 +8,7 @@ public class SyncMeRequest {
 
     @SerializedName("recommendationAgeBucket")
     public String recommendationAgeBucket;
+
+    @SerializedName("sex")
+    public String sex;
 }

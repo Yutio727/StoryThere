@@ -10,6 +10,8 @@ import android.graphics.Typeface;
 import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
 import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.TextView;
 import androidx.core.content.ContextCompat;
 import androidx.activity.EdgeToEdge;
@@ -48,6 +50,9 @@ public class Registration extends AppCompatActivity {
     private static final String USER_SYNC_PREFS = "UserSyncPrefs";
     private static final String KEY_DOB_PREFIX = "dob_";
     private static final String KEY_BUCKET_PREFIX = "bucket_";
+    private static final String KEY_SEX_PREFIX = "sex_";
+    private static final String SEX_MALE = "0.0";
+    private static final String SEX_FEMALE = "1.0";
 
     private FirebaseAuth mAuth = FirebaseAuth.getInstance();
     private UserRepository userRepository;
@@ -99,10 +104,12 @@ public class Registration extends AppCompatActivity {
         // --- Custom logic for textfield stroke color on focus ---
         final TextInputLayout usernameLayout = findViewById(R.id.etUsernameLayout);
         final TextInputLayout birthdayLayout = findViewById(R.id.etBirthdayLayout);
+        final TextInputLayout genderLayout = findViewById(R.id.etGenderLayout);
         final TextInputLayout passwordLayout = findViewById(R.id.etPasswordLayout);
         final TextInputLayout confirmPasswordLayout = findViewById(R.id.etConfirmPasswordLayout);
         final EditText usernameEdit = findViewById(R.id.etUsername);
         final EditText birthdayEdit = findViewById(R.id.etBirthday);
+        final AutoCompleteTextView genderEdit = findViewById(R.id.etGender);
         final EditText passwordEdit = findViewById(R.id.etPassword);
         final EditText confirmPasswordEdit = findViewById(R.id.etConfirmPassword);
         final int colorFocused = getResources().getColor(R.color.progress_blue);
@@ -113,8 +120,32 @@ public class Registration extends AppCompatActivity {
         int colorRed = getResources().getColor(android.R.color.holo_red_dark);
         usernameLayout.setBoxStrokeColor(colorRed);
         birthdayLayout.setBoxStrokeColor(colorRed);
+        genderLayout.setBoxStrokeColor(colorUnfocused);
         passwordLayout.setBoxStrokeColor(colorRed);
         confirmPasswordLayout.setBoxStrokeColor(colorRed);
+
+        final String[] genderLabels = new String[]{
+            getString(R.string.gender_not_specified),
+            getString(R.string.gender_male),
+            getString(R.string.gender_female)
+        };
+        final String[] genderValues = new String[]{null, SEX_MALE, SEX_FEMALE};
+        final String[] selectedSex = new String[]{null};
+        ArrayAdapter<String> genderAdapter = new ArrayAdapter<>(
+            this,
+            android.R.layout.simple_dropdown_item_1line,
+            genderLabels
+        );
+        genderEdit.setAdapter(genderAdapter);
+        genderEdit.setOnClickListener(v -> genderEdit.showDropDown());
+        genderEdit.setOnItemClickListener((parent, view, position, id) -> {
+            selectedSex[0] = genderValues[position];
+            genderEdit.setTextColor(colorTextNormal);
+            genderLayout.setBoxStrokeColor(colorUnfocused);
+            genderLayout.setEndIconTintList(ColorStateList.valueOf(colorUnfocused));
+            genderLayout.invalidate();
+        });
+        genderLayout.setEndIconTintList(ColorStateList.valueOf(colorUnfocused));
 
         // Username real-time validation
         usernameEdit.addTextChangedListener(new TextWatcher() {
@@ -469,7 +500,8 @@ public class Registration extends AppCompatActivity {
                                         );
                                         String recommendationAgeBucket = calculateAgeBucketFromBirthday(birthday);
                                         userProfile.setRecommendationAgeBucket(recommendationAgeBucket);
-                                        cacheSyncProfile(user.getUid(), birthday, recommendationAgeBucket);
+                                        userProfile.setSex(selectedSex[0]);
+                                        cacheSyncProfile(user.getUid(), birthday, recommendationAgeBucket, selectedSex[0]);
 
                                         // Sync user profile in backend (MySQL via API)
                                         userRepository.createUser(userProfile, new UserRepository.UserCallback() {
@@ -643,7 +675,7 @@ public class Registration extends AppCompatActivity {
         return "55_plus";
     }
 
-    private void cacheSyncProfile(String uid, String birthday, String recommendationAgeBucket) {
+    private void cacheSyncProfile(String uid, String birthday, String recommendationAgeBucket, String sex) {
         if (uid == null || uid.trim().isEmpty()) {
             return;
         }
@@ -654,6 +686,9 @@ public class Registration extends AppCompatActivity {
         }
         if (recommendationAgeBucket != null && !recommendationAgeBucket.trim().isEmpty()) {
             editor.putString(KEY_BUCKET_PREFIX + uid, recommendationAgeBucket);
+        }
+        if (sex != null && !sex.trim().isEmpty()) {
+            editor.putString(KEY_SEX_PREFIX + uid, sex);
         }
         editor.apply();
     }

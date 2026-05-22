@@ -66,11 +66,25 @@ public class UserRepository {
         SyncMeRequest request = new SyncMeRequest();
         request.dateOfBirth = normalizeDateOfBirth(user.getDateOfBirth());
         request.recommendationAgeBucket = user.getRecommendationAgeBucket();
+        request.sex = normalizeSex(user.getSex());
 
-        if (request.dateOfBirth == null && (request.recommendationAgeBucket == null || request.recommendationAgeBucket.isEmpty())) {
+        if (request.dateOfBirth == null
+            && (request.recommendationAgeBucket == null || request.recommendationAgeBucket.isEmpty())
+            && request.sex == null) {
             return null;
         }
         return request;
+    }
+
+    private String normalizeSex(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if ("0.0".equals(trimmed) || "1.0".equals(trimmed)) {
+            return trimmed;
+        }
+        return null;
     }
 
     private String normalizeDateOfBirth(String value) {

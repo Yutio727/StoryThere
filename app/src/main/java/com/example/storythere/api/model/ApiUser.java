@@ -13,6 +13,7 @@ public class ApiUser {
     public String role;
     public String photoURL;
     public String dateOfBirth;
+    public String sex;
 
     @SerializedName("recommendationAgeBucket")
     public String recommendationAgeBucket;

@@ -36,6 +36,10 @@
     <string name="registration">Registration</string>
     <string name="username">User Name</string>
     <string name="birthday">Birthday</string>
+    <string name="gender">Gender</string>
+    <string name="gender_not_specified">Prefer not to say</string>
+    <string name="gender_male">Male</string>
+    <string name="gender_female">Female</string>
     <string name="confirm_password">Confirm Password</string>
     <string name="registration_title">Registration</string>
     <string name="already_have_account">Already have account?</string>

@@ -20,6 +20,7 @@ import com.example.storythere.listening.AudioReaderActivity;
 import com.example.storythere.listening.AudiobookPlayerActivity;
 import com.example.storythere.data.Book;
 import com.example.storythere.data.BookRepository;
+import com.example.storythere.data.RecommendationTrackingRepository;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.graphics.Bitmap;
@@ -99,7 +100,10 @@ public class BookOptionsActivity extends AppCompatActivity {
     private ConnectivityManager.NetworkCallback networkCallback;
     private ProgressBar bookAnnotationProgressBar;
     private TextView bookAnnotationProgressStatus;
+    private RecommendationTrackingRepository trackingRepository;
     private boolean isAudiobook = false;
+    private boolean fromRecommendation = false;
+    private long bookId = -1L;
     private long audiobookId = -1L;
     private String audioUrl;
     private String audioType;
@@ -127,6 +131,8 @@ public class BookOptionsActivity extends AppCompatActivity {
             fileType = intent.getStringExtra("fileType");
             title = intent.getStringExtra("title");
             isAudiobook = intent.getBooleanExtra("isAudiobook", false);
+            fromRecommendation = intent.getBooleanExtra("fromRecommendation", false);
+            bookId = intent.getLongExtra("bookId", -1L);
             audiobookId = intent.getLongExtra("audiobookId", -1L);
             audioUrl = intent.getStringExtra("audioUrl");
             audioType = intent.getStringExtra("audioType");
@@ -160,6 +166,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         scaleAnimation = AnimationUtils.loadAnimation(this, R.anim.button_scale);
         bookAnnotationProgressBar = findViewById(R.id.bookAnnotationProgressBar);
         bookAnnotationProgressStatus = findViewById(R.id.bookAnnotationProgressStatus);
+        trackingRepository = new RecommendationTrackingRepository();
 
         // Display annotation from intent if available (after views are initialized)
         if (intent != null) {
@@ -239,10 +246,12 @@ public class BookOptionsActivity extends AppCompatActivity {
         // Set up footer button click listener
         footerButton.setOnClickListener(v -> {
             if (isAudiobook) {
+                trackAudiobookConversion();
                 openAudiobookPlayer();
                 return;
             }
             if (isReadModeSelected) {
+                trackBookConversion();
                 if ("pdf".equals(fileType)) {
                     // Open PDF in ViewerActivity
                     Intent pdfIntent = new Intent(this, ViewerActivity.class);
@@ -250,6 +259,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     pdfIntent.putExtra("fileType", fileType);
                     pdfIntent.putExtra("filePath", filePath);
                     pdfIntent.putExtra("title", title);
+                    putBookTrackingExtras(pdfIntent);
                     startActivity(pdfIntent);
                 } else if ("txt".equals(fileType)) {
                     // Cache parsed .txt content to a file and pass file path to ViewerActivity
@@ -271,6 +281,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     pdfIntent.putExtra("fileType", fileType);
                     pdfIntent.putExtra("filePath", filePath);
                     pdfIntent.putExtra("title", title);
+                    putBookTrackingExtras(pdfIntent);
                     startActivity(pdfIntent);
                 } else if ("epub".equals(fileType)) {
                     // Open EPUB in ViewerActivity
@@ -279,6 +290,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     epubIntent.putExtra("fileType", fileType);
                     epubIntent.putExtra("filePath", filePath);
                     epubIntent.putExtra("title", title);
+                    putBookTrackingExtras(epubIntent);
                     startActivity(epubIntent);
                 } else {
                     // Open reader activity for other file types
@@ -287,9 +299,11 @@ public class BookOptionsActivity extends AppCompatActivity {
                     readerIntent.putExtra("fileType", fileType);
                     readerIntent.putExtra("filePath", filePath);
                     readerIntent.putExtra("title", title);
+                    putBookTrackingExtras(readerIntent);
                     startActivity(readerIntent);
                 }
             } else {
+                trackBookConversion();
                 // Handle listening for both PDF and non-PDF files
                 try {
                     Uri textUri;  // Declare here
@@ -600,7 +614,33 @@ public class BookOptionsActivity extends AppCompatActivity {
         audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_AUTHOR, authorFromIntent);
         audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_PREVIEW_IMAGE_PATH, previewImagePathFromIntent);
         audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_DURATION_SECONDS, durationSeconds);
+        audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_FROM_RECOMMENDATION, fromRecommendation);
         startActivity(audioIntent);
+    }
+
+    private void putBookTrackingExtras(Intent intent) {
+        intent.putExtra("bookId", bookId);
+        intent.putExtra("fromRecommendation", fromRecommendation);
+    }
+
+    private void trackBookConversion() {
+        if (!fromRecommendation || bookId <= 0) {
+            return;
+        }
+        trackingRepository.trackBookEvent(
+            bookId,
+            RecommendationTrackingRepository.EVENT_CONVERSION
+        );
+    }
+
+    private void trackAudiobookConversion() {
+        if (!fromRecommendation || audiobookId <= 0) {
+            return;
+        }
+        trackingRepository.trackAudiobookEvent(
+            audiobookId,
+            RecommendationTrackingRepository.EVENT_CONVERSION
+        );
     }
 
     private void showCoverOptionsDialog() {

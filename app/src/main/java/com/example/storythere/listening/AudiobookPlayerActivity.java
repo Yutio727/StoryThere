@@ -22,6 +22,7 @@ import androidx.appcompat.widget.Toolbar;
 
 import com.bumptech.glide.Glide;
 import com.example.storythere.R;
+import com.example.storythere.data.RecommendationTrackingRepository;
 
 import java.io.IOException;
 import java.util.Locale;
@@ -34,12 +35,14 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
     public static final String EXTRA_PREVIEW_IMAGE_PATH = "previewImagePath";
     public static final String EXTRA_DURATION_SECONDS = "durationSeconds";
     public static final String EXTRA_START_POSITION_MS = "start_position_ms";
+    public static final String EXTRA_FROM_RECOMMENDATION = "fromRecommendation";
 
     private static final String TAG = "AudiobookPlayerActivity";
     private static final String PREFS_NAME = "AudiobookPlayerPrefs";
     private static final String KEY_POSITION_MS = "position_ms_";
     private static final int SEEK_STEP_MS = 10_000;
     private static final int PROGRESS_UPDATE_MS = 500;
+    private static final int PROGRESS_SYNC_INTERVAL_MS = 15_000;
 
     private MediaPlayer mediaPlayer;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -56,14 +59,19 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
     private TextView currentWordsText;
     private ProgressBar loadingProgressBar;
     private TextView loadingStatusText;
+    private RecommendationTrackingRepository trackingRepository;
 
     private Uri audioUri;
+    private long audiobookId = -1L;
+    private boolean fromRecommendation = false;
     private String title;
     private String author;
     private String cacheKey;
     private int durationMs = 0;
     private boolean isPrepared = false;
     private boolean isUserSeeking = false;
+    private long lastProgressSyncAtMs = 0L;
+    private boolean completionTracked = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,6 +80,7 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
 
         setupToolbar();
         initializeViews();
+        trackingRepository = new RecommendationTrackingRepository();
         readIntent();
         bindMetadata();
         setupClickListeners();
@@ -129,7 +138,8 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
             author = getString(R.string.unknown_author);
         }
 
-        long audiobookId = intent != null ? intent.getLongExtra(EXTRA_AUDIOBOOK_ID, -1L) : -1L;
+        audiobookId = intent != null ? intent.getLongExtra(EXTRA_AUDIOBOOK_ID, -1L) : -1L;
+        fromRecommendation = intent != null && intent.getBooleanExtra(EXTRA_FROM_RECOMMENDATION, false);
         cacheKey = audiobookId > 0 ? String.valueOf(audiobookId) : String.valueOf(audioUri);
 
         int durationSeconds = intent != null ? intent.getIntExtra(EXTRA_DURATION_SECONDS, 0) : 0;
@@ -187,6 +197,8 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
                 if (mediaPlayer != null && isPrepared) {
                     mediaPlayer.seekTo(seekBar.getProgress());
                     currentTimeText.setText(formatTime(seekBar.getProgress() / 1000));
+                    savePosition(seekBar.getProgress());
+                    syncAudiobookProgress(seekBar.getProgress(), true);
                 }
                 isUserSeeking = false;
             }
@@ -232,6 +244,8 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
             playPauseButton.setImageResource(android.R.drawable.ic_media_play);
             progressBar.setProgress(durationMs > 0 ? durationMs : progressBar.getMax());
             currentTimeText.setText(formatTime((durationMs > 0 ? durationMs : progressBar.getMax()) / 1000));
+            syncAudiobookProgress(durationMs > 0 ? durationMs : progressBar.getMax(), true);
+            trackAudiobookCompletion();
             savePosition(0);
         });
         mediaPlayer.setOnErrorListener((mp, what, extra) -> {
@@ -289,6 +303,7 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
         progressBar.setProgress(target);
         currentTimeText.setText(formatTime(target / 1000));
         savePosition(target);
+        syncAudiobookProgress(target, true);
     }
 
     private void startProgressUpdates() {
@@ -317,6 +332,7 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
         int position = mediaPlayer.getCurrentPosition();
         progressBar.setProgress(position);
         currentTimeText.setText(formatTime(position / 1000));
+        syncAudiobookProgress(position, false);
     }
 
     private void showLoading(boolean show) {
@@ -337,7 +353,9 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
 
     private void saveCurrentPosition() {
         if (mediaPlayer != null && isPrepared) {
-            savePosition(mediaPlayer.getCurrentPosition());
+            int positionMs = mediaPlayer.getCurrentPosition();
+            savePosition(positionMs);
+            syncAudiobookProgress(positionMs, true);
         }
     }
 
@@ -346,6 +364,42 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
             .edit()
             .putInt(KEY_POSITION_MS + cacheKey, positionMs)
             .apply();
+    }
+
+    private void syncAudiobookProgress(int positionMs, boolean force) {
+        if (trackingRepository == null || audiobookId <= 0) {
+            return;
+        }
+        int duration = durationMs;
+        if (duration <= 0 && mediaPlayer != null && isPrepared) {
+            duration = mediaPlayer.getDuration();
+        }
+        if (duration <= 0) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (!force && now - lastProgressSyncAtMs < PROGRESS_SYNC_INTERVAL_MS) {
+            return;
+        }
+        lastProgressSyncAtMs = now;
+        double progress = Math.max(0.0, Math.min(100.0, (positionMs * 100.0) / duration));
+        trackingRepository.trackAudiobookProgress(audiobookId, progress, Math.max(0, positionMs));
+    }
+
+    private void trackAudiobookCompletion() {
+        if (completionTracked) {
+            return;
+        }
+        completionTracked = true;
+        if (fromRecommendation && audiobookId > 0) {
+            trackingRepository.trackAudiobookEvent(
+                audiobookId,
+                RecommendationTrackingRepository.EVENT_COMPLETION,
+                null,
+                null,
+                100.0
+            );
+        }
     }
 
     private String formatTime(int seconds) {
@@ -366,6 +420,7 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        saveCurrentPosition();
         stopProgressUpdates();
         if (mediaPlayer != null) {
             mediaPlayer.release();

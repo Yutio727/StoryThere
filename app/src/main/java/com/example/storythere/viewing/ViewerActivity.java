@@ -40,6 +40,7 @@ import com.example.storythere.adapters.PageAdapter;
 import com.example.storythere.listening.AudioReaderActivity;
 import com.example.storythere.data.Book;
 import com.example.storythere.data.BookRepository;
+import com.example.storythere.data.RecommendationTrackingRepository;
 import android.animation.ObjectAnimator;
 
 import com.example.storythere.parsers.EPUBParser;
@@ -83,6 +84,10 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
     // Position tracking variables
     private Book currentBook;
     private BookRepository bookRepository;
+    private RecommendationTrackingRepository trackingRepository;
+    private long serverBookId = -1L;
+    private boolean fromRecommendation = false;
+    private boolean completionTracked = false;
     private Handler positionSaveHandler = new Handler(Looper.getMainLooper());
     private Runnable positionSaveRunnable;
     private boolean isPositionRestored = false;
@@ -145,6 +150,7 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
 
         // Initialize position tracking
         bookRepository = new BookRepository(getApplication());
+        trackingRepository = new RecommendationTrackingRepository();
         positionSaveRunnable = new Runnable() {
             @Override
             public void run() {
@@ -310,6 +316,8 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
         // Get content from intent
         Intent intent = getIntent();
         startPosition = intent != null ? intent.getIntExtra("start_position", -1) : -1;
+        serverBookId = intent != null ? intent.getLongExtra("bookId", -1L) : -1L;
+        fromRecommendation = intent != null && intent.getBooleanExtra("fromRecommendation", false);
         String fileType = intent != null ? intent.getStringExtra("fileType") : null;
         String filePath = intent != null ? intent.getStringExtra("filePath") : null;
         Uri uri = intent.getData();
@@ -487,6 +495,7 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
         int totalPages = pages.size();
         int currentPage = firstVisiblePosition + 1; // Convert to 1-based page numbering
         int progressPercentage = (int) ((float) currentPage / totalPages * 100);
+        trackBookCompletionIfNeeded(progressPercentage);
         runOnUiThread(() -> {
             animateShowProgressBar();
             String pageText = String.format(getString(R.string.page_d_of_d), currentPage, totalPages);
@@ -899,6 +908,7 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
                 } else {
                     Log.d(TAG, "[POSITION_SAVE] Position unchanged (" + targetPosition + "), not updating book.");
                 }
+                trackBookProgress(targetPosition);
             } else {
                 Log.w(TAG, "[POSITION_SAVE] Failed to save position - NO_POSITION returned");
             }
@@ -908,6 +918,30 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
             Log.w(TAG, "[POSITION_SAVE] - pdfRecyclerView: " + (pdfRecyclerView != null ? "not null" : "null"));
             Log.w(TAG, "[POSITION_SAVE] - layoutManager: " + (pdfRecyclerView != null && pdfRecyclerView.getLayoutManager() != null ? "not null" : "null"));
         }
+    }
+
+    private void trackBookProgress(int pagePosition) {
+        if (trackingRepository == null || serverBookId <= 0 || pages == null || pages.isEmpty()) {
+            return;
+        }
+        double progress = ((Math.max(0, pagePosition) + 1) * 100.0) / pages.size();
+        progress = Math.max(0.0, Math.min(100.0, progress));
+        trackingRepository.trackBookProgress(serverBookId, progress);
+        trackBookCompletionIfNeeded(progress);
+    }
+
+    private void trackBookCompletionIfNeeded(double progress) {
+        if (completionTracked || !fromRecommendation || serverBookId <= 0 || progress < 100.0) {
+            return;
+        }
+        completionTracked = true;
+        trackingRepository.trackBookEvent(
+            serverBookId,
+            RecommendationTrackingRepository.EVENT_COMPLETION,
+            null,
+            null,
+            100.0
+        );
     }
 
     private void restoreReadingPosition() {

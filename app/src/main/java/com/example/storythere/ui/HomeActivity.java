@@ -28,6 +28,7 @@ import com.example.storythere.data.Book;
 import com.example.storythere.data.BookRepository;
 import com.example.storythere.data.Author;
 import com.example.storythere.data.AuthorRepository;
+import com.example.storythere.data.RecommendationTrackingRepository;
 import com.example.storythere.data.RemoteBook;
 import com.example.storythere.data.RemoteBookRepository;
 import androidx.lifecycle.ViewModelProvider;
@@ -45,6 +46,7 @@ import java.util.ArrayList;
 import java.util.List;
 import androidx.lifecycle.Observer;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
 
@@ -78,8 +80,11 @@ public class HomeActivity extends AppCompatActivity {
     private UserRepository userRepository;
     private AuthorRepository authorRepository;
     private RemoteBookRepository remoteBookRepository;
+    private RecommendationTrackingRepository trackingRepository;
     private ApiService apiService;
     private AuthorAdapter authorAdapter;
+    private boolean bookRecommendationsImpressed = false;
+    private boolean audiobookRecommendationsImpressed = false;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -106,6 +111,7 @@ public class HomeActivity extends AppCompatActivity {
         userRepository = new UserRepository();
         authorRepository = new AuthorRepository(this);
         remoteBookRepository = new RemoteBookRepository(this);
+        trackingRepository = new RecommendationTrackingRepository();
         apiService = ApiClient.getApiService();
         
         setupAdminButton();
@@ -327,6 +333,7 @@ public class HomeActivity extends AppCompatActivity {
         public String audioUrl;
         public String audioType;
         public int durationSeconds;
+        public int slotIndex = -1;
 
         public RecommendedBook(String title, String author, String fileUrl, String fileType, String image, String annotation) {
             this(-1L, title, author, fileUrl, fileType, image, annotation, false, null, null, 0);
@@ -358,17 +365,26 @@ public class HomeActivity extends AppCompatActivity {
         remoteBookRepository.getRecommendedBooks(7).observe(this, remoteBooks -> {
             if (remoteBooks == null) return;
             List<RecommendedBook> bookList = new ArrayList<>();
+            int slotIndex = 0;
             for (RemoteBook book : remoteBooks) {
-                bookList.add(new RecommendedBook(
+                RecommendedBook recommendedBook = new RecommendedBook(
+                    book.getId(),
                     book.getTitle(),
                     book.getAuthor(),
                     book.getFileUrl(),
                     book.getFileType(),
                     book.getImage(),
-                    book.getAnnotation()
-                ));
+                    book.getAnnotation(),
+                    false,
+                    null,
+                    null,
+                    0
+                );
+                recommendedBook.slotIndex = slotIndex++;
+                bookList.add(recommendedBook);
             }
             adapter.updateBooks(bookList);
+            trackBookRecommendationImpressions(bookList);
         });
 
         remoteBookRepository.loadRecommendedBooksFromApi(7);
@@ -380,48 +396,91 @@ public class HomeActivity extends AppCompatActivity {
         RecommendBookAdapter adapter = new RecommendBookAdapter(new ArrayList<>(), HomeActivity.this::handleRecommendedBookClick);
         recyclerView.setAdapter(adapter);
 
-        apiService.getAudiobooks(7, 0).enqueue(new Callback<List<ApiAudiobook>>() {
+        apiService.getRecommendedAudiobooks(7).enqueue(new Callback<List<ApiAudiobook>>() {
             @Override
             public void onResponse(Call<List<ApiAudiobook>> call, Response<List<ApiAudiobook>> response) {
                 if (!response.isSuccessful() || response.body() == null) {
-                    Log.w("HomeActivity", "Failed to load audiobook recommendations: " + response.code());
+                    Log.w("HomeActivity", "Failed to load audiobook recommendations: " + response.code() + " " + errorBody(response));
+                    loadFallbackAudiobooks(adapter);
                     return;
                 }
 
-                List<RecommendedBook> audiobookList = new ArrayList<>();
-                for (ApiAudiobook audiobook : response.body()) {
-                    String audioType = audiobook.audioType != null ? audiobook.audioType : "mp3";
-                    int durationSeconds = audiobook.durationSeconds != null ? audiobook.durationSeconds : 0;
-                    audiobookList.add(new RecommendedBook(
-                        audiobook.id,
-                        audiobook.title,
-                        audiobook.author,
-                        audiobook.audioUrl,
-                        audioType,
-                        audiobook.image,
-                        audiobook.annotation,
-                        true,
-                        audiobook.audioUrl,
-                        audioType,
-                        durationSeconds
-                    ));
-                }
+                List<RecommendedBook> audiobookList = mapRecommendedAudiobooks(response.body());
                 adapter.updateBooks(audiobookList);
+                trackAudiobookRecommendationImpressions(audiobookList);
             }
 
             @Override
             public void onFailure(Call<List<ApiAudiobook>> call, Throwable t) {
                 Log.w("HomeActivity", "Error loading audiobook recommendations", t);
+                loadFallbackAudiobooks(adapter);
             }
         });
+    }
+
+    private void loadFallbackAudiobooks(RecommendBookAdapter adapter) {
+        apiService.getAudiobooks(7, 0).enqueue(new Callback<List<ApiAudiobook>>() {
+            @Override
+            public void onResponse(Call<List<ApiAudiobook>> call, Response<List<ApiAudiobook>> response) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    Log.w("HomeActivity", "Failed to load fallback audiobooks: " + response.code() + " " + errorBody(response));
+                    return;
+                }
+                adapter.updateBooks(mapRecommendedAudiobooks(response.body()));
+            }
+
+            @Override
+            public void onFailure(Call<List<ApiAudiobook>> call, Throwable t) {
+                Log.w("HomeActivity", "Error loading fallback audiobooks", t);
+            }
+        });
+    }
+
+    private List<RecommendedBook> mapRecommendedAudiobooks(List<ApiAudiobook> audiobooks) {
+        List<RecommendedBook> audiobookList = new ArrayList<>();
+        int slotIndex = 0;
+        for (ApiAudiobook audiobook : audiobooks) {
+            String audioType = audiobook.audioType != null ? audiobook.audioType : "mp3";
+            int durationSeconds = audiobook.durationSeconds != null ? audiobook.durationSeconds : 0;
+            RecommendedBook recommendedBook = new RecommendedBook(
+                audiobook.id,
+                audiobook.title,
+                audiobook.author,
+                audiobook.audioUrl,
+                audioType,
+                audiobook.image,
+                audiobook.annotation,
+                true,
+                audiobook.audioUrl,
+                audioType,
+                durationSeconds
+            );
+            recommendedBook.slotIndex = slotIndex++;
+            audiobookList.add(recommendedBook);
+        }
+        return audiobookList;
     }
 
     private void handleRecommendedBookClick(RecommendedBook book) {
         if (book == null) return;
         if (book.isAudiobook) {
+            trackingRepository.trackAudiobookEvent(
+                book.id,
+                RecommendationTrackingRepository.EVENT_CLICK,
+                slotIndexOrNull(book),
+                null,
+                null
+            );
             openAudiobookOptionsActivity(book);
             return;
         }
+        trackingRepository.trackBookEvent(
+            book.id,
+            RecommendationTrackingRepository.EVENT_CLICK,
+            slotIndexOrNull(book),
+            null,
+            null
+        );
         if (!hasStoragePermission()) {
             requestStoragePermission();
             return;
@@ -447,7 +506,7 @@ public class HomeActivity extends AppCompatActivity {
         if (existingFile.exists()) {
             Log.d("HomeActivity", "File already exists on device: " + existingFile.getAbsolutePath());
             // File exists, check if it's in our database
-            checkDatabaseAndAddIfNeeded(bookTitle, bookAuthor, existingFile.getAbsolutePath(), fileType, imageUrl, annotation);
+            checkDatabaseAndAddIfNeeded(book.id, bookTitle, bookAuthor, existingFile.getAbsolutePath(), fileType, imageUrl, annotation);
             return;
         }
 
@@ -487,22 +546,22 @@ public class HomeActivity extends AppCompatActivity {
                     if (fileExists) {
                         Log.d("HomeActivity", "Book found in database and file exists: " + existingBook.getFilePath());
                         // Always use the URI stored in the database (which should be content URI)
-                        openBookOptionsActivity(Uri.parse(existingBook.getFilePath()), fileType, bookTitle, annotation);
+                        openBookOptionsActivity(book.id, Uri.parse(existingBook.getFilePath()), fileType, bookTitle, annotation);
                     } else {
                         Log.d("HomeActivity", "Book in database but file missing, will re-download");
                         // File doesn't exist, remove from database and download again
                         bookRepository.delete(existingBook);
-                        startDownload(bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
+                        startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
                     }
                 } else {
-                    startDownload(bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
+                    startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
                 }
             }
         };
         viewModel.getAllBooks().observe(this, observer);
     }
 
-    private void checkDatabaseAndAddIfNeeded(String title, String author, String filePath, String fileType, String imageUrl, String annotation) {
+    private void checkDatabaseAndAddIfNeeded(long serverBookId, String title, String author, String filePath, String fileType, String imageUrl, String annotation) {
         Observer<List<Book>> observer = new Observer<List<Book>>() {
             @Override
             public void onChanged(List<Book> books) {
@@ -542,7 +601,7 @@ public class HomeActivity extends AppCompatActivity {
                 }
                 
                 // Always open the book with content URI
-                openBookOptionsActivity(Uri.parse(contentUri), fileType, title, annotation);
+                openBookOptionsActivity(serverBookId, Uri.parse(contentUri), fileType, title, annotation);
             }
         };
         viewModel.getAllBooks().observe(this, observer);
@@ -565,7 +624,7 @@ public class HomeActivity extends AppCompatActivity {
         return null;
     }
 
-    private void startDownload(String title, String author, String fileUrl, String fileType, String imageUrl, String annotation) {
+    private void startDownload(long serverBookId, String title, String author, String fileUrl, String fileType, String imageUrl, String annotation) {
         isDownloading = true;
         Log.d("HomeActivity", "=== DOWNLOAD START ===");
         Log.d("HomeActivity", "Title: " + title);
@@ -625,7 +684,7 @@ public class HomeActivity extends AppCompatActivity {
                             isDownloading = false;
                             if (uriString != null) {
                                 Log.d("HomeActivity", "Saving book to database...");
-                                saveBookAndOpenFromServer(title, author, uriString, fileType, imageUrl, annotation);
+                                saveBookAndOpenFromServer(serverBookId, title, author, uriString, fileType, imageUrl, annotation);
                             } else {
                                 Log.e("HomeActivity", "Download succeeded but local URI is null!");
                                 Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
@@ -703,15 +762,15 @@ public class HomeActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void saveBookAndOpenFromServer(String title, String author, String localUriString, String fileType, String imageUrl, String annotation) {
+    private void saveBookAndOpenFromServer(long serverBookId, String title, String author, String localUriString, String fileType, String imageUrl, String annotation) {
         Book book = new Book(title, author, localUriString, fileType);
         book.setPreviewImagePath(imageUrl);
         book.setAnnotation(annotation);
         bookRepository.insert(book);
-        openBookOptionsActivity(Uri.parse(localUriString), fileType, title, annotation);
+        openBookOptionsActivity(serverBookId, Uri.parse(localUriString), fileType, title, annotation);
     }
 
-    private void openBookOptionsActivity(Uri fileUri, String fileType, String title, String annotation) {
+    private void openBookOptionsActivity(long serverBookId, Uri fileUri, String fileType, String title, String annotation) {
         // Update the lastOpened timestamp if this book exists in the database
         String filePath = fileUri.toString();
         androidx.lifecycle.Observer<Book> observer = new androidx.lifecycle.Observer<Book>() {
@@ -742,6 +801,8 @@ public class HomeActivity extends AppCompatActivity {
         }
         Intent intent = new Intent(this, BookOptionsActivity.class);
         intent.setData(fileUri);
+        intent.putExtra("bookId", serverBookId);
+        intent.putExtra("fromRecommendation", true);
         intent.putExtra("fileType", fileType);
         intent.putExtra("title", title);
         intent.putExtra("annotation", annotation);
@@ -759,6 +820,7 @@ public class HomeActivity extends AppCompatActivity {
         Intent intent = new Intent(this, BookOptionsActivity.class);
         intent.setData(Uri.parse(audioUrl));
         intent.putExtra("isAudiobook", true);
+        intent.putExtra("fromRecommendation", true);
         intent.putExtra("audiobookId", book.id);
         intent.putExtra("audioUrl", audioUrl);
         intent.putExtra("audioType", book.audioType != null ? book.audioType : book.fileType);
@@ -769,6 +831,53 @@ public class HomeActivity extends AppCompatActivity {
         intent.putExtra("annotation", book.annotation);
         intent.putExtra("previewImagePath", book.image);
         startActivity(intent);
+    }
+
+    private void trackBookRecommendationImpressions(List<RecommendedBook> books) {
+        if (bookRecommendationsImpressed || books == null || books.isEmpty()) {
+            return;
+        }
+        bookRecommendationsImpressed = true;
+        for (RecommendedBook book : books) {
+            trackingRepository.trackBookEvent(
+                book.id,
+                RecommendationTrackingRepository.EVENT_IMPRESSION,
+                slotIndexOrNull(book),
+                null,
+                null
+            );
+        }
+    }
+
+    private void trackAudiobookRecommendationImpressions(List<RecommendedBook> audiobooks) {
+        if (audiobookRecommendationsImpressed || audiobooks == null || audiobooks.isEmpty()) {
+            return;
+        }
+        audiobookRecommendationsImpressed = true;
+        for (RecommendedBook audiobook : audiobooks) {
+            trackingRepository.trackAudiobookEvent(
+                audiobook.id,
+                RecommendationTrackingRepository.EVENT_IMPRESSION,
+                slotIndexOrNull(audiobook),
+                null,
+                null
+            );
+        }
+    }
+
+    private Integer slotIndexOrNull(RecommendedBook book) {
+        return book != null && book.slotIndex >= 0 ? book.slotIndex : null;
+    }
+
+    private String errorBody(Response<?> response) {
+        if (response.errorBody() == null) {
+            return "";
+        }
+        try {
+            return response.errorBody().string();
+        } catch (IOException e) {
+            return "";
+        }
     }
 
     private void setupAuthorsRecycler() {

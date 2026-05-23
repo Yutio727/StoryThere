@@ -388,12 +388,17 @@ public class CatalogActivity extends AppCompatActivity {
 
     private HomeActivity.RecommendedBook mapApiBook(ApiBook apiBook) {
         return new HomeActivity.RecommendedBook(
+            apiBook.id,
             apiBook.title,
             apiBook.author,
             apiBook.fileUrl,
             apiBook.fileType,
             apiBook.image,
-            apiBook.annotation
+            apiBook.annotation,
+            false,
+            null,
+            null,
+            0
         );
     }
 
@@ -506,7 +511,7 @@ public class CatalogActivity extends AppCompatActivity {
         File existingFile = new File(downloadsDir, fileName);
 
         if (existingFile.exists()) {
-            checkDatabaseAndAddIfNeeded(bookTitle, bookAuthor, existingFile.getAbsolutePath(), fileType, imageUrl, annotation);
+            checkDatabaseAndAddIfNeeded(book.id, bookTitle, bookAuthor, existingFile.getAbsolutePath(), fileType, imageUrl, annotation);
             return;
         }
 
@@ -525,15 +530,15 @@ public class CatalogActivity extends AppCompatActivity {
                 }
 
                 if (existingBook == null) {
-                    startDownload(bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
+                    startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
                     return;
                 }
 
                 if (doesBookFileExist(existingBook)) {
-                    openBookOptionsActivity(Uri.parse(existingBook.getFilePath()), fileType, bookTitle, annotation);
+                    openBookOptionsActivity(book.id, Uri.parse(existingBook.getFilePath()), fileType, bookTitle, annotation);
                 } else {
                     bookRepository.delete(existingBook);
-                    startDownload(bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
+                    startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
                 }
             }
         };
@@ -555,7 +560,7 @@ public class CatalogActivity extends AppCompatActivity {
         }
     }
 
-    private void checkDatabaseAndAddIfNeeded(String title, String author, String filePath, String fileType, String imageUrl, String annotation) {
+    private void checkDatabaseAndAddIfNeeded(long serverBookId, String title, String author, String filePath, String fileType, String imageUrl, String annotation) {
         Observer<List<Book>> observer = new Observer<List<Book>>() {
             @Override
             public void onChanged(List<Book> localBooks) {
@@ -587,7 +592,7 @@ public class CatalogActivity extends AppCompatActivity {
                     bookRepository.insert(newBook);
                 }
 
-                openBookOptionsActivity(Uri.parse(contentUri), fileType, title, annotation);
+                openBookOptionsActivity(serverBookId, Uri.parse(contentUri), fileType, title, annotation);
             }
         };
         viewModel.getAllBooks().observe(this, observer);
@@ -608,7 +613,7 @@ public class CatalogActivity extends AppCompatActivity {
         return null;
     }
 
-    private void startDownload(String title, String author, String fileUrl, String fileType, String imageUrl, String annotation) {
+    private void startDownload(long serverBookId, String title, String author, String fileUrl, String fileType, String imageUrl, String annotation) {
         if (fileUrl == null || fileUrl.trim().isEmpty()) {
             isDownloading = false;
             Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
@@ -647,7 +652,7 @@ public class CatalogActivity extends AppCompatActivity {
                         runOnUiThread(() -> {
                             isDownloading = false;
                             if (uriString != null) {
-                                saveBookAndOpenFromServer(title, author, uriString, fileType, imageUrl, annotation);
+                                saveBookAndOpenFromServer(serverBookId, title, author, uriString, fileType, imageUrl, annotation);
                             } else {
                                 Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
                             }
@@ -681,15 +686,15 @@ public class CatalogActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void saveBookAndOpenFromServer(String title, String author, String localUriString, String fileType, String imageUrl, String annotation) {
+    private void saveBookAndOpenFromServer(long serverBookId, String title, String author, String localUriString, String fileType, String imageUrl, String annotation) {
         Book book = new Book(title, author, localUriString, fileType);
         book.setPreviewImagePath(imageUrl);
         book.setAnnotation(annotation);
         bookRepository.insert(book);
-        openBookOptionsActivity(Uri.parse(localUriString), fileType, title, annotation);
+        openBookOptionsActivity(serverBookId, Uri.parse(localUriString), fileType, title, annotation);
     }
 
-    private void openBookOptionsActivity(Uri fileUri, String fileType, String title, String annotation) {
+    private void openBookOptionsActivity(long serverBookId, Uri fileUri, String fileType, String title, String annotation) {
         String filePath = fileUri.toString();
         Observer<Book> observer = new Observer<Book>() {
             @Override
@@ -713,6 +718,8 @@ public class CatalogActivity extends AppCompatActivity {
 
         Intent intent = new Intent(this, BookOptionsActivity.class);
         intent.setData(fileUri);
+        intent.putExtra("bookId", serverBookId);
+        intent.putExtra("fromRecommendation", false);
         intent.putExtra("fileType", fileType);
         intent.putExtra("title", title);
         intent.putExtra("annotation", annotation);
@@ -730,6 +737,7 @@ public class CatalogActivity extends AppCompatActivity {
         Intent intent = new Intent(this, BookOptionsActivity.class);
         intent.setData(Uri.parse(audioUrl));
         intent.putExtra("isAudiobook", true);
+        intent.putExtra("fromRecommendation", false);
         intent.putExtra("audiobookId", book.id);
         intent.putExtra("audioUrl", audioUrl);
         intent.putExtra("audioType", book.audioType != null ? book.audioType : book.fileType);

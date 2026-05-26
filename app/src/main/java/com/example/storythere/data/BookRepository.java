@@ -27,6 +27,10 @@ public class BookRepository {
     public LiveData<Book> getBookByPath(String filePath) {
         return bookDao.getBookByPath(filePath);
     }
+
+    public LiveData<Book> getBookByServerBookId(long serverBookId) {
+        return bookDao.getBookByServerBookId(serverBookId);
+    }
     
     public void insert(Book book) {
         executorService.execute(() -> {

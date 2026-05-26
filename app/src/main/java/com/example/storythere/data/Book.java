@@ -25,6 +25,9 @@ public class Book {
     private int readingPosition; // Store viewing position for all document types
     private String readingStats; // for word count/listening time
     private String authorId; // Link to author collection
+    private long serverBookId; // Backend books.id for server library/progress sync
+    private String remoteFileUrl; // Original download URL for server-backed books
+    private double serverProgress; // Last progress percentage received from backend
     
     @Ignore
     public Book(String title, String author, String filePath, String fileType) {
@@ -37,6 +40,8 @@ public class Book {
         this.isFavourite = false;
         this.isAlreadyRead = false;
         this.readingPosition = 0;
+        this.serverBookId = 0L;
+        this.serverProgress = 0.0;
     }
     
     public Book() {
@@ -92,4 +97,13 @@ public class Book {
 
     public String getAuthorId() { return authorId; }
     public void setAuthorId(String authorId) { this.authorId = authorId; }
+
+    public long getServerBookId() { return serverBookId; }
+    public void setServerBookId(long serverBookId) { this.serverBookId = serverBookId; }
+
+    public String getRemoteFileUrl() { return remoteFileUrl; }
+    public void setRemoteFileUrl(String remoteFileUrl) { this.remoteFileUrl = remoteFileUrl; }
+
+    public double getServerProgress() { return serverProgress; }
+    public void setServerProgress(double serverProgress) { this.serverProgress = serverProgress; }
 } 

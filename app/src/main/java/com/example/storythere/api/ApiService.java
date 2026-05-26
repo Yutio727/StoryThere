@@ -4,6 +4,7 @@ import com.example.storythere.api.model.ApiAuthor;
 import com.example.storythere.api.model.ApiAudiobook;
 import com.example.storythere.api.model.ApiBook;
 import com.example.storythere.api.model.ApiUser;
+import com.example.storythere.api.model.ApiUserBook;
 import com.example.storythere.api.model.AudiobookInteractionRequest;
 import com.example.storythere.api.model.AudiobookRecommendationEventRequest;
 import com.example.storythere.api.model.BookInteractionRequest;
@@ -41,6 +42,12 @@ public interface ApiService {
 
     @GET("v1/books")
     Call<List<ApiBook>> getBooks(
+        @Query("limit") int limit,
+        @Query("offset") int offset
+    );
+
+    @GET("v1/me/books")
+    Call<List<ApiUserBook>> getMyBooks(
         @Query("limit") int limit,
         @Query("offset") int offset
     );

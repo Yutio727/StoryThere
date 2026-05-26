@@ -191,6 +191,9 @@ public class BookOptionsActivity extends AppCompatActivity {
                 public void onChanged(Book book) {
                     if (book != null) {
                         currentBook = book;
+                        if (bookId <= 0 && book.getServerBookId() > 0) {
+                            bookId = book.getServerBookId();
+                        }
                         bookAuthorText.setText(book.getAuthor() != null ? book.getAuthor() : "Unknown Author");
                         
                         // Display annotation from database if not already set from intent

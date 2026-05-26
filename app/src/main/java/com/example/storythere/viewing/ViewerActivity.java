@@ -953,6 +953,12 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
         
         if (currentBook != null && !isPositionRestored && pdfRecyclerView != null) {
             int savedPosition = currentBook.getReadingPosition();
+            if (savedPosition <= 0 && currentBook.getServerProgress() > 0.0 && pages != null && !pages.isEmpty()) {
+                savedPosition = pagePositionFromServerProgress(currentBook.getServerProgress(), pages.size());
+                currentBook.setReadingPosition(savedPosition);
+                bookRepository.update(currentBook);
+                Log.d(TAG, "[POSITION_RESTORE] Using server progress " + currentBook.getServerProgress() + "% as page position: " + savedPosition);
+            }
             Log.d(TAG, "[POSITION_RESTORE] - savedPosition: " + savedPosition);
             Log.d(TAG, "[POSITION_RESTORE] - pages.size: " + pages.size());
             
@@ -977,6 +983,17 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
             Log.w(TAG, "[POSITION_RESTORE] - isPositionRestored: " + isPositionRestored);
             Log.w(TAG, "[POSITION_RESTORE] - pdfRecyclerView: " + (pdfRecyclerView != null ? "not null" : "null"));
         }
+    }
+
+    private int pagePositionFromServerProgress(double progress, int pageCount) {
+        if (pageCount <= 0 || progress <= 0.0) {
+            return 0;
+        }
+        if (progress >= 100.0) {
+            return pageCount - 1;
+        }
+        int page = (int) Math.ceil((progress * pageCount) / 100.0) - 1;
+        return Math.max(0, Math.min(page, pageCount - 1));
     }
 
     private void forceRenderPages(int startPage, int endPage, int targetPosition) {

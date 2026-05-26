@@ -36,4 +36,8 @@ public class BookListViewModel extends AndroidViewModel {
     public LiveData<Book> getBookByPath(String filePath) {
         return repository.getBookByPath(filePath);
     }
+
+    public LiveData<Book> getBookByServerBookId(long serverBookId) {
+        return repository.getBookByServerBookId(serverBookId);
+    }
 } 

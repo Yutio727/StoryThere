@@ -30,4 +30,13 @@ public interface BookDao {
     
     @Query("SELECT * FROM books WHERE filePath = :filePath")
     LiveData<Book> getBookByPath(String filePath);
+
+    @Query("SELECT * FROM books WHERE serverBookId = :serverBookId LIMIT 1")
+    LiveData<Book> getBookByServerBookId(long serverBookId);
+
+    @Query("SELECT * FROM books WHERE serverBookId = :serverBookId LIMIT 1")
+    Book findBookByServerBookId(long serverBookId);
+
+    @Query("SELECT * FROM books WHERE title = :title AND author = :author LIMIT 1")
+    Book findBookByTitleAndAuthor(String title, String author);
 } 

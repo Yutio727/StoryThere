@@ -233,8 +233,11 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
             }
 
             int startPosition = initialPositionMs();
-            if (startPosition > 0 && durationMs > 0) {
-                mp.seekTo(Math.min(startPosition, durationMs));
+            if (startPosition > 0) {
+                int targetPosition = durationMs > 0 ? Math.min(startPosition, durationMs) : startPosition;
+                mp.seekTo(targetPosition);
+                progressBar.setProgress(targetPosition);
+                currentTimeText.setText(formatTime(targetPosition / 1000));
             }
             updateProgress();
             Toast.makeText(this, R.string.ready_to_play, Toast.LENGTH_SHORT).show();
@@ -257,7 +260,11 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
         });
 
         try {
-            mediaPlayer.setDataSource(this, audioUri);
+            if (isRemoteUri(audioUri)) {
+                mediaPlayer.setDataSource(audioUri.toString());
+            } else {
+                mediaPlayer.setDataSource(this, audioUri);
+            }
             mediaPlayer.prepareAsync();
         } catch (IOException | IllegalArgumentException | SecurityException e) {
             Log.e(TAG, "Failed to prepare audiobook: " + audioUri, e);
@@ -265,6 +272,14 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
             enableControls(false);
             Toast.makeText(this, R.string.error_launching_audio_reader, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private boolean isRemoteUri(Uri uri) {
+        if (uri == null || uri.getScheme() == null) {
+            return false;
+        }
+        String scheme = uri.getScheme().toLowerCase(Locale.US);
+        return "http".equals(scheme) || "https".equals(scheme);
     }
 
     private int initialPositionMs() {

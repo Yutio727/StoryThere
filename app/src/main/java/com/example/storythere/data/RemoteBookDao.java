@@ -10,8 +10,17 @@ import java.util.List;
 
 @Dao
 public interface RemoteBookDao {
-    @Query("SELECT * FROM remote_books ORDER BY id DESC LIMIT :limit")
+    @Query("SELECT * FROM remote_books ORDER BY recommendationRank ASC, id DESC LIMIT :limit")
     LiveData<List<RemoteBook>> getRecommendedBooks(int limit);
+
+    @Query("SELECT MAX(cachedAtMillis) FROM remote_books")
+    Long getLatestCacheTimestampMillis();
+
+    @Query("SELECT recommendationSource FROM remote_books ORDER BY cachedAtMillis DESC LIMIT 1")
+    String getLatestRecommendationSource();
+
+    @Query("SELECT COUNT(*) FROM remote_books")
+    int getRecommendedBookCount();
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertBooks(List<RemoteBook> books);

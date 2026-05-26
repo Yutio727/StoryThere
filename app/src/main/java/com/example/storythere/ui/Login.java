@@ -263,11 +263,7 @@ public class Login extends AppCompatActivity {
     }
 
     private void navigateAfterSuccessfulLogin() {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        Class<?> destination = OnboardingActivity.isCompleted(this, currentUser)
-            ? HomeActivity.class
-            : OnboardingActivity.class;
-        Intent intent = new Intent(Login.this, destination);
+        Intent intent = new Intent(Login.this, HomeActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();

@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -23,6 +24,7 @@ import com.example.storythere.adapters.OnboardingGenreAdapter;
 import com.example.storythere.api.ApiClient;
 import com.example.storythere.api.ApiService;
 import com.example.storythere.api.model.ApiAuthor;
+import com.example.storythere.api.model.ApiAudiobook;
 import com.example.storythere.api.model.ApiBook;
 import com.example.storythere.data.Author;
 import com.google.android.material.button.MaterialButton;
@@ -95,6 +97,7 @@ public class OnboardingActivity extends AppCompatActivity {
     private int currentStep = STEP_WELCOME;
     private boolean authorsLoaded = false;
     private boolean booksLoading = false;
+    private boolean initialRecommendationsRequested = false;
     private String booksLoadedForAuthorsKey = "";
 
     private final String[] popularGenres = {
@@ -275,9 +278,45 @@ public class OnboardingActivity extends AppCompatActivity {
 
     private void showDoneStep() {
         saveOnboardingPreferences();
+        requestInitialRecommendations();
         titleText.setText(R.string.onboarding_done_title);
         subtitleText.setText(R.string.onboarding_done_subtitle);
         handler.postDelayed(this::navigateToHome, 900);
+    }
+
+    private void requestInitialRecommendations() {
+        if (initialRecommendationsRequested) {
+            return;
+        }
+        initialRecommendationsRequested = true;
+
+        apiService.getRecommendedBooks(7).enqueue(new Callback<List<ApiBook>>() {
+            @Override
+            public void onResponse(@NonNull Call<List<ApiBook>> call, @NonNull Response<List<ApiBook>> response) {
+                if (!response.isSuccessful()) {
+                    Log.w("OnboardingActivity", "Initial book recommendations request failed: " + response.code());
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<List<ApiBook>> call, @NonNull Throwable t) {
+                Log.w("OnboardingActivity", "Initial book recommendations request error", t);
+            }
+        });
+
+        apiService.getRecommendedAudiobooks(7).enqueue(new Callback<List<ApiAudiobook>>() {
+            @Override
+            public void onResponse(@NonNull Call<List<ApiAudiobook>> call, @NonNull Response<List<ApiAudiobook>> response) {
+                if (!response.isSuccessful()) {
+                    Log.w("OnboardingActivity", "Initial audiobook recommendations request failed: " + response.code());
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<List<ApiAudiobook>> call, @NonNull Throwable t) {
+                Log.w("OnboardingActivity", "Initial audiobook recommendations request error", t);
+            }
+        });
     }
 
     private void updateNextButtonState() {

@@ -1,11 +1,14 @@
 package com.example.storythere.ui;
 
 import android.Manifest;
+import android.content.SharedPreferences;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.view.View;
 import android.widget.ImageView;
@@ -39,9 +42,12 @@ import android.widget.Button;
 import com.example.storythere.data.UserRepository;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.storythere.adapters.RecommendBookAdapter;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import androidx.lifecycle.Observer;
@@ -57,6 +63,14 @@ import retrofit2.Response;
 
 public class HomeActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 1204;
+    private static final long RECOMMENDATION_CACHE_TTL_MS = 60_000L;
+    private static final long MODEL_CACHE_RETRY_DELAY_MS = 5_000L;
+    private static final int MAX_MODEL_CACHE_RETRY_ATTEMPTS = 12;
+    private static final String AUDIOBOOK_CACHE_PREFS = "AudiobookRecommendationCache";
+    private static final String KEY_AUDIOBOOK_CACHE_JSON_PREFIX = "audiobooks_json_";
+    private static final String KEY_AUDIOBOOK_CACHE_TIME_PREFIX = "audiobooks_cached_at_";
+    private static final String KEY_AUDIOBOOK_CACHE_SOURCE_PREFIX = "audiobooks_source_";
+    private static final String RECOMMENDATION_SOURCE_MODEL_CACHE = "model-cache";
     
     private ImageView iconHome, iconSearch, iconMyBooks, iconCatalog, iconProfile;
     private TextView textHome, textSearch, textMyBooks, textCatalog, textProfile;
@@ -85,6 +99,10 @@ public class HomeActivity extends AppCompatActivity {
     private AuthorAdapter authorAdapter;
     private boolean bookRecommendationsImpressed = false;
     private boolean audiobookRecommendationsImpressed = false;
+    private final Handler recommendationRetryHandler = new Handler(Looper.getMainLooper());
+    private int audiobookModelCacheRetryAttempts = 0;
+    private boolean audiobookModelCacheRetryScheduled = false;
+    private Runnable audiobookModelCacheRefreshRunnable;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -396,6 +414,21 @@ public class HomeActivity extends AppCompatActivity {
         RecommendBookAdapter adapter = new RecommendBookAdapter(new ArrayList<>(), HomeActivity.this::handleRecommendedBookClick);
         recyclerView.setAdapter(adapter);
 
+        CachedAudiobookRecommendations cachedAudiobooks = getCachedRecommendedAudiobooks();
+        if (cachedAudiobooks != null) {
+            List<RecommendedBook> audiobookList = mapRecommendedAudiobooks(cachedAudiobooks.audiobooks);
+            adapter.updateBooks(audiobookList);
+            trackAudiobookRecommendationImpressions(audiobookList);
+            if (cachedAudiobooks.isFreshModelCache()) {
+                scheduleAudiobookModelCacheRefresh(adapter, cachedAudiobooks.remainingFreshMillis());
+                return;
+            }
+        }
+
+        fetchRecommendedAudiobooks(adapter);
+    }
+
+    private void fetchRecommendedAudiobooks(RecommendBookAdapter adapter) {
         apiService.getRecommendedAudiobooks(7).enqueue(new Callback<List<ApiAudiobook>>() {
             @Override
             public void onResponse(Call<List<ApiAudiobook>> call, Response<List<ApiAudiobook>> response) {
@@ -405,6 +438,20 @@ public class HomeActivity extends AppCompatActivity {
                     return;
                 }
 
+                String source = response.headers().get("X-StoryThere-Recommendation-Source");
+                CachedAudiobookRecommendations latestCache = getCachedRecommendedAudiobooks();
+                if (RECOMMENDATION_SOURCE_MODEL_CACHE.equals(source)) {
+                    resetAudiobookModelCacheRetry();
+                    cacheRecommendedAudiobooks(response.body(), source);
+                    scheduleAudiobookModelCacheRefresh(adapter, RECOMMENDATION_CACHE_TTL_MS);
+                } else if (latestCache == null) {
+                    cacheRecommendedAudiobooks(response.body(), source);
+                    scheduleAudiobookModelCacheRetry(adapter);
+                } else {
+                    Log.d("HomeActivity", "Preserving existing audiobook recommendations while server returns " + source);
+                    scheduleAudiobookModelCacheRetry(adapter);
+                    return;
+                }
                 List<RecommendedBook> audiobookList = mapRecommendedAudiobooks(response.body());
                 adapter.updateBooks(audiobookList);
                 trackAudiobookRecommendationImpressions(audiobookList);
@@ -418,6 +465,38 @@ public class HomeActivity extends AppCompatActivity {
         });
     }
 
+    private void scheduleAudiobookModelCacheRetry(RecommendBookAdapter adapter) {
+        if (audiobookModelCacheRetryScheduled
+            || audiobookModelCacheRetryAttempts >= MAX_MODEL_CACHE_RETRY_ATTEMPTS) {
+            return;
+        }
+        audiobookModelCacheRetryScheduled = true;
+        audiobookModelCacheRetryAttempts++;
+        recommendationRetryHandler.postDelayed(() -> {
+            audiobookModelCacheRetryScheduled = false;
+            fetchRecommendedAudiobooks(adapter);
+        }, MODEL_CACHE_RETRY_DELAY_MS);
+    }
+
+    private void resetAudiobookModelCacheRetry() {
+        audiobookModelCacheRetryAttempts = 0;
+        audiobookModelCacheRetryScheduled = false;
+        audiobookModelCacheRefreshRunnable = null;
+        recommendationRetryHandler.removeCallbacksAndMessages(null);
+    }
+
+    private void scheduleAudiobookModelCacheRefresh(RecommendBookAdapter adapter, long delayMillis) {
+        if (audiobookModelCacheRefreshRunnable != null) {
+            recommendationRetryHandler.removeCallbacks(audiobookModelCacheRefreshRunnable);
+        }
+        long boundedDelayMillis = Math.max(250L, delayMillis + 250L);
+        audiobookModelCacheRefreshRunnable = () -> {
+            audiobookModelCacheRefreshRunnable = null;
+            fetchRecommendedAudiobooks(adapter);
+        };
+        recommendationRetryHandler.postDelayed(audiobookModelCacheRefreshRunnable, boundedDelayMillis);
+    }
+
     private void loadFallbackAudiobooks(RecommendBookAdapter adapter) {
         apiService.getAudiobooks(7, 0).enqueue(new Callback<List<ApiAudiobook>>() {
             @Override
@@ -426,7 +505,12 @@ public class HomeActivity extends AppCompatActivity {
                     Log.w("HomeActivity", "Failed to load fallback audiobooks: " + response.code() + " " + errorBody(response));
                     return;
                 }
-                adapter.updateBooks(mapRecommendedAudiobooks(response.body()));
+                if (getCachedRecommendedAudiobooks() == null) {
+                    cacheRecommendedAudiobooks(response.body(), "catalog-fallback");
+                    List<RecommendedBook> audiobookList = mapRecommendedAudiobooks(response.body());
+                    adapter.updateBooks(audiobookList);
+                    trackAudiobookRecommendationImpressions(audiobookList);
+                }
             }
 
             @Override
@@ -434,6 +518,73 @@ public class HomeActivity extends AppCompatActivity {
                 Log.w("HomeActivity", "Error loading fallback audiobooks", t);
             }
         });
+    }
+
+    private CachedAudiobookRecommendations getCachedRecommendedAudiobooks() {
+        SharedPreferences preferences = getSharedPreferences(AUDIOBOOK_CACHE_PREFS, MODE_PRIVATE);
+        String userKey = currentRecommendationCacheUserKey();
+        long cachedAtMillis = preferences.getLong(KEY_AUDIOBOOK_CACHE_TIME_PREFIX + userKey, 0L);
+        String json = preferences.getString(KEY_AUDIOBOOK_CACHE_JSON_PREFIX + userKey, null);
+        if (json == null || json.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            Type type = new TypeToken<List<ApiAudiobook>>() {}.getType();
+            List<ApiAudiobook> audiobooks = new Gson().fromJson(json, type);
+            if (audiobooks == null || audiobooks.isEmpty()) {
+                return null;
+            }
+            String source = preferences.getString(KEY_AUDIOBOOK_CACHE_SOURCE_PREFIX + userKey, null);
+            Log.d("HomeActivity", "Using cached audiobook recommendations. Cache age: " + (System.currentTimeMillis() - cachedAtMillis) + "ms");
+            return new CachedAudiobookRecommendations(audiobooks, cachedAtMillis, source);
+        } catch (Exception e) {
+            Log.w("HomeActivity", "Failed to parse cached audiobook recommendations", e);
+            return null;
+        }
+    }
+
+    private void cacheRecommendedAudiobooks(List<ApiAudiobook> audiobooks, String source) {
+        if (audiobooks == null || audiobooks.isEmpty()) {
+            return;
+        }
+        String userKey = currentRecommendationCacheUserKey();
+        getSharedPreferences(AUDIOBOOK_CACHE_PREFS, MODE_PRIVATE)
+            .edit()
+            .putString(KEY_AUDIOBOOK_CACHE_JSON_PREFIX + userKey, new Gson().toJson(audiobooks))
+            .putLong(KEY_AUDIOBOOK_CACHE_TIME_PREFIX + userKey, System.currentTimeMillis())
+            .putString(KEY_AUDIOBOOK_CACHE_SOURCE_PREFIX + userKey, source)
+            .apply();
+    }
+
+    private String currentRecommendationCacheUserKey() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null || user.getUid() == null || user.getUid().trim().isEmpty()) {
+            return "anonymous";
+        }
+        return user.getUid();
+    }
+
+    private static class CachedAudiobookRecommendations {
+        final List<ApiAudiobook> audiobooks;
+        final long cachedAtMillis;
+        final String source;
+
+        CachedAudiobookRecommendations(List<ApiAudiobook> audiobooks, long cachedAtMillis, String source) {
+            this.audiobooks = audiobooks;
+            this.cachedAtMillis = cachedAtMillis;
+            this.source = source;
+        }
+
+        boolean isFreshModelCache() {
+            return RECOMMENDATION_SOURCE_MODEL_CACHE.equals(source)
+                && cachedAtMillis > 0L
+                && System.currentTimeMillis() - cachedAtMillis < RECOMMENDATION_CACHE_TTL_MS;
+        }
+
+        long remainingFreshMillis() {
+            return Math.max(0L, RECOMMENDATION_CACHE_TTL_MS - (System.currentTimeMillis() - cachedAtMillis));
+        }
     }
 
     private List<RecommendedBook> mapRecommendedAudiobooks(List<ApiAudiobook> audiobooks) {
@@ -919,6 +1070,15 @@ public class HomeActivity extends AppCompatActivity {
                 PERMISSION_REQUEST_CODE
             );
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        recommendationRetryHandler.removeCallbacksAndMessages(null);
+        if (remoteBookRepository != null) {
+            remoteBookRepository.shutdown();
+        }
+        super.onDestroy();
     }
 
     private void showOfflineMode() {

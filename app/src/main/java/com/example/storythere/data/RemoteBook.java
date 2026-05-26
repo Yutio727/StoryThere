@@ -14,6 +14,9 @@ public class RemoteBook {
     private String fileType;
     private String image;
     private String annotation;
+    private int recommendationRank;
+    private long cachedAtMillis;
+    private String recommendationSource;
 
     public long getId() { return id; }
     public void setId(long id) { this.id = id; }
@@ -35,4 +38,13 @@ public class RemoteBook {
 
     public String getAnnotation() { return annotation; }
     public void setAnnotation(String annotation) { this.annotation = annotation; }
+
+    public int getRecommendationRank() { return recommendationRank; }
+    public void setRecommendationRank(int recommendationRank) { this.recommendationRank = recommendationRank; }
+
+    public long getCachedAtMillis() { return cachedAtMillis; }
+    public void setCachedAtMillis(long cachedAtMillis) { this.cachedAtMillis = cachedAtMillis; }
+
+    public String getRecommendationSource() { return recommendationSource; }
+    public void setRecommendationSource(String recommendationSource) { this.recommendationSource = recommendationSource; }
 }

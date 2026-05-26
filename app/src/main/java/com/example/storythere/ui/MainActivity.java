@@ -10,6 +10,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
+import android.graphics.Rect;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -116,6 +117,11 @@ public class MainActivity extends AppCompatActivity {
         
         RecyclerView recyclerView = findViewById(R.id.bookRecyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setHasFixedSize(true);
+        recyclerView.setClipToPadding(false);
+        recyclerView.addItemDecoration(new BookCardItemDecoration(
+            getResources().getDimensionPixelSize(R.dimen.book_card_vertical_spacing)
+        ));
         
         // Initialize adapter with selection callback
         adapter = new BookAdapter(
@@ -686,5 +692,24 @@ public class MainActivity extends AppCompatActivity {
         return (getResources().getConfiguration().uiMode & 
                 android.content.res.Configuration.UI_MODE_NIGHT_MASK) == 
                 android.content.res.Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    private static class BookCardItemDecoration extends RecyclerView.ItemDecoration {
+        private final int verticalSpacing;
+
+        BookCardItemDecoration(int verticalSpacing) {
+            this.verticalSpacing = verticalSpacing;
+        }
+
+        @Override
+        public void getItemOffsets(@NonNull Rect outRect, @NonNull View view,
+                                   @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+            int position = parent.getChildAdapterPosition(view);
+            if (position == RecyclerView.NO_POSITION) {
+                return;
+            }
+            outRect.top = position == 0 ? verticalSpacing : verticalSpacing / 2;
+            outRect.bottom = verticalSpacing / 2;
+        }
     }
 }

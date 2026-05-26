@@ -34,10 +34,12 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.storythere.R;
 import com.example.storythere.api.ApiClient;
 import com.example.storythere.api.ApiService;
+import com.example.storythere.api.model.ApiUserAudiobook;
 import com.example.storythere.api.model.ApiUserBook;
 import com.example.storythere.data.Book;
 import com.example.storythere.adapters.BookAdapter;
 import com.example.storythere.adapters.BookListViewModel;
+import com.example.storythere.listening.AudiobookPlayerActivity;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.tabs.TabLayout;
@@ -158,7 +160,7 @@ public class MainActivity extends AppCompatActivity {
             List<Book> validBooks = new ArrayList<>();
             for (Book book : books) {
                 boolean isValid = doesBookFileExist(book);
-                if (isValid || isServerBackedBook(book)) {
+                if (isValid || isServerBackedLibraryItem(book)) {
                     validBooks.add(book);
                 } else {
                     Log.w("MainActivity", "Removing invalid local-only book from database: " + book.getTitle());
@@ -239,6 +241,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
             loadServerLibraryBooks(0);
+            loadServerLibraryAudiobooks(0);
         }
     }
     
@@ -399,6 +402,10 @@ public class MainActivity extends AppCompatActivity {
         if (book == null) {
             return;
         }
+        if (book.isAudiobook()) {
+            openServerBackedAudiobook(book);
+            return;
+        }
         if (!hasStoragePermission()) {
             pendingBookToOpen = book;
             pendingImportAfterPermission = false;
@@ -502,6 +509,32 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void loadServerLibraryAudiobooks(int offset) {
+        if (apiService == null) {
+            return;
+        }
+        apiService.getMyAudiobooks(SERVER_LIBRARY_PAGE_SIZE, offset).enqueue(new Callback<List<ApiUserAudiobook>>() {
+            @Override
+            public void onResponse(Call<List<ApiUserAudiobook>> call, Response<List<ApiUserAudiobook>> response) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    Log.w("MainActivity", "Failed to load user audiobooks: " + response.code());
+                    return;
+                }
+
+                List<ApiUserAudiobook> serverAudiobooks = response.body();
+                syncServerAudiobooksIntoRoom(serverAudiobooks);
+                if (serverAudiobooks.size() == SERVER_LIBRARY_PAGE_SIZE) {
+                    loadServerLibraryAudiobooks(offset + serverAudiobooks.size());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<ApiUserAudiobook>> call, Throwable t) {
+                Log.w("MainActivity", "Error loading user audiobooks", t);
+            }
+        });
+    }
+
     private void syncServerBooksIntoRoom(List<ApiUserBook> serverBooks) {
         if (serverBooks == null || serverBooks.isEmpty()) {
             return;
@@ -527,14 +560,57 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void syncServerAudiobooksIntoRoom(List<ApiUserAudiobook> serverAudiobooks) {
+        if (serverAudiobooks == null || serverAudiobooks.isEmpty()) {
+            return;
+        }
+        for (ApiUserAudiobook apiAudiobook : serverAudiobooks) {
+            if (apiAudiobook == null || apiAudiobook.id <= 0) {
+                continue;
+            }
+            Book localAudiobook = findLocalAudiobookForServerAudiobook(apiAudiobook.id, apiAudiobook.title, apiAudiobook.author);
+            if (localAudiobook == null) {
+                localAudiobook = new Book(
+                    safeText(apiAudiobook.title, "Unknown Title"),
+                    safeText(apiAudiobook.author, getString(R.string.unknown_author)),
+                    apiAudiobook.audioUrl,
+                    safeText(apiAudiobook.audioType, "mp3")
+                );
+                mergeServerAudiobookFields(localAudiobook, apiAudiobook);
+                viewModel.insert(localAudiobook);
+            } else {
+                mergeServerAudiobookFields(localAudiobook, apiAudiobook);
+                viewModel.update(localAudiobook);
+            }
+        }
+    }
+
     private Book findLocalBookForServerBook(long serverBookId, String title, String author) {
         for (Book book : allBooks) {
-            if (book.getServerBookId() == serverBookId) {
+            if (!book.isAudiobook() && book.getServerBookId() == serverBookId) {
                 return book;
             }
         }
         for (Book book : allBooks) {
-            if (book.getServerBookId() <= 0
+            if (!book.isAudiobook()
+                && book.getServerBookId() <= 0
+                && safeEquals(book.getTitle(), title)
+                && safeEquals(book.getAuthor(), author)) {
+                return book;
+            }
+        }
+        return null;
+    }
+
+    private Book findLocalAudiobookForServerAudiobook(long serverAudiobookId, String title, String author) {
+        for (Book book : allBooks) {
+            if (book.isAudiobook() && book.getServerAudiobookId() == serverAudiobookId) {
+                return book;
+            }
+        }
+        for (Book book : allBooks) {
+            if (book.isAudiobook()
+                && book.getServerAudiobookId() <= 0
                 && safeEquals(book.getTitle(), title)
                 && safeEquals(book.getAuthor(), author)) {
                 return book;
@@ -544,6 +620,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void mergeServerBookFields(Book book, ApiUserBook apiBook) {
+        book.setAudiobook(false);
         book.setServerBookId(apiBook.id);
         book.setRemoteFileUrl(apiBook.fileUrl);
         book.setServerProgress(clampProgress(apiBook.progress));
@@ -560,6 +637,69 @@ public class MainActivity extends AppCompatActivity {
         if (lastOpenedAt != null) {
             book.setLastOpened(lastOpenedAt);
         }
+    }
+
+    private void mergeServerAudiobookFields(Book book, ApiUserAudiobook apiAudiobook) {
+        book.setAudiobook(true);
+        book.setServerAudiobookId(apiAudiobook.id);
+        book.setRemoteAudioUrl(apiAudiobook.audioUrl);
+        book.setFilePath(apiAudiobook.audioUrl);
+        book.setAudioType(safeText(apiAudiobook.audioType, "mp3"));
+        book.setFileType(safeText(apiAudiobook.audioType, "mp3"));
+        int durationSeconds = apiAudiobook.durationSeconds != null ? apiAudiobook.durationSeconds : 0;
+        double serverProgress = clampProgress(apiAudiobook.progress);
+        long playbackPositionMs = Math.max(0L, apiAudiobook.playbackPositionMs);
+        if (playbackPositionMs <= 0L && durationSeconds > 0 && serverProgress > 0.0) {
+            playbackPositionMs = Math.round((serverProgress / 100.0) * durationSeconds * 1000.0);
+        }
+        book.setDurationSeconds(durationSeconds);
+        book.setPlaybackPositionMs(playbackPositionMs);
+        book.setServerProgress(serverProgress);
+        book.setTitle(safeText(apiAudiobook.title, book.getTitle()));
+        book.setAuthor(safeText(apiAudiobook.author, book.getAuthor()));
+        book.setAnnotation(apiAudiobook.annotation);
+        book.setPreviewImagePath(apiAudiobook.image);
+        book.setImage(apiAudiobook.image);
+        if (apiAudiobook.authorID != null) {
+            book.setAuthorId(String.valueOf(apiAudiobook.authorID));
+        }
+        Date lastOpenedAt = parseServerDate(apiAudiobook.lastOpenedAt);
+        if (lastOpenedAt != null) {
+            book.setLastOpened(lastOpenedAt);
+        }
+        if (apiAudiobook.progress >= 100.0) {
+            book.setAlreadyRead(true);
+        }
+    }
+
+    private void openServerBackedAudiobook(Book book) {
+        String audioUrl = book.getRemoteAudioUrl();
+        if (audioUrl == null || audioUrl.trim().isEmpty()) {
+            audioUrl = book.getFilePath();
+        }
+        if (audioUrl == null || audioUrl.trim().isEmpty()) {
+            Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        book.setLastOpened(new Date());
+        viewModel.update(book);
+
+        Intent intent = new Intent(this, BookOptionsActivity.class);
+        intent.setData(Uri.parse(audioUrl));
+        intent.putExtra("isAudiobook", true);
+        intent.putExtra("fromRecommendation", false);
+        intent.putExtra("audiobookId", book.getServerAudiobookId());
+        intent.putExtra("audioUrl", audioUrl);
+        intent.putExtra("audioType", safeText(book.getAudioType(), book.getFileType()));
+        intent.putExtra("fileType", safeText(book.getAudioType(), book.getFileType()));
+        intent.putExtra("durationSeconds", book.getDurationSeconds());
+        intent.putExtra("title", book.getTitle());
+        intent.putExtra("author", book.getAuthor());
+        intent.putExtra("annotation", book.getAnnotation());
+        intent.putExtra("previewImagePath", book.getPreviewImagePath());
+        intent.putExtra(AudiobookPlayerActivity.EXTRA_START_POSITION_MS, safeLongToInt(book.getPlaybackPositionMs()));
+        startActivity(intent);
     }
 
     private void openServerBackedBook(Book book) {
@@ -732,6 +872,10 @@ public class MainActivity extends AppCompatActivity {
         return book != null && book.getServerBookId() > 0;
     }
 
+    private boolean isServerBackedLibraryItem(Book book) {
+        return book != null && (book.getServerBookId() > 0 || book.getServerAudiobookId() > 0);
+    }
+
     private double clampProgress(double progress) {
         return Math.max(0.0, Math.min(100.0, progress));
     }
@@ -742,6 +886,13 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean safeEquals(String left, String right) {
         return left != null && right != null && left.equals(right);
+    }
+
+    private int safeLongToInt(long value) {
+        if (value <= 0L) {
+            return 0;
+        }
+        return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
     }
 
     private Date parseServerDate(String value) {

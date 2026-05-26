@@ -108,6 +108,7 @@ public class BookOptionsActivity extends AppCompatActivity {
     private String audioUrl;
     private String audioType;
     private int durationSeconds = 0;
+    private int playbackPositionMs = -1;
     private String authorFromIntent;
     private String previewImagePathFromIntent;
 
@@ -137,6 +138,9 @@ public class BookOptionsActivity extends AppCompatActivity {
             audioUrl = intent.getStringExtra("audioUrl");
             audioType = intent.getStringExtra("audioType");
             durationSeconds = intent.getIntExtra("durationSeconds", 0);
+            playbackPositionMs = intent.hasExtra(AudiobookPlayerActivity.EXTRA_START_POSITION_MS)
+                ? intent.getIntExtra(AudiobookPlayerActivity.EXTRA_START_POSITION_MS, 0)
+                : -1;
             authorFromIntent = intent.getStringExtra("author");
             previewImagePathFromIntent = intent.getStringExtra("previewImagePath");
             if (isAudiobook && (fileType == null || fileType.trim().isEmpty())) {
@@ -617,6 +621,9 @@ public class BookOptionsActivity extends AppCompatActivity {
         audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_AUTHOR, authorFromIntent);
         audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_PREVIEW_IMAGE_PATH, previewImagePathFromIntent);
         audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_DURATION_SECONDS, durationSeconds);
+        if (playbackPositionMs >= 0) {
+            audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_START_POSITION_MS, playbackPositionMs);
+        }
         audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_FROM_RECOMMENDATION, fromRecommendation);
         startActivity(audioIntent);
     }

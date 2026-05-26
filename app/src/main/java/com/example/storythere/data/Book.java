@@ -28,6 +28,12 @@ public class Book {
     private long serverBookId; // Backend books.id for server library/progress sync
     private String remoteFileUrl; // Original download URL for server-backed books
     private double serverProgress; // Last progress percentage received from backend
+    private boolean isAudiobook; // Server-backed audiobook row in the library list
+    private long serverAudiobookId; // Backend audiobooks.id for progress sync
+    private String remoteAudioUrl;
+    private String audioType;
+    private int durationSeconds;
+    private long playbackPositionMs;
     
     @Ignore
     public Book(String title, String author, String filePath, String fileType) {
@@ -42,6 +48,10 @@ public class Book {
         this.readingPosition = 0;
         this.serverBookId = 0L;
         this.serverProgress = 0.0;
+        this.isAudiobook = false;
+        this.serverAudiobookId = 0L;
+        this.durationSeconds = 0;
+        this.playbackPositionMs = 0L;
     }
     
     public Book() {
@@ -106,4 +116,22 @@ public class Book {
 
     public double getServerProgress() { return serverProgress; }
     public void setServerProgress(double serverProgress) { this.serverProgress = serverProgress; }
+
+    public boolean isAudiobook() { return isAudiobook; }
+    public void setAudiobook(boolean audiobook) { isAudiobook = audiobook; }
+
+    public long getServerAudiobookId() { return serverAudiobookId; }
+    public void setServerAudiobookId(long serverAudiobookId) { this.serverAudiobookId = serverAudiobookId; }
+
+    public String getRemoteAudioUrl() { return remoteAudioUrl; }
+    public void setRemoteAudioUrl(String remoteAudioUrl) { this.remoteAudioUrl = remoteAudioUrl; }
+
+    public String getAudioType() { return audioType; }
+    public void setAudioType(String audioType) { this.audioType = audioType; }
+
+    public int getDurationSeconds() { return durationSeconds; }
+    public void setDurationSeconds(int durationSeconds) { this.durationSeconds = durationSeconds; }
+
+    public long getPlaybackPositionMs() { return playbackPositionMs; }
+    public void setPlaybackPositionMs(long playbackPositionMs) { this.playbackPositionMs = playbackPositionMs; }
 } 

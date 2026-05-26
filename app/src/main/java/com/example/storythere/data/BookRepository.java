@@ -31,6 +31,10 @@ public class BookRepository {
     public LiveData<Book> getBookByServerBookId(long serverBookId) {
         return bookDao.getBookByServerBookId(serverBookId);
     }
+
+    public LiveData<Book> getBookByServerAudiobookId(long serverAudiobookId) {
+        return bookDao.getBookByServerAudiobookId(serverAudiobookId);
+    }
     
     public void insert(Book book) {
         executorService.execute(() -> {

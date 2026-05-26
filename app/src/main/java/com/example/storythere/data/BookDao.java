@@ -39,4 +39,7 @@ public interface BookDao {
 
     @Query("SELECT * FROM books WHERE title = :title AND author = :author LIMIT 1")
     Book findBookByTitleAndAuthor(String title, String author);
+
+    @Query("SELECT * FROM books WHERE serverAudiobookId = :serverAudiobookId LIMIT 1")
+    LiveData<Book> getBookByServerAudiobookId(long serverAudiobookId);
 } 

@@ -8,7 +8,7 @@ import androidx.room.TypeConverters;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-@Database(entities = {Book.class, Author.class, RemoteBook.class}, version = 12, exportSchema = false)
+@Database(entities = {Book.class, Author.class, RemoteBook.class}, version = 13, exportSchema = false)
 @TypeConverters({DateConverter.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
@@ -122,6 +122,19 @@ public abstract class AppDatabase extends RoomDatabase {
             database.execSQL("CREATE INDEX IF NOT EXISTS idx_books_serverBookId ON books(serverBookId)");
         }
     };
+
+    private static final Migration MIGRATION_12_13 = new Migration(12, 13) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE books ADD COLUMN isAudiobook INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE books ADD COLUMN serverAudiobookId INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE books ADD COLUMN remoteAudioUrl TEXT");
+            database.execSQL("ALTER TABLE books ADD COLUMN audioType TEXT");
+            database.execSQL("ALTER TABLE books ADD COLUMN durationSeconds INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE books ADD COLUMN playbackPositionMs INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("CREATE INDEX IF NOT EXISTS idx_books_serverAudiobookId ON books(serverAudiobookId)");
+        }
+    };
     
     public static AppDatabase getDatabase(final Context context) {
         if (INSTANCE == null) {
@@ -132,7 +145,7 @@ public abstract class AppDatabase extends RoomDatabase {
                         AppDatabase.class,
                         "storythere_database"
                     )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                     .fallbackToDestructiveMigration()
                     .build();
                 }

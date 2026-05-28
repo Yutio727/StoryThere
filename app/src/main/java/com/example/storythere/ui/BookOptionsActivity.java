@@ -111,6 +111,7 @@ public class BookOptionsActivity extends AppCompatActivity {
     private int playbackPositionMs = -1;
     private String authorFromIntent;
     private String previewImagePathFromIntent;
+    private boolean isFooterActionInProgress = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -252,6 +253,9 @@ public class BookOptionsActivity extends AppCompatActivity {
 
         // Set up footer button click listener
         footerButton.setOnClickListener(v -> {
+            if (!beginFooterAction()) {
+                return;
+            }
             if (isAudiobook) {
                 trackAudiobookConversion();
                 openAudiobookPlayer();
@@ -280,6 +284,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     } catch (Exception e) {
                         e.printStackTrace();
                         Toast.makeText(this, R.string.failed_to_cache_parsed_text, Toast.LENGTH_SHORT).show();
+                        resetFooterAction();
                         return;
                     }
                     Intent pdfIntent = new Intent(this, ViewerActivity.class);
@@ -371,6 +376,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                         } catch (Exception e) {
                             e.printStackTrace();
                             Log.e("BookOptionsActivity", "Failed to process EPUB text: " + e.getMessage());
+                            resetFooterAction();
                             return;
                         }
                     } else {
@@ -442,6 +448,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                                 } catch (Exception e) {
                                     e.printStackTrace();
                                     Toast.makeText(this, getString(R.string.error_extracting_text) + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    resetFooterAction();
                                     return;
                                 }
                                 textContent = allText.toString();
@@ -513,6 +520,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     isReadModeSelected = true;
                     updateButtonStates(true);
                     updateBookReadingTimeText();
+                    resetFooterAction();
                 }
             }
         });
@@ -587,6 +595,35 @@ public class BookOptionsActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        resetFooterAction();
+    }
+
+    private boolean beginFooterAction() {
+        if (isFooterActionInProgress) {
+            return false;
+        }
+        isFooterActionInProgress = true;
+        setFooterButtonInteractionEnabled(false);
+        return true;
+    }
+
+    private void resetFooterAction() {
+        isFooterActionInProgress = false;
+        setFooterButtonInteractionEnabled(true);
+    }
+
+    private void setFooterButtonInteractionEnabled(boolean enabled) {
+        if (footerButton == null) {
+            return;
+        }
+        footerButton.setEnabled(enabled);
+        footerButton.setClickable(enabled);
+        footerButton.setAlpha(enabled ? 1.0f : 0.65f);
+    }
+
     private void bindAudiobookInfo() {
         if (authorFromIntent != null && !authorFromIntent.trim().isEmpty()) {
             bookAuthorText.setText(authorFromIntent);
@@ -614,6 +651,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         }
         if (playbackUri == null) {
             Toast.makeText(this, R.string.error_launching_audio_reader, Toast.LENGTH_SHORT).show();
+            resetFooterAction();
             return;
         }
 

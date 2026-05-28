@@ -111,4 +111,11 @@ public interface ApiService {
         @Query("limit") int limit,
         @Query("offset") int offset
     );
+
+    @GET("v1/authors/{authorId}/audiobooks")
+    Call<List<ApiAudiobook>> getAuthorAudiobooks(
+        @Path("authorId") long authorId,
+        @Query("limit") int limit,
+        @Query("offset") int offset
+    );
 }

@@ -176,8 +176,10 @@
     <string name="show_text">Show Text</string>
     <string name="author_photo">Author Photo</string>
     <string name="books_by_author">Books by this Author</string>
+    <string name="audiobooks_by_author">Audiobooks by this Author</string>
     <string name="book">book</string>
     <string name="books">books</string>
+    <string name="books_and_audiobooks">books/audiobooks</string>
     <string name="network_error">Network Error</string>
     <string name="network_error_title">Network Problem</string>
     <string name="network_error_message">It was not possible to authorize due to a network problem. Please check your internet connection.</string>

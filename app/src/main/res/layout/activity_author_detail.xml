@@ -137,6 +137,27 @@
                 android:paddingEnd="8dp"
                 android:clipToPadding="false" />
 
+            <!-- Audiobooks Section -->
+            <TextView
+                android:id="@+id/audiobooks_section_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/audiobooks_by_author"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_activity_primary"
+                android:fontFamily="@font/montserrat_bold"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="12dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/audiobooks_recycler_view"
+                android:layout_width="match_parent"
+                android:layout_height="280dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:clipToPadding="false" />
+
         </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>

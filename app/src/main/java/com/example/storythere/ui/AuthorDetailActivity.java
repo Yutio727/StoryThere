@@ -12,6 +12,7 @@ import com.bumptech.glide.Glide;
 import com.example.storythere.R;
 import com.example.storythere.api.ApiClient;
 import com.example.storythere.api.ApiService;
+import com.example.storythere.api.model.ApiAudiobook;
 import com.example.storythere.api.model.ApiBook;
 import com.example.storythere.data.Author;
 import com.example.storythere.data.AuthorRepository;
@@ -45,7 +46,9 @@ public class AuthorDetailActivity extends AppCompatActivity {
     private TextView authorNationality;
     private TextView authorBooksCount;
     private RecyclerView booksRecyclerView;
+    private RecyclerView audiobooksRecyclerView;
     private RecommendBookAdapter booksAdapter;
+    private RecommendBookAdapter audiobooksAdapter;
     
     private AuthorRepository authorRepository;
     private BookRepository bookRepository;
@@ -72,6 +75,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
         initializeRepositories();
         loadAuthorData();
         loadAuthorBooks();
+        loadAuthorAudiobooks();
     }
     
     private void initializeViews() {
@@ -82,6 +86,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
         authorNationality = findViewById(R.id.author_nationality);
         authorBooksCount = findViewById(R.id.author_books_count);
         booksRecyclerView = findViewById(R.id.books_recycler_view);
+        audiobooksRecyclerView = findViewById(R.id.audiobooks_recycler_view);
     }
     
     private void setupToolbar() {
@@ -101,6 +106,12 @@ public class AuthorDetailActivity extends AppCompatActivity {
         });
         booksRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         booksRecyclerView.setAdapter(booksAdapter);
+
+        audiobooksAdapter = new RecommendBookAdapter(new ArrayList<>(), book -> {
+            handleRecommendedBookClick(book);
+        });
+        audiobooksRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        audiobooksRecyclerView.setAdapter(audiobooksAdapter);
     }
     
     private void initializeRepositories() {
@@ -163,8 +174,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
             authorNationality.setVisibility(View.GONE);
         }
         
-        String booksText = author.getTotalBooks() + " " + 
-            (author.getTotalBooks() == 1 ? getString(R.string.book) : getString(R.string.books));
+        String booksText = author.getTotalBooks() + " " + getString(R.string.books_and_audiobooks);
         authorBooksCount.setText(booksText);
         
         // Load author image
@@ -219,10 +229,61 @@ public class AuthorDetailActivity extends AppCompatActivity {
             }
         });
     }
+
+    private void loadAuthorAudiobooks() {
+        long parsedAuthorId;
+        try {
+            parsedAuthorId = Long.parseLong(authorId);
+        } catch (NumberFormatException e) {
+            Log.e("AuthorDetailActivity", "Invalid authorId: " + authorId);
+            audiobooksAdapter.updateBooks(new ArrayList<>());
+            return;
+        }
+
+        apiService.getAuthorAudiobooks(parsedAuthorId, 50, 0).enqueue(new Callback<List<ApiAudiobook>>() {
+            @Override
+            public void onResponse(Call<List<ApiAudiobook>> call, Response<List<ApiAudiobook>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    List<HomeActivity.RecommendedBook> audiobooks = new ArrayList<>();
+                    for (ApiAudiobook audiobook : response.body()) {
+                        String audioType = audiobook.audioType != null ? audiobook.audioType : "mp3";
+                        int durationSeconds = audiobook.durationSeconds != null ? audiobook.durationSeconds : 0;
+                        audiobooks.add(new HomeActivity.RecommendedBook(
+                            audiobook.id,
+                            audiobook.title,
+                            audiobook.author,
+                            audiobook.audioUrl,
+                            audioType,
+                            audiobook.image,
+                            audiobook.annotation,
+                            true,
+                            audiobook.audioUrl,
+                            audioType,
+                            durationSeconds
+                        ));
+                    }
+                    audiobooksAdapter.updateBooks(audiobooks);
+                } else {
+                    Log.w("AuthorDetailActivity", "Failed to load author audiobooks from API. code=" + response.code());
+                    audiobooksAdapter.updateBooks(new ArrayList<>());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<ApiAudiobook>> call, Throwable t) {
+                Log.w("AuthorDetailActivity", "Failed to load author audiobooks from API", t);
+                audiobooksAdapter.updateBooks(new ArrayList<>());
+            }
+        });
+    }
     
     // Book opening functionality (copied from HomeActivity)
     private void handleRecommendedBookClick(HomeActivity.RecommendedBook book) {
         if (book == null) return;
+        if (book.isAudiobook) {
+            openAudiobookOptionsActivity(book);
+            return;
+        }
         String bookTitle = book.title != null ? book.title : "Unknown Title";
         String bookAuthor = book.author != null ? book.author : "Unknown Author";
         String fileUrl = book.fileUrl;
@@ -473,4 +534,26 @@ public class AuthorDetailActivity extends AppCompatActivity {
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
     }
-} 
+
+    private void openAudiobookOptionsActivity(HomeActivity.RecommendedBook book) {
+        String audioUrl = book.audioUrl != null ? book.audioUrl : book.fileUrl;
+        if (audioUrl == null || audioUrl.trim().isEmpty()) {
+            Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent intent = new Intent(this, BookOptionsActivity.class);
+        intent.setData(Uri.parse(audioUrl));
+        intent.putExtra("isAudiobook", true);
+        intent.putExtra("audiobookId", book.id);
+        intent.putExtra("audioUrl", audioUrl);
+        intent.putExtra("audioType", book.audioType != null ? book.audioType : book.fileType);
+        intent.putExtra("fileType", book.fileType);
+        intent.putExtra("durationSeconds", book.durationSeconds);
+        intent.putExtra("title", book.title);
+        intent.putExtra("author", book.author);
+        intent.putExtra("annotation", book.annotation);
+        intent.putExtra("previewImagePath", book.image);
+        startActivity(intent);
+    }
+}

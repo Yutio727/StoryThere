@@ -667,6 +667,7 @@ public class BookOptionsActivity extends AppCompatActivity {
             audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_START_POSITION_MS, playbackPositionMs);
         }
         audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_FROM_RECOMMENDATION, fromRecommendation);
+        audioIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(audioIntent);
     }
 

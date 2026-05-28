@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
 import android.graphics.Rect;
+import android.media.MediaMetadataRetriever;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -66,6 +67,11 @@ import retrofit2.Response;
 public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 1;
     private static final int SERVER_LIBRARY_PAGE_SIZE = 100;
+    private static final String AUDIO_TYPE_MP3 = "mp3";
+    private static final String AUDIO_TYPE_WAV = "wav";
+    private static final String MIME_AUDIO_MPEG = "audio/mpeg";
+    private static final String MIME_AUDIO_WAV = "audio/wav";
+    private static final String MIME_AUDIO_X_WAV = "audio/x-wav";
     private BookListViewModel viewModel;
     private BookAdapter adapter;
     private List<Book> allBooks = new ArrayList<>();
@@ -96,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
                         Uri uri = clipData.getItemAt(i).getUri();
                         getContentResolver().takePersistableUriPermission(uri, 
                             Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        importBook(uri);
+                        importFile(uri);
                     }
                 } else {
                     // Single file selected
@@ -104,7 +110,7 @@ public class MainActivity extends AppCompatActivity {
                     if (uri != null) {
                         getContentResolver().takePersistableUriPermission(uri, 
                             Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        importBook(uri);
+                        importFile(uri);
                     }
                 }
             }
@@ -285,7 +291,10 @@ public class MainActivity extends AppCompatActivity {
             "application/epub+zip", // .epub
             "application/x-fictionbook+xml", // .fb2
             "text/html",            // .html, .htm
-            "text/markdown"         // .md
+            "text/markdown",        // .md
+            MIME_AUDIO_MPEG,        // .mp3
+            MIME_AUDIO_WAV,         // .wav
+            MIME_AUDIO_X_WAV        // .wav
         };
         intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
         
@@ -314,14 +323,16 @@ public class MainActivity extends AppCompatActivity {
         return String.format("%02d:%02d", minutes, seconds);
     }
     
-    private void importBook(Uri uri) {
+    private void importFile(Uri uri) {
         String fileName = getFileName(uri);
-        String fileType = getFileType(fileName);
+        String mimeType = getContentResolver().getType(uri);
+        String fileType = normalizeImportedFileType(fileName, mimeType);
         String filePath = uri.toString();
+        boolean isAudioFile = isSupportedAudioFile(fileType, mimeType);
 
-        Log.d("MainActivity", "Checking for existing book with path: " + filePath);
+        Log.d("MainActivity", "Checking for existing file with path: " + filePath);
 
-        // Check if book already exists in the current list of books
+        // Check if file already exists in the current list
         Book existingBook = null;
         for (Book book : allBooks) {
             if (filePath.equals(book.getFilePath())) {
@@ -331,28 +342,38 @@ public class MainActivity extends AppCompatActivity {
         }
         
         if (existingBook != null) {
-            // Book already exists, open it instead of creating duplicate
-            Log.d("MainActivity", "Book already exists: " + fileName + " (ID: " + existingBook.getId() + "), opening existing book");
+            // File already exists, open it instead of creating duplicate
+            Log.d("MainActivity", "File already exists: " + fileName + " (ID: " + existingBook.getId() + "), opening existing file");
             Toast.makeText(this, getString(R.string.book_already_exists), Toast.LENGTH_SHORT).show();
             openExistingBook(existingBook);
         } else {
-            // Book doesn't exist, create new one
-            Log.d("MainActivity", "Adding new book: " + fileName + " with path: " + filePath);
+            // File doesn't exist, create new library item
+            Log.d("MainActivity", "Adding new file: " + fileName + " with path: " + filePath);
             Book book = new Book(
                 fileName,
                 getString(R.string.unknown_author),
                 filePath,
                 fileType
             );
-            // Do not set annotation or parse anything
+            if (isAudioFile) {
+                book.setAudiobook(true);
+                book.setAudioType(fileType);
+                book.setRemoteAudioUrl(filePath);
+                book.setDurationSeconds(readAudioDurationSeconds(uri));
+                book.setPlaybackPositionMs(0L);
+            }
 
-            // Save the book to the database
             viewModel.insert(book);
             Toast.makeText(this, getString(R.string.book_imported) + fileName, Toast.LENGTH_SHORT).show();
         }
     }
     
     private void openExistingBook(Book book) {
+        if (book.isAudiobook()) {
+            openServerBackedAudiobook(book);
+            return;
+        }
+
         // Only update lastOpened if more than 1 second has passed
         Date now = new Date();
         if (book.getLastOpened() == null || Math.abs(now.getTime() - book.getLastOpened().getTime()) > 1000) {
@@ -397,7 +418,57 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private String getFileType(String fileName) {
-        return fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+        if (fileName == null) {
+            return "";
+        }
+        int extensionIndex = fileName.lastIndexOf(".");
+        if (extensionIndex < 0 || extensionIndex == fileName.length() - 1) {
+            return "";
+        }
+        return fileName.substring(extensionIndex + 1).toLowerCase(Locale.US);
+    }
+
+    private String normalizeImportedFileType(String fileName, String mimeType) {
+        String fileType = getFileType(fileName);
+        if (AUDIO_TYPE_MP3.equals(fileType) || AUDIO_TYPE_WAV.equals(fileType)) {
+            return fileType;
+        }
+        if (MIME_AUDIO_MPEG.equals(mimeType)) {
+            return AUDIO_TYPE_MP3;
+        }
+        if (MIME_AUDIO_WAV.equals(mimeType) || MIME_AUDIO_X_WAV.equals(mimeType)) {
+            return AUDIO_TYPE_WAV;
+        }
+        return fileType;
+    }
+
+    private boolean isSupportedAudioFile(String fileType, String mimeType) {
+        return AUDIO_TYPE_MP3.equals(fileType)
+            || AUDIO_TYPE_WAV.equals(fileType)
+            || MIME_AUDIO_MPEG.equals(mimeType)
+            || MIME_AUDIO_WAV.equals(mimeType)
+            || MIME_AUDIO_X_WAV.equals(mimeType);
+    }
+
+    private int readAudioDurationSeconds(Uri uri) {
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        try {
+            retriever.setDataSource(this, uri);
+            String durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+            if (durationMs == null || durationMs.trim().isEmpty()) {
+                return 0;
+            }
+            return (int) Math.max(0L, Long.parseLong(durationMs) / 1000L);
+        } catch (RuntimeException e) {
+            Log.w("MainActivity", "Failed to read audio duration: " + uri, e);
+            return 0;
+        } finally {
+            try {
+                retriever.release();
+            } catch (Exception e) {
+                Log.w("MainActivity", "Failed to release metadata retriever", e);
+            }
+        }
     }
     
     private void onBookClick(Book book) {
@@ -706,6 +777,7 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("annotation", book.getAnnotation());
         intent.putExtra("previewImagePath", book.getPreviewImagePath());
         intent.putExtra(AudiobookPlayerActivity.EXTRA_START_POSITION_MS, safeLongToInt(book.getPlaybackPositionMs()));
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
     }
 

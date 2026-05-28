@@ -66,6 +66,7 @@ public class HomeActivity extends AppCompatActivity {
     private static final long RECOMMENDATION_CACHE_TTL_MS = 60_000L;
     private static final long MODEL_CACHE_RETRY_DELAY_MS = 5_000L;
     private static final int MAX_MODEL_CACHE_RETRY_ATTEMPTS = 12;
+    private static final int HOME_RECOMMENDATION_LIMIT = 10;
     private static final String AUDIOBOOK_CACHE_PREFS = "AudiobookRecommendationCache";
     private static final String KEY_AUDIOBOOK_CACHE_JSON_PREFIX = "audiobooks_json_";
     private static final String KEY_AUDIOBOOK_CACHE_TIME_PREFIX = "audiobooks_cached_at_";
@@ -380,7 +381,7 @@ public class HomeActivity extends AppCompatActivity {
         RecommendBookAdapter adapter = new RecommendBookAdapter(new ArrayList<>(), HomeActivity.this::handleRecommendedBookClick);
         recyclerView.setAdapter(adapter);
 
-        remoteBookRepository.getRecommendedBooks(7).observe(this, remoteBooks -> {
+        remoteBookRepository.getRecommendedBooks(HOME_RECOMMENDATION_LIMIT).observe(this, remoteBooks -> {
             if (remoteBooks == null) return;
             List<RecommendedBook> bookList = new ArrayList<>();
             int slotIndex = 0;
@@ -405,7 +406,7 @@ public class HomeActivity extends AppCompatActivity {
             trackBookRecommendationImpressions(bookList);
         });
 
-        remoteBookRepository.loadRecommendedBooksFromApi(7);
+        remoteBookRepository.loadRecommendedBooksFromApi(HOME_RECOMMENDATION_LIMIT);
     }
 
     private void setupRecommendedAudiobooksRecycler() {
@@ -429,7 +430,7 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void fetchRecommendedAudiobooks(RecommendBookAdapter adapter) {
-        apiService.getRecommendedAudiobooks(7).enqueue(new Callback<List<ApiAudiobook>>() {
+        apiService.getRecommendedAudiobooks(HOME_RECOMMENDATION_LIMIT).enqueue(new Callback<List<ApiAudiobook>>() {
             @Override
             public void onResponse(Call<List<ApiAudiobook>> call, Response<List<ApiAudiobook>> response) {
                 if (!response.isSuccessful() || response.body() == null) {
@@ -498,7 +499,7 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void loadFallbackAudiobooks(RecommendBookAdapter adapter) {
-        apiService.getAudiobooks(7, 0).enqueue(new Callback<List<ApiAudiobook>>() {
+        apiService.getAudiobooks(HOME_RECOMMENDATION_LIMIT, 0).enqueue(new Callback<List<ApiAudiobook>>() {
             @Override
             public void onResponse(Call<List<ApiAudiobook>> call, Response<List<ApiAudiobook>> response) {
                 if (!response.isSuccessful() || response.body() == null) {

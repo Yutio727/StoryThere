@@ -138,6 +138,16 @@ public class Registration extends AppCompatActivity {
         );
         genderEdit.setAdapter(genderAdapter);
         genderEdit.setOnClickListener(v -> genderEdit.showDropDown());
+        genderEdit.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                genderLayout.setBoxStrokeColor(colorFocused);
+                genderLayout.setEndIconTintList(ColorStateList.valueOf(colorFocused));
+            } else {
+                genderLayout.setBoxStrokeColor(colorUnfocused);
+                genderLayout.setEndIconTintList(ColorStateList.valueOf(colorUnfocused));
+            }
+            genderLayout.invalidate();
+        });
         genderEdit.setOnItemClickListener((parent, view, position, id) -> {
             selectedSex[0] = genderValues[position];
             genderEdit.setTextColor(colorTextNormal);

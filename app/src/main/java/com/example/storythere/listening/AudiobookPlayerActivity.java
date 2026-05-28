@@ -22,10 +22,14 @@ import androidx.appcompat.widget.Toolbar;
 
 import com.bumptech.glide.Glide;
 import com.example.storythere.R;
+import com.example.storythere.data.BookRepository;
 import com.example.storythere.data.RecommendationTrackingRepository;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Locale;
+import java.util.TimeZone;
 
 public class AudiobookPlayerActivity extends AppCompatActivity {
     public static final String EXTRA_AUDIOBOOK_ID = "audiobookId";
@@ -43,6 +47,7 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
     private static final int SEEK_STEP_MS = 10_000;
     private static final int PROGRESS_UPDATE_MS = 500;
     private static final int PROGRESS_SYNC_INTERVAL_MS = 15_000;
+    private static final int ALREADY_READ_THRESHOLD_MS = 10_000;
 
     private MediaPlayer mediaPlayer;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -60,6 +65,7 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
     private ProgressBar loadingProgressBar;
     private TextView loadingStatusText;
     private RecommendationTrackingRepository trackingRepository;
+    private BookRepository bookRepository;
 
     private Uri audioUri;
     private long audiobookId = -1L;
@@ -81,6 +87,7 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
         setupToolbar();
         initializeViews();
         trackingRepository = new RecommendationTrackingRepository();
+        bookRepository = new BookRepository(getApplication());
         readIntent();
         bindMetadata();
         setupClickListeners();
@@ -393,12 +400,29 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
             return;
         }
         long now = System.currentTimeMillis();
-        if (!force && now - lastProgressSyncAtMs < PROGRESS_SYNC_INTERVAL_MS) {
+        boolean isAlreadyRead = isInAlreadyReadWindow(positionMs, duration);
+        if (isAlreadyRead && completionTracked) {
+            return;
+        }
+        if (!force && !isAlreadyRead && now - lastProgressSyncAtMs < PROGRESS_SYNC_INTERVAL_MS) {
             return;
         }
         lastProgressSyncAtMs = now;
-        double progress = Math.max(0.0, Math.min(100.0, (positionMs * 100.0) / duration));
-        trackingRepository.trackAudiobookProgress(audiobookId, progress, Math.max(0, positionMs));
+        int syncedPositionMs = isAlreadyRead ? duration : Math.max(0, positionMs);
+        double progress = isAlreadyRead
+            ? 100.0
+            : Math.max(0.0, Math.min(100.0, (positionMs * 100.0) / duration));
+        trackingRepository.trackAudiobookProgress(
+            audiobookId,
+            progress,
+            syncedPositionMs,
+            null,
+            null,
+            isAlreadyRead ? currentTimestampIso() : null
+        );
+        if (isAlreadyRead) {
+            markAudiobookAlreadyReadIfNeeded();
+        }
     }
 
     private void trackAudiobookCompletion() {
@@ -415,6 +439,44 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
                 100.0
             );
         }
+    }
+
+    private boolean isInAlreadyReadWindow(int positionMs, int durationMs) {
+        if (durationMs <= 0) {
+            return false;
+        }
+        return Math.max(0, durationMs - Math.max(0, positionMs)) <= ALREADY_READ_THRESHOLD_MS;
+    }
+
+    private void markAudiobookAlreadyReadIfNeeded() {
+        if (completionTracked) {
+            return;
+        }
+        completionTracked = true;
+        if (bookRepository != null && audioUri != null) {
+            bookRepository.markAlreadyReadByPath(audioUri.toString());
+        }
+        if (bookRepository != null && audiobookId > 0) {
+            bookRepository.markAlreadyReadByServerAudiobookId(audiobookId);
+        }
+        if (trackingRepository != null && audiobookId > 0) {
+            trackingRepository.markAudiobookAlreadyRead(audiobookId);
+        }
+        if (fromRecommendation && audiobookId > 0 && trackingRepository != null) {
+            trackingRepository.trackAudiobookEvent(
+                audiobookId,
+                RecommendationTrackingRepository.EVENT_COMPLETION,
+                null,
+                null,
+                100.0
+            );
+        }
+    }
+
+    private String currentTimestampIso() {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
+        format.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return format.format(new Date());
     }
 
     private String formatTime(int seconds) {

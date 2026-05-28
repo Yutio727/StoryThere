@@ -42,4 +42,16 @@ public interface BookDao {
 
     @Query("SELECT * FROM books WHERE serverAudiobookId = :serverAudiobookId LIMIT 1")
     LiveData<Book> getBookByServerAudiobookId(long serverAudiobookId);
+
+    @Query("UPDATE books SET isAlreadyRead = 1 WHERE id = :bookId")
+    void markAlreadyReadById(long bookId);
+
+    @Query("UPDATE books SET isAlreadyRead = 1 WHERE serverBookId = :serverBookId AND serverBookId > 0")
+    void markAlreadyReadByServerBookId(long serverBookId);
+
+    @Query("UPDATE books SET isAlreadyRead = 1 WHERE serverAudiobookId = :serverAudiobookId AND serverAudiobookId > 0")
+    void markAlreadyReadByServerAudiobookId(long serverAudiobookId);
+
+    @Query("UPDATE books SET isAlreadyRead = 1 WHERE filePath = :filePath")
+    void markAlreadyReadByPath(String filePath);
 } 

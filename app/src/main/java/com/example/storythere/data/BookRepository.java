@@ -57,4 +57,32 @@ public class BookRepository {
             bookDao.delete(book);
         });
     }
+
+    public void markAlreadyReadById(long bookId) {
+        if (bookId <= 0) {
+            return;
+        }
+        executorService.execute(() -> bookDao.markAlreadyReadById(bookId));
+    }
+
+    public void markAlreadyReadByServerBookId(long serverBookId) {
+        if (serverBookId <= 0) {
+            return;
+        }
+        executorService.execute(() -> bookDao.markAlreadyReadByServerBookId(serverBookId));
+    }
+
+    public void markAlreadyReadByServerAudiobookId(long serverAudiobookId) {
+        if (serverAudiobookId <= 0) {
+            return;
+        }
+        executorService.execute(() -> bookDao.markAlreadyReadByServerAudiobookId(serverAudiobookId));
+    }
+
+    public void markAlreadyReadByPath(String filePath) {
+        if (filePath == null || filePath.trim().isEmpty()) {
+            return;
+        }
+        executorService.execute(() -> bookDao.markAlreadyReadByPath(filePath));
+    }
 } 

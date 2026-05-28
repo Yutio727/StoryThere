@@ -495,6 +495,10 @@ public class BookOptionsActivity extends AppCompatActivity {
                     Intent audioIntent = new Intent(this, AudioReaderActivity.class);
                     audioIntent.setData(textUri);
                     audioIntent.putExtra("fileType", "txt");
+                    audioIntent.putExtra("original_file_type", fileType);
+                    audioIntent.putExtra("filePath", filePath);
+                    audioIntent.putExtra("original_file_uri", contentUri != null ? contentUri.toString() : filePath);
+                    putBookTrackingExtras(audioIntent);
                     audioIntent.putExtra("title", title);
                     audioIntent.putExtra("author", currentBook != null ? currentBook.getAuthor() : "Unknown Author");
                     audioIntent.putExtra("is_russian", isRussian);

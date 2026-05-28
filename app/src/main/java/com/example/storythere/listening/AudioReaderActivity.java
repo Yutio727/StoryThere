@@ -42,6 +42,7 @@ import com.example.storythere.viewing.ViewerActivity;
 import com.example.storythere.viewing.ReaderActivity;
 import com.example.storythere.data.BookRepository;
 import com.example.storythere.data.Book;
+import com.example.storythere.data.RecommendationTrackingRepository;
 import com.example.storythere.parsers.PDFParser;
 
 public class AudioReaderActivity extends AppCompatActivity {
@@ -111,6 +112,11 @@ public class AudioReaderActivity extends AppCompatActivity {
     
     // Add BookRepository for database access
     private BookRepository bookRepository;
+    private RecommendationTrackingRepository trackingRepository;
+    private String sourceFilePath;
+    private long serverBookId = -1L;
+    private boolean fromRecommendation = false;
+    private boolean alreadyReadMarked = false;
     
     private boolean hasLaunchedViewer = false;
     
@@ -132,6 +138,7 @@ public class AudioReaderActivity extends AppCompatActivity {
         
         // Initialize BookRepository
         bookRepository = new BookRepository(getApplication());
+        trackingRepository = new RecommendationTrackingRepository();
         
         // Get data from intent
         Intent intent = getIntent();
@@ -142,6 +149,11 @@ public class AudioReaderActivity extends AppCompatActivity {
             boolean isRussian = intent.getBooleanExtra("is_russian", false);
             String previewImagePath = intent.getStringExtra("previewImagePath");
             int startPosition = intent.getIntExtra("start_position", -1);
+            sourceFilePath = intent.hasExtra("filePath")
+                ? intent.getStringExtra("filePath")
+                : intent.getStringExtra("original_file_uri");
+            serverBookId = intent.getLongExtra("bookId", -1L);
+            fromRecommendation = intent.getBooleanExtra("fromRecommendation", false);
             
             if (title != null && getSupportActionBar() != null) {
                 if (title.contains(".")) {
@@ -563,6 +575,7 @@ public class AudioReaderActivity extends AppCompatActivity {
                             }
                             // If no more chunks and we're at the end, stop
                             if (queuedChunksCount == 0) {
+                                markBookAlreadyReadIfNeeded();
                                 stopProgressUpdate();
                                 isPlaying = false;
                                 isPaused = false;
@@ -831,6 +844,8 @@ public class AudioReaderActivity extends AppCompatActivity {
                     String[] words = textContent.split("\\s+");
                     if (newPosition >= words.length) {
                         newPosition = words.length - 1;
+                        currentPosition = (int)newPosition;
+                        markBookAlreadyReadIfNeeded();
                         stopReading();
                         return;
                     }
@@ -1128,6 +1143,29 @@ public class AudioReaderActivity extends AppCompatActivity {
         }
     }
 
+    private void markBookAlreadyReadIfNeeded() {
+        if (alreadyReadMarked) {
+            return;
+        }
+        alreadyReadMarked = true;
+        if (sourceFilePath != null && !sourceFilePath.trim().isEmpty()) {
+            bookRepository.markAlreadyReadByPath(sourceFilePath);
+        }
+        if (serverBookId > 0 && trackingRepository != null) {
+            trackingRepository.trackBookProgress(serverBookId, 100.0);
+            trackingRepository.markBookAlreadyRead(serverBookId);
+            if (fromRecommendation) {
+                trackingRepository.trackBookEvent(
+                    serverBookId,
+                    RecommendationTrackingRepository.EVENT_COMPLETION,
+                    null,
+                    null,
+                    100.0
+                );
+            }
+        }
+    }
+
     private String getUniqueKey() {
         return (bookTitle != null && bookTitle.getText() != null) ? bookTitle.getText().toString() : "default";
     }
@@ -1201,6 +1239,7 @@ public class AudioReaderActivity extends AppCompatActivity {
                 pdfIntent.putExtra("filePath", filePath);
                 pdfIntent.putExtra("title", originalIntent.getStringExtra("title"));
                 pdfIntent.putExtra("start_position", pagePosition); // Pass page position instead of word position
+                putBookTrackingExtras(pdfIntent, originalIntent);
                 if (searchPhrase != null && !searchPhrase.isEmpty()) pdfIntent.putExtra("search_phrase", searchPhrase);
                 Log.d(TAG, "[GO_TO_TEXT] Launching PDF in ViewerActivity with page position: " + pagePosition);
                 startActivity(pdfIntent);
@@ -1223,6 +1262,7 @@ public class AudioReaderActivity extends AppCompatActivity {
                 pdfIntent.putExtra("filePath", filePath);
                 pdfIntent.putExtra("title", title);
                 pdfIntent.putExtra("start_position", pagePosition); // Pass page position instead of word position
+                putBookTrackingExtras(pdfIntent, originalIntent);
                 if (searchPhrase != null && !searchPhrase.isEmpty()) pdfIntent.putExtra("search_phrase", searchPhrase);
                 Log.d(TAG, "[GO_TO_TEXT] Launching TXT in ViewerActivity with cache file: " + cacheFile.getAbsolutePath() + " and page position: " + pagePosition);
                 startActivity(pdfIntent);
@@ -1233,6 +1273,7 @@ public class AudioReaderActivity extends AppCompatActivity {
                 epubIntent.putExtra("filePath", filePath);
                 epubIntent.putExtra("title", originalIntent.getStringExtra("title"));
                 epubIntent.putExtra("start_position", pagePosition); // Pass page position instead of word position
+                putBookTrackingExtras(epubIntent, originalIntent);
                 if (searchPhrase != null && !searchPhrase.isEmpty()) epubIntent.putExtra("search_phrase", searchPhrase);
                 Log.d(TAG, "[GO_TO_TEXT] Launching EPUB in ViewerActivity with page position: " + pagePosition);
                 startActivity(epubIntent);
@@ -1243,6 +1284,7 @@ public class AudioReaderActivity extends AppCompatActivity {
                 readerIntent.putExtra("filePath", filePath);
                 readerIntent.putExtra("title", originalIntent.getStringExtra("title"));
                 readerIntent.putExtra("start_position", pagePosition); // Pass page position instead of word position
+                putBookTrackingExtras(readerIntent, originalIntent);
                 if (searchPhrase != null && !searchPhrase.isEmpty()) readerIntent.putExtra("search_phrase", searchPhrase);
                 Log.d(TAG, "[GO_TO_TEXT] Launching other file type in ReaderActivity with page position: " + pagePosition);
                 startActivity(readerIntent);
@@ -1251,6 +1293,14 @@ public class AudioReaderActivity extends AppCompatActivity {
             Log.e(TAG, "[GO_TO_TEXT] Error launching viewer: " + e.getMessage(), e);
             Toast.makeText(this, R.string.error_launching_audio_reader, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void putBookTrackingExtras(Intent targetIntent, Intent sourceIntent) {
+        if (sourceIntent == null) {
+            return;
+        }
+        targetIntent.putExtra("bookId", sourceIntent.getLongExtra("bookId", -1L));
+        targetIntent.putExtra("fromRecommendation", sourceIntent.getBooleanExtra("fromRecommendation", false));
     }
     
     /**

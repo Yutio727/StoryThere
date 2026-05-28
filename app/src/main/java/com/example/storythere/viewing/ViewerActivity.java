@@ -88,6 +88,7 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
     private long serverBookId = -1L;
     private boolean fromRecommendation = false;
     private boolean completionTracked = false;
+    private boolean alreadyReadMarked = false;
     private Handler positionSaveHandler = new Handler(Looper.getMainLooper());
     private Runnable positionSaveRunnable;
     private boolean isPositionRestored = false;
@@ -328,6 +329,7 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
             bookRepository.getBookByPath(filePath).observe(this, book -> {
                 if (book != null) {
                     currentBook = book;
+                    alreadyReadMarked = book.isAlreadyRead();
                     Log.d(TAG, "[BOOK_LOAD] Successfully loaded book: " + book.getTitle() + " with viewing position: " + book.getReadingPosition());
                     Log.d(TAG, "[BOOK_LOAD] Book details - ID: " + book.getId() + ", FilePath: " + book.getFilePath() + ", FileType: " + book.getFileType());
                     
@@ -898,15 +900,26 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
                         }
                     }
                 }
+                boolean lastPageVisible = lastVisiblePosition >= pages.size() - 1;
+                if (lastPageVisible) {
+                    targetPosition = pages.size() - 1;
+                }
                 int oldPosition = currentBook.getReadingPosition();
                 // Only update if the position has changed
-                if (targetPosition != oldPosition) {
+                if (targetPosition != oldPosition || (lastPageVisible && !currentBook.isAlreadyRead())) {
                     currentBook.setReadingPosition(targetPosition);
                     currentBook.setLastOpened(new java.util.Date());
+                    if (lastPageVisible) {
+                        currentBook.setAlreadyRead(true);
+                        currentBook.setServerProgress(100.0);
+                    }
                     bookRepository.update(currentBook);
                     Log.d(TAG, "[POSITION_SAVE] Successfully saved position: " + targetPosition + " (was: " + oldPosition + ") for book: " + currentBook.getTitle());
                 } else {
                     Log.d(TAG, "[POSITION_SAVE] Position unchanged (" + targetPosition + "), not updating book.");
+                }
+                if (lastPageVisible) {
+                    markBookAlreadyReadIfNeeded();
                 }
                 trackBookProgress(targetPosition);
             } else {
@@ -942,6 +955,21 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
             null,
             100.0
         );
+    }
+
+    private void markBookAlreadyReadIfNeeded() {
+        if (alreadyReadMarked) {
+            return;
+        }
+        alreadyReadMarked = true;
+        if (currentBook != null) {
+            currentBook.setAlreadyRead(true);
+            currentBook.setServerProgress(100.0);
+            bookRepository.update(currentBook);
+        }
+        if (serverBookId > 0 && trackingRepository != null) {
+            trackingRepository.markBookAlreadyRead(serverBookId);
+        }
     }
 
     private void restoreReadingPosition() {
@@ -1738,6 +1766,11 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
             audioIntent.putExtra("author", currentBook != null ? currentBook.getAuthor() : "Unknown Author");
             audioIntent.putExtra("is_russian", isRussian);
             audioIntent.putExtra("start_position", wordPosition); // Pass the calculated word position
+            audioIntent.putExtra("filePath", currentBook != null ? currentBook.getFilePath() : getIntent().getStringExtra("filePath"));
+            audioIntent.putExtra("original_file_uri", getIntent().getStringExtra("filePath"));
+            audioIntent.putExtra("original_file_type", getIntent().getStringExtra("fileType"));
+            audioIntent.putExtra("bookId", serverBookId);
+            audioIntent.putExtra("fromRecommendation", fromRecommendation);
             if (currentBook != null && currentBook.getPreviewImagePath() != null) {
                 audioIntent.putExtra("previewImagePath", currentBook.getPreviewImagePath());
             }

@@ -627,6 +627,9 @@ public class MainActivity extends AppCompatActivity {
         book.setRemoteFileUrl(apiBook.fileUrl);
         book.setServerProgress(clampProgress(apiBook.progress));
         book.setFavourite(apiBook.isFavourite);
+        if (apiBook.isAlreadyRead || apiBook.progress >= 100.0) {
+            book.setAlreadyRead(true);
+        }
         book.setTitle(safeText(apiBook.title, book.getTitle()));
         book.setAuthor(safeText(apiBook.author, book.getAuthor()));
         book.setFileType(safeText(apiBook.fileType, book.getFileType()));
@@ -671,7 +674,7 @@ public class MainActivity extends AppCompatActivity {
         if (lastOpenedAt != null) {
             book.setLastOpened(lastOpenedAt);
         }
-        if (apiAudiobook.progress >= 100.0) {
+        if (apiAudiobook.isAlreadyRead || apiAudiobook.progress >= 100.0 || apiAudiobook.completedAt != null) {
             book.setAlreadyRead(true);
         }
     }

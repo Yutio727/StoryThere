@@ -5,6 +5,7 @@ public class ApiUserAudiobook extends ApiAudiobook {
     public double progress;
     public Double rating;
     public boolean isFavourite;
+    public boolean isAlreadyRead;
     public long playbackPositionMs;
     public String completedAt;
     public String addedAt;

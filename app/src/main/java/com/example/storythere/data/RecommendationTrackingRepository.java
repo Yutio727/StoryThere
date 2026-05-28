@@ -11,6 +11,7 @@ import com.example.storythere.api.model.AudiobookRecommendationEventRequest;
 import com.example.storythere.api.model.BookInteractionRequest;
 import com.example.storythere.api.model.BookRecommendationEventRequest;
 import com.example.storythere.api.model.TrackingWriteResponse;
+import com.example.storythere.api.model.UserLibraryStateRequest;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -116,6 +117,26 @@ public class RecommendationTrackingRepository {
         request.score = score;
         request.completion = completion != null ? clampProgress(completion) : null;
         enqueue(apiService.saveAudiobookRecommendationEvent(request), "audiobook recommendation event");
+    }
+
+    public void markBookAlreadyRead(long bookId) {
+        if (bookId <= 0) {
+            return;
+        }
+        enqueue(
+            apiService.updateMyBookLibraryState(bookId, new UserLibraryStateRequest(null, true)),
+            "book read state"
+        );
+    }
+
+    public void markAudiobookAlreadyRead(long audiobookId) {
+        if (audiobookId <= 0) {
+            return;
+        }
+        enqueue(
+            apiService.updateMyAudiobookLibraryState(audiobookId, new UserLibraryStateRequest(null, true)),
+            "audiobook read state"
+        );
     }
 
     private void enqueue(Call<TrackingWriteResponse> call, String label) {

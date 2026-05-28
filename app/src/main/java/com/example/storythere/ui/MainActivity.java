@@ -36,6 +36,8 @@ import com.example.storythere.api.ApiClient;
 import com.example.storythere.api.ApiService;
 import com.example.storythere.api.model.ApiUserAudiobook;
 import com.example.storythere.api.model.ApiUserBook;
+import com.example.storythere.api.model.TrackingWriteResponse;
+import com.example.storythere.api.model.UserLibraryStateRequest;
 import com.example.storythere.data.Book;
 import com.example.storythere.adapters.BookAdapter;
 import com.example.storythere.adapters.BookListViewModel;
@@ -624,6 +626,7 @@ public class MainActivity extends AppCompatActivity {
         book.setServerBookId(apiBook.id);
         book.setRemoteFileUrl(apiBook.fileUrl);
         book.setServerProgress(clampProgress(apiBook.progress));
+        book.setFavourite(apiBook.isFavourite);
         book.setTitle(safeText(apiBook.title, book.getTitle()));
         book.setAuthor(safeText(apiBook.author, book.getAuthor()));
         book.setFileType(safeText(apiBook.fileType, book.getFileType()));
@@ -655,6 +658,7 @@ public class MainActivity extends AppCompatActivity {
         book.setDurationSeconds(durationSeconds);
         book.setPlaybackPositionMs(playbackPositionMs);
         book.setServerProgress(serverProgress);
+        book.setFavourite(apiAudiobook.isFavourite);
         book.setTitle(safeText(apiAudiobook.title, book.getTitle()));
         book.setAuthor(safeText(apiAudiobook.author, book.getAuthor()));
         book.setAnnotation(apiAudiobook.annotation);
@@ -1012,30 +1016,255 @@ public class MainActivity extends AppCompatActivity {
 
         btnDelete.setOnClickListener(v -> {
             List<Book> selectedBooks = adapter.getSelectedBooks();
-            for (Book book : selectedBooks) {
-                viewModel.delete(book);
-            }
             bottomSheetDialog.dismiss();
             exitSelectionMode();
-            Toast.makeText(this, R.string.books_deleted, Toast.LENGTH_SHORT).show();
+            deleteSelectedBooks(selectedBooks);
         });
 
         btnAddToFavourite.setOnClickListener(v -> {
             List<Book> selectedBooks = adapter.getSelectedBooks();
             boolean isRemoving = currentTab.equals(getString(R.string.favourite));
-            
-            for (Book book : selectedBooks) {
-                book.setFavourite(!isRemoving);
-                viewModel.update(book);
-            }
             bottomSheetDialog.dismiss();
             exitSelectionMode();
-            Toast.makeText(this, 
-                isRemoving ? getString(R.string.books_removed_from_favourites) : getString(R.string.books_added_to_favourites),
-                Toast.LENGTH_SHORT).show();
+            updateFavouriteForSelectedBooks(selectedBooks, !isRemoving, isRemoving);
         });
 
         bottomSheetDialog.show();
+    }
+
+    private void updateFavouriteForSelectedBooks(
+        List<Book> selectedBooks,
+        boolean targetFavourite,
+        boolean isRemoving
+    ) {
+        if (selectedBooks == null || selectedBooks.isEmpty()) {
+            return;
+        }
+
+        final int[] pendingCount = {selectedBooks.size()};
+        final int[] updatedCount = {0};
+        final int[] failedCount = {0};
+
+        for (Book book : selectedBooks) {
+            updateRemoteFavouriteIfNeeded(book, targetFavourite, success -> {
+                if (success) {
+                    book.setFavourite(targetFavourite);
+                    viewModel.update(book);
+                    updatedCount[0]++;
+                } else {
+                    failedCount[0]++;
+                }
+
+                pendingCount[0]--;
+                if (pendingCount[0] == 0) {
+                    showFavouriteResultToast(updatedCount[0], failedCount[0], isRemoving);
+                }
+            });
+        }
+    }
+
+    private void updateRemoteFavouriteIfNeeded(
+        Book book,
+        boolean targetFavourite,
+        FavouriteLibraryItemCallback callback
+    ) {
+        if (book == null) {
+            callback.onComplete(false);
+            return;
+        }
+
+        if (book.isAudiobook() && book.getServerAudiobookId() > 0) {
+            updateRemoteAudiobookFavourite(book.getServerAudiobookId(), targetFavourite, callback);
+            return;
+        }
+
+        if (!book.isAudiobook() && book.getServerBookId() > 0) {
+            updateRemoteBookFavourite(book.getServerBookId(), targetFavourite, callback);
+            return;
+        }
+
+        callback.onComplete(true);
+    }
+
+    private void updateRemoteBookFavourite(
+        long serverBookId,
+        boolean targetFavourite,
+        FavouriteLibraryItemCallback callback
+    ) {
+        if (apiService == null) {
+            callback.onComplete(false);
+            return;
+        }
+
+        apiService.updateMyBookLibraryState(
+            serverBookId,
+            new UserLibraryStateRequest(targetFavourite)
+        ).enqueue(new Callback<TrackingWriteResponse>() {
+            @Override
+            public void onResponse(Call<TrackingWriteResponse> call, Response<TrackingWriteResponse> response) {
+                if (!response.isSuccessful()) {
+                    Log.w("MainActivity", "Failed to update server book favourite " + serverBookId + ": " + response.code());
+                }
+                callback.onComplete(response.isSuccessful());
+            }
+
+            @Override
+            public void onFailure(Call<TrackingWriteResponse> call, Throwable t) {
+                Log.w("MainActivity", "Error updating server book favourite " + serverBookId, t);
+                callback.onComplete(false);
+            }
+        });
+    }
+
+    private void updateRemoteAudiobookFavourite(
+        long serverAudiobookId,
+        boolean targetFavourite,
+        FavouriteLibraryItemCallback callback
+    ) {
+        if (apiService == null) {
+            callback.onComplete(false);
+            return;
+        }
+
+        apiService.updateMyAudiobookLibraryState(
+            serverAudiobookId,
+            new UserLibraryStateRequest(targetFavourite)
+        ).enqueue(new Callback<TrackingWriteResponse>() {
+            @Override
+            public void onResponse(Call<TrackingWriteResponse> call, Response<TrackingWriteResponse> response) {
+                if (!response.isSuccessful()) {
+                    Log.w("MainActivity", "Failed to update server audiobook favourite " + serverAudiobookId + ": " + response.code());
+                }
+                callback.onComplete(response.isSuccessful());
+            }
+
+            @Override
+            public void onFailure(Call<TrackingWriteResponse> call, Throwable t) {
+                Log.w("MainActivity", "Error updating server audiobook favourite " + serverAudiobookId, t);
+                callback.onComplete(false);
+            }
+        });
+    }
+
+    private void showFavouriteResultToast(int updatedCount, int failedCount, boolean isRemoving) {
+        if (failedCount == 0) {
+            Toast.makeText(this,
+                isRemoving ? getString(R.string.books_removed_from_favourites) : getString(R.string.books_added_to_favourites),
+                Toast.LENGTH_SHORT).show();
+        } else if (updatedCount > 0) {
+            Toast.makeText(this, R.string.books_favourite_update_partial_failed, Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, R.string.books_favourite_update_failed, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void deleteSelectedBooks(List<Book> selectedBooks) {
+        if (selectedBooks == null || selectedBooks.isEmpty()) {
+            return;
+        }
+
+        final int[] pendingCount = {selectedBooks.size()};
+        final int[] deletedCount = {0};
+        final int[] failedCount = {0};
+
+        for (Book book : selectedBooks) {
+            deleteRemoteLibraryItemIfNeeded(book, success -> {
+                if (success) {
+                    viewModel.delete(book);
+                    deletedCount[0]++;
+                } else {
+                    failedCount[0]++;
+                }
+
+                pendingCount[0]--;
+                if (pendingCount[0] == 0) {
+                    showDeleteResultToast(deletedCount[0], failedCount[0]);
+                }
+            });
+        }
+    }
+
+    private void deleteRemoteLibraryItemIfNeeded(Book book, DeleteLibraryItemCallback callback) {
+        if (book == null) {
+            callback.onComplete(false);
+            return;
+        }
+
+        if (book.isAudiobook() && book.getServerAudiobookId() > 0) {
+            deleteRemoteAudiobook(book.getServerAudiobookId(), callback);
+            return;
+        }
+
+        if (!book.isAudiobook() && book.getServerBookId() > 0) {
+            deleteRemoteBook(book.getServerBookId(), callback);
+            return;
+        }
+
+        callback.onComplete(true);
+    }
+
+    private void deleteRemoteBook(long serverBookId, DeleteLibraryItemCallback callback) {
+        if (apiService == null) {
+            callback.onComplete(false);
+            return;
+        }
+
+        apiService.deleteMyBook(serverBookId).enqueue(new Callback<TrackingWriteResponse>() {
+            @Override
+            public void onResponse(Call<TrackingWriteResponse> call, Response<TrackingWriteResponse> response) {
+                if (!response.isSuccessful()) {
+                    Log.w("MainActivity", "Failed to delete server book " + serverBookId + ": " + response.code());
+                }
+                callback.onComplete(response.isSuccessful());
+            }
+
+            @Override
+            public void onFailure(Call<TrackingWriteResponse> call, Throwable t) {
+                Log.w("MainActivity", "Error deleting server book " + serverBookId, t);
+                callback.onComplete(false);
+            }
+        });
+    }
+
+    private void deleteRemoteAudiobook(long serverAudiobookId, DeleteLibraryItemCallback callback) {
+        if (apiService == null) {
+            callback.onComplete(false);
+            return;
+        }
+
+        apiService.deleteMyAudiobook(serverAudiobookId).enqueue(new Callback<TrackingWriteResponse>() {
+            @Override
+            public void onResponse(Call<TrackingWriteResponse> call, Response<TrackingWriteResponse> response) {
+                if (!response.isSuccessful()) {
+                    Log.w("MainActivity", "Failed to delete server audiobook " + serverAudiobookId + ": " + response.code());
+                }
+                callback.onComplete(response.isSuccessful());
+            }
+
+            @Override
+            public void onFailure(Call<TrackingWriteResponse> call, Throwable t) {
+                Log.w("MainActivity", "Error deleting server audiobook " + serverAudiobookId, t);
+                callback.onComplete(false);
+            }
+        });
+    }
+
+    private void showDeleteResultToast(int deletedCount, int failedCount) {
+        if (failedCount == 0) {
+            Toast.makeText(this, R.string.books_deleted, Toast.LENGTH_SHORT).show();
+        } else if (deletedCount > 0) {
+            Toast.makeText(this, R.string.books_delete_partial_failed, Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, R.string.books_delete_failed, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private interface DeleteLibraryItemCallback {
+        void onComplete(boolean success);
+    }
+
+    private interface FavouriteLibraryItemCallback {
+        void onComplete(boolean success);
     }
 
     private void initializeBottomNavigationViews() {

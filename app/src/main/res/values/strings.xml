@@ -61,8 +61,12 @@
     <string name="storage_permission_denied">Storage permission denied</string>
     <string name="selected">" selected"</string>
     <string name="books_deleted">Books deleted</string>
+    <string name="books_delete_failed">Could not delete books from server</string>
+    <string name="books_delete_partial_failed">Some books could not be deleted from server</string>
     <string name="books_removed_from_favourites">Books removed from favourites</string>
     <string name="books_added_to_favourites">Books added to favourites</string>
+    <string name="books_favourite_update_failed">Could not update favourites on server</string>
+    <string name="books_favourite_update_partial_failed">Some favourites could not be updated on server</string>
     <string name="unknown_author">Unknown Author</string>
     <string name="author_name">Author Name</string>
     <string name="book_cover_long_press_to_change_cover_image">Book cover. Long press to change cover image.</string>

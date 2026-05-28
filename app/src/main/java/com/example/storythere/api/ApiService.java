@@ -12,11 +12,14 @@ import com.example.storythere.api.model.BookInteractionRequest;
 import com.example.storythere.api.model.BookRecommendationEventRequest;
 import com.example.storythere.api.model.SyncMeRequest;
 import com.example.storythere.api.model.TrackingWriteResponse;
+import com.example.storythere.api.model.UserLibraryStateRequest;
 
 import java.util.List;
 
 import retrofit2.Call;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
+import retrofit2.http.PATCH;
 import retrofit2.http.POST;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
@@ -53,6 +56,15 @@ public interface ApiService {
         @Query("offset") int offset
     );
 
+    @DELETE("v1/me/books/{bookId}")
+    Call<TrackingWriteResponse> deleteMyBook(@Path("bookId") long bookId);
+
+    @PATCH("v1/me/books/{bookId}/library-state")
+    Call<TrackingWriteResponse> updateMyBookLibraryState(
+        @Path("bookId") long bookId,
+        @Body UserLibraryStateRequest request
+    );
+
     @GET("v1/audiobooks")
     Call<List<ApiAudiobook>> getAudiobooks(
         @Query("limit") int limit,
@@ -63,6 +75,15 @@ public interface ApiService {
     Call<List<ApiUserAudiobook>> getMyAudiobooks(
         @Query("limit") int limit,
         @Query("offset") int offset
+    );
+
+    @DELETE("v1/me/audiobooks/{audiobookId}")
+    Call<TrackingWriteResponse> deleteMyAudiobook(@Path("audiobookId") long audiobookId);
+
+    @PATCH("v1/me/audiobooks/{audiobookId}/library-state")
+    Call<TrackingWriteResponse> updateMyAudiobookLibraryState(
+        @Path("audiobookId") long audiobookId,
+        @Body UserLibraryStateRequest request
     );
 
     @GET("v1/recommendations/books")

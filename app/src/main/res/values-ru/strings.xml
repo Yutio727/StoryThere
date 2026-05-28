@@ -62,8 +62,12 @@
     <string name="storage_permission_denied">Нет разрешения хранилища</string>
     <string name="selected">выбрано</string>
     <string name="books_deleted">Книги удалены</string>
+    <string name="books_delete_failed">Не удалось удалить книги с сервера</string>
+    <string name="books_delete_partial_failed">Некоторые книги не удалось удалить с сервера</string>
     <string name="books_removed_from_favourites">Книги удалены из избранного</string>
     <string name="books_added_to_favourites">Книги добавлены в избранное</string>
+    <string name="books_favourite_update_failed">Не удалось обновить избранное на сервере</string>
+    <string name="books_favourite_update_partial_failed">Некоторые элементы избранного не удалось обновить на сервере</string>
     <string name="unknown_author">Неизвестный автор</string>
     <string name="author_name">Автор</string>
     <string name="book_cover_long_press_to_change_cover_image">Обложка книги. Зажмите, чтобы изменить обложку.</string>

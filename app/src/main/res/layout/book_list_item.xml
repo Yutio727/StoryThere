@@ -14,7 +14,8 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="136dp"
+        android:layout_height="wrap_content"
+        android:minHeight="136dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="8dp">
@@ -75,6 +76,17 @@
                 android:fontFamily="@font/montserrat"
                 android:maxLines="2"
                 android:textColor="@color/text_activity_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/bookType"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:ellipsize="end"
+                android:fontFamily="@font/montserrat_medium"
+                android:maxLines="1"
+                android:textColor="@color/progress_blue"
                 android:textSize="12sp" />
 
         </LinearLayout>

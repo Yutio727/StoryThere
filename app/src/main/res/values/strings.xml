@@ -234,6 +234,11 @@
     <string name="catalog_audiobooks_empty">No audiobooks found</string>
     <string name="catalog_authors_empty">No authors found</string>
     <string name="audio_duration">Duration: </string>
+    <string name="audiobook_listening_time">Listening time: </string>
+    <string name="book_list_audio_duration">Duration</string>
+    <string name="book_list_audio_listening_time">Listening time</string>
+    <string name="content_type_book">Book</string>
+    <string name="content_type_audiobook">Audiobook</string>
     <string name="onboarding_step_format">%1$d / %2$d</string>
     <string name="onboarding_back">Back</string>
     <string name="onboarding_next">Next</string>

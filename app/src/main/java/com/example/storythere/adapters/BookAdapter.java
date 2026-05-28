@@ -48,28 +48,10 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
         Book book = books.get(position);
         holder.titleTextView.setText(book.getTitle());
         holder.authorTextView.setText(book.getAuthor());
-        // Format readingStats with time for display only
-        String readingStats = book.getReadingStats();
-        if (readingStats == null || readingStats.trim().isEmpty()) {
-            holder.annotationTextView.setText("");
-        } else {
-            String result = readingStats;
-            int estimatedMinutes = -1;
-            try {
-                int count = Integer.parseInt(readingStats.trim().split(" ")[0]);
-                if (book.getFileType().equals("pdf")) {
-                    estimatedMinutes = (int) Math.ceil(count * 300.0 / 250.0);
-                } else {
-                    estimatedMinutes = (int) Math.ceil(count / 250.0);
-                }
-            } catch (Exception ignored) {}
-            if (estimatedMinutes > 0) {
-                String separator = " | ";
-                String min = holder.itemView.getContext().getString(R.string.min);
-                result = readingStats + separator + estimatedMinutes + min;
-            }
-            holder.annotationTextView.setText(result);
-        }
+        holder.annotationTextView.setText(getBookInfoText(holder, book));
+        holder.typeTextView.setText(book.isAudiobook()
+            ? holder.itemView.getContext().getString(R.string.content_type_audiobook)
+            : holder.itemView.getContext().getString(R.string.content_type_book));
         
         if (book.getPreviewImagePath() != null) {
             Glide.with(holder.itemView.getContext())
@@ -145,6 +127,7 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
         private final TextView titleTextView;
         private final TextView authorTextView;
         private final TextView annotationTextView;
+        private final TextView typeTextView;
         private final ImageView previewImageView;
         private final CheckBox checkBox;
         
@@ -153,8 +136,70 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
             titleTextView = view.findViewById(R.id.bookTitle);
             authorTextView = view.findViewById(R.id.bookAuthor);
             annotationTextView = view.findViewById(R.id.bookAnnotation);
+            typeTextView = view.findViewById(R.id.bookType);
             previewImageView = view.findViewById(R.id.bookPreview);
             checkBox = view.findViewById(R.id.bookCheckBox);
         }
+    }
+
+    private String getBookInfoText(BookViewHolder holder, Book book) {
+        if (book.isAudiobook()) {
+            return getAudiobookInfoText(holder, book);
+        }
+        return getReadingInfoText(holder, book);
+    }
+
+    private String getReadingInfoText(BookViewHolder holder, Book book) {
+        String readingStats = book.getReadingStats();
+        if (readingStats == null || readingStats.trim().isEmpty()) {
+            return "";
+        }
+
+        String result = readingStats;
+        int estimatedMinutes = -1;
+        try {
+            int count = Integer.parseInt(readingStats.trim().split(" ")[0]);
+            if ("pdf".equals(book.getFileType())) {
+                estimatedMinutes = (int) Math.ceil(count * 300.0 / 250.0);
+            } else {
+                estimatedMinutes = (int) Math.ceil(count / 250.0);
+            }
+        } catch (Exception ignored) {}
+        if (estimatedMinutes > 0) {
+            String separator = " | ";
+            String min = holder.itemView.getContext().getString(R.string.min);
+            result = readingStats + separator + estimatedMinutes + min;
+        }
+        return result;
+    }
+
+    private String getAudiobookInfoText(BookViewHolder holder, Book book) {
+        int durationSeconds = book.getDurationSeconds();
+        if (durationSeconds > 0) {
+            return formatAudioDuration(
+                holder,
+                holder.itemView.getContext().getString(R.string.book_list_audio_duration),
+                durationSeconds
+            );
+        }
+
+        long playbackPositionMs = book.getPlaybackPositionMs();
+        if (playbackPositionMs > 0L) {
+            return formatAudioDuration(
+                holder,
+                holder.itemView.getContext().getString(R.string.book_list_audio_listening_time),
+                (int) (playbackPositionMs / 1000L)
+            );
+        }
+
+        return "";
+    }
+
+    private String formatAudioDuration(BookViewHolder holder, String label, int totalSeconds) {
+        int durationMinutes = (int) Math.ceil(Math.max(1, totalSeconds) / 60.0);
+        return label
+            + " | "
+            + durationMinutes
+            + holder.itemView.getContext().getString(R.string.min);
     }
 } 

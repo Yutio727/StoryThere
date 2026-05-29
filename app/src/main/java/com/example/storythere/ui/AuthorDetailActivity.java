@@ -45,6 +45,8 @@ public class AuthorDetailActivity extends AppCompatActivity {
     private TextView authorLifeSpan;
     private TextView authorNationality;
     private TextView authorBooksCount;
+    private TextView booksSectionTitle;
+    private TextView audiobooksSectionTitle;
     private RecyclerView booksRecyclerView;
     private RecyclerView audiobooksRecyclerView;
     private RecommendBookAdapter booksAdapter;
@@ -85,8 +87,12 @@ public class AuthorDetailActivity extends AppCompatActivity {
         authorLifeSpan = findViewById(R.id.author_life_span);
         authorNationality = findViewById(R.id.author_nationality);
         authorBooksCount = findViewById(R.id.author_books_count);
+        booksSectionTitle = findViewById(R.id.books_section_title);
+        audiobooksSectionTitle = findViewById(R.id.audiobooks_section_title);
         booksRecyclerView = findViewById(R.id.books_recycler_view);
         audiobooksRecyclerView = findViewById(R.id.audiobooks_recycler_view);
+        setBooksSectionVisible(false);
+        setAudiobooksSectionVisible(false);
     }
     
     private void setupToolbar() {
@@ -197,6 +203,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
         } catch (NumberFormatException e) {
             Log.e("AuthorDetailActivity", "Invalid authorId: " + authorId);
             booksAdapter.updateBooks(new ArrayList<>());
+            setBooksSectionVisible(false);
             return;
         }
 
@@ -216,9 +223,11 @@ public class AuthorDetailActivity extends AppCompatActivity {
                         ));
                     }
                     booksAdapter.updateBooks(books);
+                    setBooksSectionVisible(!books.isEmpty());
                 } else {
                     Log.w("AuthorDetailActivity", "Failed to load author books from API. code=" + response.code());
                     booksAdapter.updateBooks(new ArrayList<>());
+                    setBooksSectionVisible(false);
                 }
             }
 
@@ -226,6 +235,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
             public void onFailure(Call<List<ApiBook>> call, Throwable t) {
                 Log.w("AuthorDetailActivity", "Failed to load author books from API", t);
                 booksAdapter.updateBooks(new ArrayList<>());
+                setBooksSectionVisible(false);
             }
         });
     }
@@ -237,6 +247,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
         } catch (NumberFormatException e) {
             Log.e("AuthorDetailActivity", "Invalid authorId: " + authorId);
             audiobooksAdapter.updateBooks(new ArrayList<>());
+            setAudiobooksSectionVisible(false);
             return;
         }
 
@@ -264,9 +275,11 @@ public class AuthorDetailActivity extends AppCompatActivity {
                         ));
                     }
                     audiobooksAdapter.updateBooks(audiobooks);
+                    setAudiobooksSectionVisible(!audiobooks.isEmpty());
                 } else {
                     Log.w("AuthorDetailActivity", "Failed to load author audiobooks from API. code=" + response.code());
                     audiobooksAdapter.updateBooks(new ArrayList<>());
+                    setAudiobooksSectionVisible(false);
                 }
             }
 
@@ -274,8 +287,21 @@ public class AuthorDetailActivity extends AppCompatActivity {
             public void onFailure(Call<List<ApiAudiobook>> call, Throwable t) {
                 Log.w("AuthorDetailActivity", "Failed to load author audiobooks from API", t);
                 audiobooksAdapter.updateBooks(new ArrayList<>());
+                setAudiobooksSectionVisible(false);
             }
         });
+    }
+
+    private void setBooksSectionVisible(boolean visible) {
+        int visibility = visible ? View.VISIBLE : View.GONE;
+        booksSectionTitle.setVisibility(visibility);
+        booksRecyclerView.setVisibility(visibility);
+    }
+
+    private void setAudiobooksSectionVisible(boolean visible) {
+        int visibility = visible ? View.VISIBLE : View.GONE;
+        audiobooksSectionTitle.setVisibility(visibility);
+        audiobooksRecyclerView.setVisibility(visibility);
     }
     
     // Book opening functionality (copied from HomeActivity)

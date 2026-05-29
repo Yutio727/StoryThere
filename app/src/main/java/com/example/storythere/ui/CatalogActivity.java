@@ -114,6 +114,7 @@ public class CatalogActivity extends AppCompatActivity {
         setupBottomNavigation();
         setSelectedTab(3);
         setupCatalogTabs();
+        setupBookStatusBadges();
         setupScrollPaging();
 
         showBooksTab();
@@ -140,6 +141,13 @@ public class CatalogActivity extends AppCompatActivity {
         booksAdapter = new RecommendBookAdapter(books, this::handleRecommendedBookClick);
         audiobooksAdapter = new RecommendBookAdapter(audiobooks, this::handleRecommendedBookClick);
         authorsAdapter = new AuthorAdapter(this, authors);
+    }
+
+    private void setupBookStatusBadges() {
+        viewModel.getAllBooks().observe(this, localBooks -> {
+            booksAdapter.updateLibraryState(localBooks);
+            audiobooksAdapter.updateLibraryState(localBooks);
+        });
     }
 
     private void setupCatalogTabs() {

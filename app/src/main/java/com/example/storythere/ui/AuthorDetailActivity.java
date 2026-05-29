@@ -84,6 +84,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
         setupToolbar();
         setupRecyclerView();
         initializeRepositories();
+        setupBookStatusBadges();
         loadAuthorData();
         loadAuthorBooks();
         loadAuthorAudiobooks();
@@ -135,7 +136,14 @@ public class AuthorDetailActivity extends AppCompatActivity {
         viewModel = new ViewModelProvider(this).get(BookListViewModel.class);
         apiService = ApiClient.getApiService();
     }
-    
+
+    private void setupBookStatusBadges() {
+        viewModel.getAllBooks().observe(this, localBooks -> {
+            booksAdapter.updateLibraryState(localBooks);
+            audiobooksAdapter.updateLibraryState(localBooks);
+        });
+    }
+
     private void loadAuthorData() {
         authorRepository.getAuthorById(authorId).observe(this, new Observer<Author>() {
             @Override

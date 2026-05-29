@@ -361,6 +361,8 @@ public class HomeActivity extends AppCompatActivity {
         public String dictor;
         public int durationSeconds;
         public int slotIndex = -1;
+        public boolean isFavourite;
+        public boolean isAlreadyRead;
 
         public RecommendedBook(String title, String author, String fileUrl, String fileType, String image, String annotation) {
             this(-1L, title, author, fileUrl, fileType, image, annotation, false, null, null, 0);
@@ -395,6 +397,7 @@ public class HomeActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         RecommendBookAdapter adapter = new RecommendBookAdapter(new ArrayList<>(), HomeActivity.this::handleRecommendedBookClick);
         recyclerView.setAdapter(adapter);
+        viewModel.getAllBooks().observe(this, adapter::updateLibraryState);
 
         remoteBookRepository.getRecommendedBooks(HOME_RECOMMENDATION_LIMIT).observe(this, remoteBooks -> {
             if (remoteBooks == null) return;
@@ -429,6 +432,7 @@ public class HomeActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         RecommendBookAdapter adapter = new RecommendBookAdapter(new ArrayList<>(), HomeActivity.this::handleRecommendedBookClick);
         recyclerView.setAdapter(adapter);
+        viewModel.getAllBooks().observe(this, adapter::updateLibraryState);
 
         CachedAudiobookRecommendations cachedAudiobooks = getCachedRecommendedAudiobooks();
         if (cachedAudiobooks != null) {

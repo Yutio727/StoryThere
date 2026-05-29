@@ -6,13 +6,49 @@
     android:gravity="top"
     android:padding="8dp">
 
-    <ImageView
-        android:id="@+id/image_book_cover"
+    <FrameLayout
         android:layout_width="120dp"
-        android:layout_height="160dp"
-        android:scaleType="centerCrop"
-        android:background="@drawable/book_cover_background"
-        android:contentDescription="@string/book_cover" />
+        android:layout_height="160dp">
+
+        <ImageView
+            android:id="@+id/image_book_cover"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:background="@drawable/book_cover_background"
+            android:contentDescription="@string/book_cover" />
+
+        <LinearLayout
+            android:id="@+id/book_status_badges"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="8dp"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/icon_book_favorite"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:background="@color/background_activity"
+                android:contentDescription="@string/favourite"
+                android:padding="4dp"
+                android:src="@drawable/ic_book_favorite"
+                android:visibility="gone" />
+
+            <ImageView
+                android:id="@+id/icon_book_read"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:background="@color/background_activity"
+                android:contentDescription="@string/already_read"
+                android:padding="4dp"
+                    android:layout_marginTop="4dp"
+                android:src="@drawable/ic_book_read"
+                android:visibility="gone" />
+        </LinearLayout>
+    </FrameLayout>
 
     <TextView
         android:id="@+id/text_book_title"

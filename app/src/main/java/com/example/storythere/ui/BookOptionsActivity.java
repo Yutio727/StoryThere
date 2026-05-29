@@ -68,6 +68,7 @@ import android.widget.ProgressBar;
 import java.io.IOException;
 
 public class BookOptionsActivity extends AppCompatActivity {
+    private static final String DEFAULT_AUDIOBOOK_DICTOR = "Xenia Silero v5_5_rus";
 
     private Button footerButton;
     private Uri contentUri;
@@ -75,6 +76,7 @@ public class BookOptionsActivity extends AppCompatActivity {
     private String title;
     private ImageView bookCoverImage;
     private TextView bookAuthorText;
+    private TextView bookDictorText;
     private TextView bookReadingTimeText;
     private TextView bookEstimatedTimeText;
     private TextView bookAnnotationText;
@@ -110,6 +112,7 @@ public class BookOptionsActivity extends AppCompatActivity {
     private int durationSeconds = 0;
     private int playbackPositionMs = -1;
     private String authorFromIntent;
+    private String dictorFromIntent;
     private String previewImagePathFromIntent;
     private boolean isFooterActionInProgress = false;
 
@@ -143,6 +146,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                 ? intent.getIntExtra(AudiobookPlayerActivity.EXTRA_START_POSITION_MS, 0)
                 : -1;
             authorFromIntent = intent.getStringExtra("author");
+            dictorFromIntent = intent.getStringExtra("dictor");
             previewImagePathFromIntent = intent.getStringExtra("previewImagePath");
             if (isAudiobook && (fileType == null || fileType.trim().isEmpty())) {
                 fileType = audioType != null ? audioType : "mp3";
@@ -157,6 +161,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         footerButton = findViewById(R.id.footerButton);
         bookCoverImage = findViewById(R.id.bookCoverImage);
         bookAuthorText = findViewById(R.id.bookAuthorText);
+        bookDictorText = findViewById(R.id.bookDictorText);
         bookReadingTimeText = findViewById(R.id.bookReadingTimeText);
         bookEstimatedTimeText = findViewById(R.id.bookEstimatedTimeText);
         bookAnnotationText = findViewById(R.id.bookAnnotationText);
@@ -631,6 +636,14 @@ public class BookOptionsActivity extends AppCompatActivity {
             bookAuthorText.setText(R.string.unknown_author);
         }
 
+        String dictor = resolveAudiobookDictor();
+        if (dictor != null && !dictor.trim().isEmpty()) {
+            bookDictorText.setText(getString(R.string.audiobook_dictor_label) + " " + dictor);
+            bookDictorText.setVisibility(View.VISIBLE);
+        } else {
+            bookDictorText.setVisibility(View.GONE);
+        }
+
         if (previewImagePathFromIntent != null && !previewImagePathFromIntent.trim().isEmpty()) {
             Glide.with(this)
                 .load(previewImagePathFromIntent)
@@ -642,6 +655,16 @@ public class BookOptionsActivity extends AppCompatActivity {
         } else {
             bookCoverImage.setImageResource(R.drawable.ic_book_placeholder);
         }
+    }
+
+    private String resolveAudiobookDictor() {
+        if (dictorFromIntent != null && !dictorFromIntent.trim().isEmpty()) {
+            return dictorFromIntent;
+        }
+        if (audiobookId > 0) {
+            return DEFAULT_AUDIOBOOK_DICTOR;
+        }
+        return null;
     }
 
     private void openAudiobookPlayer() {
@@ -907,7 +930,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         if (isAudiobook) {
             if (durationSeconds > 0) {
                 String duration = formatTime(durationSeconds);
-                bookReadingTimeText.setText(getString(R.string.audio_duration) + duration);
+                bookReadingTimeText.setText(getString(R.string.audio_duration) + " " + duration);
                 bookEstimatedTimeText.setText("");
             } else {
                 bookReadingTimeText.setText("");

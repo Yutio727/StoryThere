@@ -259,6 +259,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
                             true,
                             audiobook.audioUrl,
                             audioType,
+                            audiobook.dictor,
                             durationSeconds
                         ));
                     }
@@ -552,6 +553,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
         intent.putExtra("durationSeconds", book.durationSeconds);
         intent.putExtra("title", book.title);
         intent.putExtra("author", book.author);
+        intent.putExtra("dictor", book.dictor);
         intent.putExtra("annotation", book.annotation);
         intent.putExtra("previewImagePath", book.image);
         startActivity(intent);

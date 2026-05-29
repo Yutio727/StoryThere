@@ -416,6 +416,7 @@ public class CatalogActivity extends AppCompatActivity {
             true,
             apiAudiobook.audioUrl,
             audioType,
+            apiAudiobook.dictor,
             durationSeconds
         );
     }
@@ -745,6 +746,7 @@ public class CatalogActivity extends AppCompatActivity {
         intent.putExtra("durationSeconds", book.durationSeconds);
         intent.putExtra("title", book.title);
         intent.putExtra("author", book.author);
+        intent.putExtra("dictor", book.dictor);
         intent.putExtra("annotation", book.annotation);
         intent.putExtra("previewImagePath", book.image);
         startActivity(intent);

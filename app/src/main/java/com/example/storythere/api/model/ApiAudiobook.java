@@ -5,6 +5,7 @@ public class ApiAudiobook {
     public Long recommendationItemId;
     public String title;
     public String author;
+    public String dictor;
     public Long authorID;
     public Integer publicationYear;
     public String annotation;

@@ -351,6 +351,7 @@ public class HomeActivity extends AppCompatActivity {
         public boolean isAudiobook;
         public String audioUrl;
         public String audioType;
+        public String dictor;
         public int durationSeconds;
         public int slotIndex = -1;
 
@@ -361,6 +362,12 @@ public class HomeActivity extends AppCompatActivity {
         public RecommendedBook(long id, String title, String author, String fileUrl, String fileType, String image,
                                String annotation, boolean isAudiobook, String audioUrl, String audioType,
                                int durationSeconds) {
+            this(id, title, author, fileUrl, fileType, image, annotation, isAudiobook, audioUrl, audioType, null, durationSeconds);
+        }
+
+        public RecommendedBook(long id, String title, String author, String fileUrl, String fileType, String image,
+                               String annotation, boolean isAudiobook, String audioUrl, String audioType,
+                               String dictor, int durationSeconds) {
             this.id = id;
             this.title = title;
             this.author = author;
@@ -371,6 +378,7 @@ public class HomeActivity extends AppCompatActivity {
             this.isAudiobook = isAudiobook;
             this.audioUrl = audioUrl;
             this.audioType = audioType;
+            this.dictor = dictor;
             this.durationSeconds = durationSeconds;
         }
     }
@@ -605,6 +613,7 @@ public class HomeActivity extends AppCompatActivity {
                 true,
                 audiobook.audioUrl,
                 audioType,
+                audiobook.dictor,
                 durationSeconds
             );
             recommendedBook.slotIndex = slotIndex++;
@@ -980,6 +989,7 @@ public class HomeActivity extends AppCompatActivity {
         intent.putExtra("durationSeconds", book.durationSeconds);
         intent.putExtra("title", book.title);
         intent.putExtra("author", book.author);
+        intent.putExtra("dictor", book.dictor);
         intent.putExtra("annotation", book.annotation);
         intent.putExtra("previewImagePath", book.image);
         startActivity(intent);

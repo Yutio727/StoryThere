@@ -32,6 +32,7 @@ public class Book {
     private long serverAudiobookId; // Backend audiobooks.id for progress sync
     private String remoteAudioUrl;
     private String audioType;
+    private String dictor;
     private int durationSeconds;
     private long playbackPositionMs;
     
@@ -128,6 +129,9 @@ public class Book {
 
     public String getAudioType() { return audioType; }
     public void setAudioType(String audioType) { this.audioType = audioType; }
+
+    public String getDictor() { return dictor; }
+    public void setDictor(String dictor) { this.dictor = dictor; }
 
     public int getDurationSeconds() { return durationSeconds; }
     public void setDurationSeconds(int durationSeconds) { this.durationSeconds = durationSeconds; }

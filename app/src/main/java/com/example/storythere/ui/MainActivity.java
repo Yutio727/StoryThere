@@ -723,6 +723,7 @@ public class MainActivity extends AppCompatActivity {
         book.setFilePath(apiAudiobook.audioUrl);
         book.setAudioType(safeText(apiAudiobook.audioType, "mp3"));
         book.setFileType(safeText(apiAudiobook.audioType, "mp3"));
+        book.setDictor(apiAudiobook.dictor);
         int durationSeconds = apiAudiobook.durationSeconds != null ? apiAudiobook.durationSeconds : 0;
         double serverProgress = clampProgress(apiAudiobook.progress);
         long playbackPositionMs = Math.max(0L, apiAudiobook.playbackPositionMs);
@@ -774,6 +775,7 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("durationSeconds", book.getDurationSeconds());
         intent.putExtra("title", book.getTitle());
         intent.putExtra("author", book.getAuthor());
+        intent.putExtra("dictor", book.getDictor());
         intent.putExtra("annotation", book.getAnnotation());
         intent.putExtra("previewImagePath", book.getPreviewImagePath());
         intent.putExtra(AudiobookPlayerActivity.EXTRA_START_POSITION_MS, safeLongToInt(book.getPlaybackPositionMs()));

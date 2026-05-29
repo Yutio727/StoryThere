@@ -212,6 +212,7 @@
     <string name="failed_to_save_bookmark">Не удалось сохранить закладку</string>
     <string name="could_not_save_bookmark_no_book_loaded">Не удалось сохранить закладку (книга не найдена)</string>
     <string name="no_book_loaded">Книга не найдена</string>
+    <string name="bookmark_deleted">Закладка удалена</string>
     <string name="jumped_to_bookmark_page">"Перенеслись к закладке (страница "</string>
     <string name="jumped_to_bookmark_chunk">"Перенеслись к закладке (чанк "</string>
     <string name="jumped_to_bookmark_epub_chunk">"Перенеслись к закладке (чанк "</string>
@@ -240,8 +241,9 @@
     <string name="catalog_authors_empty">Авторы не найдены</string>
     <string name="audio_duration">Длительность: </string>
     <string name="audiobook_listening_time">Время прослушивания: </string>
-    <string name="book_list_audio_duration">Длительность</string>
-    <string name="book_list_audio_listening_time">Время прослушивания</string>
+    <string name="book_list_audio_duration">"Длительность "</string>
+    <string name="book_list_audio_listening_time">"Время прослушивания "</string>
+    <string name="audiobook_dictor_label">Диктор: </string>
     <string name="content_type_book">Книга</string>
     <string name="content_type_audiobook">Аудиокнига</string>
     <string name="onboarding_step_format">%1$d / %2$d</string>
@@ -259,4 +261,5 @@
     <string name="onboarding_genres_subtitle">Отметьте жанры, которые сейчас кажутся интересными.</string>
     <string name="onboarding_done_title">Готово!</string>
     <string name="onboarding_done_subtitle">Готовим ваши первые рекомендации.</string>
+    <string name="delete_bookmark">Удалить закладку</string>
 </resources>

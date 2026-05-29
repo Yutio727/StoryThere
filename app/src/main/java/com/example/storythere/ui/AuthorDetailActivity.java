@@ -1,10 +1,16 @@
 package com.example.storythere.ui;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -32,12 +38,15 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.InputStream;
 import java.util.Date;
+import java.util.Locale;
+import java.util.Objects;
 import android.database.Cursor;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 public class AuthorDetailActivity extends AppCompatActivity {
+    private static final int PERMISSION_REQUEST_CODE = 1204;
     
     private ImageView authorImage;
     private TextView authorName;
@@ -214,12 +223,17 @@ public class AuthorDetailActivity extends AppCompatActivity {
                     List<HomeActivity.RecommendedBook> books = new ArrayList<>();
                     for (ApiBook apiBook : response.body()) {
                         books.add(new HomeActivity.RecommendedBook(
-                            apiBook.title,
-                            apiBook.author,
+                            apiBook.id,
+                            safeText(apiBook.title, "Unknown Title"),
+                            safeText(apiBook.author, "Unknown Author"),
                             apiBook.fileUrl,
-                            apiBook.fileType,
+                            safeFileType(apiBook.fileType, apiBook.fileUrl),
                             apiBook.image,
-                            apiBook.annotation
+                            apiBook.annotation,
+                            false,
+                            null,
+                            null,
+                            0
                         ));
                     }
                     booksAdapter.updateBooks(books);
@@ -311,10 +325,14 @@ public class AuthorDetailActivity extends AppCompatActivity {
             openAudiobookOptionsActivity(book);
             return;
         }
+        if (!hasStoragePermission()) {
+            requestStoragePermission();
+            return;
+        }
         String bookTitle = book.title != null ? book.title : "Unknown Title";
         String bookAuthor = book.author != null ? book.author : "Unknown Author";
         String fileUrl = book.fileUrl;
-        String fileType = book.fileType;
+        String fileType = safeFileType(book.fileType, fileUrl);
         String imageUrl = book.image;
         String annotation = book.annotation;
 
@@ -332,7 +350,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
         if (existingFile.exists()) {
             Log.d("AuthorDetailActivity", "File already exists on device: " + existingFile.getAbsolutePath());
             // File exists, check if it's in our database
-            checkDatabaseAndAddIfNeeded(bookTitle, bookAuthor, existingFile.getAbsolutePath(), fileType, imageUrl, annotation);
+            checkDatabaseAndAddIfNeeded(book.id, bookTitle, bookAuthor, existingFile.getAbsolutePath(), fileType, imageUrl, annotation);
             return;
         }
 
@@ -342,52 +360,28 @@ public class AuthorDetailActivity extends AppCompatActivity {
             public void onChanged(List<Book> books) {
                 viewModel.getAllBooks().removeObserver(this);
                 isCheckingBook = false;
-                Book existingBook = null;
-                for (Book b : books) {
-                    if (b.getTitle().equals(bookTitle) && b.getAuthor().equals(bookAuthor)) {
-                        existingBook = b;
-                        break;
-                    }
-                }
+                Book existingBook = findMatchingLocalBook(books, book.id, bookTitle, bookAuthor);
                 if (existingBook != null) {
-                    // Check if the file referenced in database actually exists
-                    boolean fileExists = false;
-                    try {
-                        Uri bookUri = Uri.parse(existingBook.getFilePath());
-                        if ("content".equals(bookUri.getScheme())) {
-                            // Content URI - try to open input stream
-                            try (InputStream is = getContentResolver().openInputStream(bookUri)) {
-                                fileExists = (is != null);
-                            }
-                        } else {
-                            // File path - check if file exists
-                            File dbFile = new File(existingBook.getFilePath());
-                            fileExists = dbFile.exists();
-                        }
-                    } catch (Exception e) {
-                        Log.e("AuthorDetailActivity", "Error checking file existence: " + e.getMessage());
-                        fileExists = false;
-                    }
-                    
-                    if (fileExists) {
+                    if (doesBookFileExist(existingBook)) {
                         Log.d("AuthorDetailActivity", "Book found in database and file exists: " + existingBook.getFilePath());
                         // Always use the URI stored in the database (which should be content URI)
-                        openBookOptionsActivity(Uri.parse(existingBook.getFilePath()), fileType, bookTitle, annotation);
+                        openBookOptionsActivity(book.id, Uri.parse(existingBook.getFilePath()), fileType, bookTitle, annotation);
                     } else {
                         Log.d("AuthorDetailActivity", "Book in database but file missing, will re-download");
-                        // File doesn't exist, remove from database and download again
-                        bookRepository.delete(existingBook);
-                        startDownload(bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
+                        if (shouldDeleteMissingLocalBook(existingBook)) {
+                            bookRepository.delete(existingBook);
+                        }
+                        startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
                     }
                 } else {
-                    startDownload(bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
+                    startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
                 }
             }
         };
         viewModel.getAllBooks().observe(this, observer);
     }
 
-    private void checkDatabaseAndAddIfNeeded(String title, String author, String filePath, String fileType, String imageUrl, String annotation) {
+    private void checkDatabaseAndAddIfNeeded(long serverBookId, String title, String author, String filePath, String fileType, String imageUrl, String annotation) {
         Observer<List<Book>> observer = new Observer<List<Book>>() {
             @Override
             public void onChanged(List<Book> books) {
@@ -402,32 +396,22 @@ public class AuthorDetailActivity extends AppCompatActivity {
                     return;
                 }
                 
-                // Check if book is already in database
-                boolean bookExists = false;
-                for (Book b : books) {
-                    if (b.getTitle().equals(title) && b.getAuthor().equals(author)) {
-                        bookExists = true;
-                        // Update file path if it's different (always use content URI)
-                        if (!b.getFilePath().equals(contentUri)) {
-                            b.setFilePath(contentUri);
-                            bookRepository.update(b);
-                            Log.d("AuthorDetailActivity", "Updated file path for existing book: " + title + " to content URI");
-                        }
-                        break;
-                    }
-                }
+                Book existingBook = findMatchingLocalBook(books, serverBookId, title, author);
                 
-                if (!bookExists) {
+                if (existingBook != null) {
+                    updateLocalBookFromAuthor(existingBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation);
+                    bookRepository.update(existingBook);
+                    Log.d("AuthorDetailActivity", "Updated existing book from author detail: " + title + " to content URI");
+                } else {
                     // Add to database with content URI
                     Book newBook = new Book(title, author, contentUri, fileType);
-                    newBook.setPreviewImagePath(imageUrl);
-                    newBook.setAnnotation(annotation);
+                    updateLocalBookFromAuthor(newBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation);
                     bookRepository.insert(newBook);
                     Log.d("AuthorDetailActivity", "Added existing file to database: " + title + " with URI: " + contentUri);
                 }
                 
                 // Always open the book with content URI
-                openBookOptionsActivity(Uri.parse(contentUri), fileType, title, annotation);
+                openBookOptionsActivity(serverBookId, Uri.parse(contentUri), fileType, title, annotation);
             }
         };
         viewModel.getAllBooks().observe(this, observer);
@@ -450,9 +434,115 @@ public class AuthorDetailActivity extends AppCompatActivity {
         return null;
     }
 
-    private void startDownload(String title, String author, String fileUrl, String fileType, String imageUrl, String annotation) {
+    private boolean doesBookFileExist(Book book) {
+        if (book == null || book.getFilePath() == null || book.getFilePath().trim().isEmpty()) {
+            return false;
+        }
+        try {
+            Uri bookUri = Uri.parse(book.getFilePath());
+            if ("content".equals(bookUri.getScheme())) {
+                try (InputStream is = getContentResolver().openInputStream(bookUri)) {
+                    return is != null;
+                }
+            }
+            File dbFile = new File(book.getFilePath());
+            return dbFile.exists();
+        } catch (Exception e) {
+            Log.e("AuthorDetailActivity", "Error checking file existence: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean shouldDeleteMissingLocalBook(Book book) {
+        return book != null
+            && book.getServerBookId() <= 0
+            && !book.isAlreadyRead()
+            && book.getFilePath() != null
+            && !book.getFilePath().trim().isEmpty();
+    }
+
+    private Book findMatchingLocalBook(List<Book> books, long serverBookId, String title, String author) {
+        if (books == null) {
+            return null;
+        }
+        if (serverBookId > 0) {
+            for (Book book : books) {
+                if (book != null && !book.isAudiobook() && book.getServerBookId() == serverBookId) {
+                    return book;
+                }
+            }
+        }
+        for (Book book : books) {
+            if (book != null
+                && !book.isAudiobook()
+                && safeEquals(book.getTitle(), title)
+                && safeEquals(book.getAuthor(), author)) {
+                return book;
+            }
+        }
+        return null;
+    }
+
+    private void updateLocalBookFromAuthor(
+        Book book,
+        long serverBookId,
+        String title,
+        String author,
+        String filePath,
+        String fileType,
+        String imageUrl,
+        String annotation
+    ) {
+        book.setAudiobook(false);
+        if (serverBookId > 0) {
+            book.setServerBookId(serverBookId);
+        }
+        book.setTitle(safeText(title, book.getTitle()));
+        book.setAuthor(safeText(author, book.getAuthor()));
+        book.setFilePath(filePath);
+        book.setFileType(safeText(fileType, book.getFileType()));
+        book.setPreviewImagePath(imageUrl);
+        book.setImage(imageUrl);
+        book.setAnnotation(annotation);
+        book.setLastOpened(new Date());
+    }
+
+    private boolean safeEquals(String first, String second) {
+        return Objects.equals(normalizeText(first), normalizeText(second));
+    }
+
+    private String normalizeText(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private String safeText(String value, String fallback) {
+        return value == null || value.trim().isEmpty() ? fallback : value;
+    }
+
+    private String safeFileType(String fileType, String fileUrl) {
+        if (fileType != null && !fileType.trim().isEmpty()) {
+            return fileType.trim().toLowerCase(Locale.US);
+        }
+        if (fileUrl == null) {
+            return "";
+        }
+        int queryIndex = fileUrl.indexOf('?');
+        String cleanUrl = queryIndex >= 0 ? fileUrl.substring(0, queryIndex) : fileUrl;
+        int dotIndex = cleanUrl.lastIndexOf('.');
+        if (dotIndex < 0 || dotIndex == cleanUrl.length() - 1) {
+            return "";
+        }
+        return cleanUrl.substring(dotIndex + 1).toLowerCase(Locale.US);
+    }
+
+    private void startDownload(long serverBookId, String title, String author, String fileUrl, String fileType, String imageUrl, String annotation) {
         if (isDownloading) {
             Toast.makeText(this, R.string.processing_in_progress, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (fileUrl == null || fileUrl.trim().isEmpty()) {
+            isDownloading = false;
+            Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -488,7 +578,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
                             isDownloading = false;
                             if (uriString != null) {
                                 Log.d("AuthorDetailActivity", "Saving book to database...");
-                                saveBookAndOpenFromServer(title, author, uriString, fileType, imageUrl, annotation);
+                                saveBookAndOpenFromServer(serverBookId, title, author, uriString, fileType, imageUrl, annotation);
                             } else {
                                 Log.e("AuthorDetailActivity", "Download succeeded but local URI is null!");
                                 Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
@@ -516,15 +606,27 @@ public class AuthorDetailActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void saveBookAndOpenFromServer(String title, String author, String localUriString, String fileType, String imageUrl, String annotation) {
-        Book book = new Book(title, author, localUriString, fileType);
-        book.setPreviewImagePath(imageUrl);
-        book.setAnnotation(annotation);
-        bookRepository.insert(book);
-        openBookOptionsActivity(Uri.parse(localUriString), fileType, title, annotation);
+    private void saveBookAndOpenFromServer(long serverBookId, String title, String author, String localUriString, String fileType, String imageUrl, String annotation) {
+        Observer<List<Book>> observer = new Observer<List<Book>>() {
+            @Override
+            public void onChanged(List<Book> books) {
+                viewModel.getAllBooks().removeObserver(this);
+                Book existingBook = findMatchingLocalBook(books, serverBookId, title, author);
+                if (existingBook != null) {
+                    updateLocalBookFromAuthor(existingBook, serverBookId, title, author, localUriString, fileType, imageUrl, annotation);
+                    bookRepository.update(existingBook);
+                } else {
+                    Book book = new Book(title, author, localUriString, fileType);
+                    updateLocalBookFromAuthor(book, serverBookId, title, author, localUriString, fileType, imageUrl, annotation);
+                    bookRepository.insert(book);
+                }
+                openBookOptionsActivity(serverBookId, Uri.parse(localUriString), fileType, title, annotation);
+            }
+        };
+        viewModel.getAllBooks().observe(this, observer);
     }
 
-    private void openBookOptionsActivity(Uri fileUri, String fileType, String title, String annotation) {
+    private void openBookOptionsActivity(long serverBookId, Uri fileUri, String fileType, String title, String annotation) {
         // Update the lastOpened timestamp if this book exists in the database
         String filePath = fileUri.toString();
         androidx.lifecycle.Observer<Book> observer = new androidx.lifecycle.Observer<Book>() {
@@ -555,11 +657,14 @@ public class AuthorDetailActivity extends AppCompatActivity {
         }
         Intent intent = new Intent(this, BookOptionsActivity.class);
         intent.setData(fileUri);
+        intent.putExtra("bookId", serverBookId);
+        intent.putExtra("fromRecommendation", false);
         intent.putExtra("fileType", fileType);
         intent.putExtra("title", title);
         intent.putExtra("annotation", annotation);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
+        ActivityTransitions.applyFadeOpen(this);
     }
 
     private void openAudiobookOptionsActivity(HomeActivity.RecommendedBook book) {
@@ -583,6 +688,29 @@ public class AuthorDetailActivity extends AppCompatActivity {
         intent.putExtra("annotation", book.annotation);
         intent.putExtra("previewImagePath", book.image);
         startActivity(intent);
+        ActivityTransitions.applyFadeOpen(this);
+    }
+
+    private boolean hasStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        }
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+            == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } else {
+            ActivityCompat.requestPermissions(
+                this,
+                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                PERMISSION_REQUEST_CODE
+            );
+        }
     }
 
     @Override

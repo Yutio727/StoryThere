@@ -46,6 +46,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -389,10 +391,10 @@ public class CatalogActivity extends AppCompatActivity {
     private HomeActivity.RecommendedBook mapApiBook(ApiBook apiBook) {
         return new HomeActivity.RecommendedBook(
             apiBook.id,
-            apiBook.title,
-            apiBook.author,
+            safeText(apiBook.title, "Unknown Title"),
+            safeText(apiBook.author, "Unknown Author"),
             apiBook.fileUrl,
-            apiBook.fileType,
+            safeFileType(apiBook.fileType, apiBook.fileUrl),
             apiBook.image,
             apiBook.annotation,
             false,
@@ -497,7 +499,7 @@ public class CatalogActivity extends AppCompatActivity {
         String bookTitle = book.title != null ? book.title : "Unknown Title";
         String bookAuthor = book.author != null ? book.author : "Unknown Author";
         String fileUrl = book.fileUrl;
-        String fileType = book.fileType;
+        String fileType = safeFileType(book.fileType, fileUrl);
         String imageUrl = book.image;
         String annotation = book.annotation;
 
@@ -522,13 +524,7 @@ public class CatalogActivity extends AppCompatActivity {
                 viewModel.getAllBooks().removeObserver(this);
                 isCheckingBook = false;
 
-                Book existingBook = null;
-                for (Book localBook : localBooks) {
-                    if (localBook.getTitle().equals(bookTitle) && localBook.getAuthor().equals(bookAuthor)) {
-                        existingBook = localBook;
-                        break;
-                    }
-                }
+                Book existingBook = findMatchingLocalBook(localBooks, book.id, bookTitle, bookAuthor);
 
                 if (existingBook == null) {
                     startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
@@ -538,7 +534,9 @@ public class CatalogActivity extends AppCompatActivity {
                 if (doesBookFileExist(existingBook)) {
                     openBookOptionsActivity(book.id, Uri.parse(existingBook.getFilePath()), fileType, bookTitle, annotation);
                 } else {
-                    bookRepository.delete(existingBook);
+                    if (shouldDeleteMissingLocalBook(existingBook)) {
+                        bookRepository.delete(existingBook);
+                    }
                     startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
                 }
             }
@@ -547,6 +545,9 @@ public class CatalogActivity extends AppCompatActivity {
     }
 
     private boolean doesBookFileExist(Book book) {
+        if (book == null || book.getFilePath() == null || book.getFilePath().trim().isEmpty()) {
+            return false;
+        }
         try {
             Uri bookUri = Uri.parse(book.getFilePath());
             if ("content".equals(bookUri.getScheme())) {
@@ -559,6 +560,14 @@ public class CatalogActivity extends AppCompatActivity {
         } catch (Exception ignored) {
             return false;
         }
+    }
+
+    private boolean shouldDeleteMissingLocalBook(Book book) {
+        return book != null
+            && book.getServerBookId() <= 0
+            && !book.isAlreadyRead()
+            && book.getFilePath() != null
+            && !book.getFilePath().trim().isEmpty();
     }
 
     private void checkDatabaseAndAddIfNeeded(long serverBookId, String title, String author, String filePath, String fileType, String imageUrl, String annotation) {
@@ -574,22 +583,14 @@ public class CatalogActivity extends AppCompatActivity {
                     return;
                 }
 
-                boolean bookExists = false;
-                for (Book localBook : localBooks) {
-                    if (localBook.getTitle().equals(title) && localBook.getAuthor().equals(author)) {
-                        bookExists = true;
-                        if (!localBook.getFilePath().equals(contentUri)) {
-                            localBook.setFilePath(contentUri);
-                            bookRepository.update(localBook);
-                        }
-                        break;
-                    }
-                }
+                Book existingBook = findMatchingLocalBook(localBooks, serverBookId, title, author);
 
-                if (!bookExists) {
+                if (existingBook != null) {
+                    updateLocalBookFromCatalog(existingBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation);
+                    bookRepository.update(existingBook);
+                } else {
                     Book newBook = new Book(title, author, contentUri, fileType);
-                    newBook.setPreviewImagePath(imageUrl);
-                    newBook.setAnnotation(annotation);
+                    updateLocalBookFromCatalog(newBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation);
                     bookRepository.insert(newBook);
                 }
 
@@ -612,6 +613,80 @@ public class CatalogActivity extends AppCompatActivity {
         } catch (Exception ignored) {
         }
         return null;
+    }
+
+    private Book findMatchingLocalBook(List<Book> localBooks, long serverBookId, String title, String author) {
+        if (localBooks == null) {
+            return null;
+        }
+        if (serverBookId > 0) {
+            for (Book localBook : localBooks) {
+                if (localBook != null && !localBook.isAudiobook() && localBook.getServerBookId() == serverBookId) {
+                    return localBook;
+                }
+            }
+        }
+        for (Book localBook : localBooks) {
+            if (localBook != null
+                && !localBook.isAudiobook()
+                && safeEquals(localBook.getTitle(), title)
+                && safeEquals(localBook.getAuthor(), author)) {
+                return localBook;
+            }
+        }
+        return null;
+    }
+
+    private void updateLocalBookFromCatalog(
+        Book book,
+        long serverBookId,
+        String title,
+        String author,
+        String filePath,
+        String fileType,
+        String imageUrl,
+        String annotation
+    ) {
+        book.setAudiobook(false);
+        if (serverBookId > 0) {
+            book.setServerBookId(serverBookId);
+        }
+        book.setTitle(safeText(title, book.getTitle()));
+        book.setAuthor(safeText(author, book.getAuthor()));
+        book.setFilePath(filePath);
+        book.setFileType(safeText(fileType, book.getFileType()));
+        book.setPreviewImagePath(imageUrl);
+        book.setImage(imageUrl);
+        book.setAnnotation(annotation);
+        book.setLastOpened(new Date());
+    }
+
+    private boolean safeEquals(String first, String second) {
+        return Objects.equals(normalizeText(first), normalizeText(second));
+    }
+
+    private String normalizeText(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private String safeText(String value, String fallback) {
+        return value == null || value.trim().isEmpty() ? fallback : value;
+    }
+
+    private String safeFileType(String fileType, String fileUrl) {
+        if (fileType != null && !fileType.trim().isEmpty()) {
+            return fileType.trim().toLowerCase(Locale.US);
+        }
+        if (fileUrl == null) {
+            return "";
+        }
+        int queryIndex = fileUrl.indexOf('?');
+        String cleanUrl = queryIndex >= 0 ? fileUrl.substring(0, queryIndex) : fileUrl;
+        int dotIndex = cleanUrl.lastIndexOf('.');
+        if (dotIndex < 0 || dotIndex == cleanUrl.length() - 1) {
+            return "";
+        }
+        return cleanUrl.substring(dotIndex + 1).toLowerCase(Locale.US);
     }
 
     private void startDownload(long serverBookId, String title, String author, String fileUrl, String fileType, String imageUrl, String annotation) {
@@ -688,11 +763,23 @@ public class CatalogActivity extends AppCompatActivity {
     }
 
     private void saveBookAndOpenFromServer(long serverBookId, String title, String author, String localUriString, String fileType, String imageUrl, String annotation) {
-        Book book = new Book(title, author, localUriString, fileType);
-        book.setPreviewImagePath(imageUrl);
-        book.setAnnotation(annotation);
-        bookRepository.insert(book);
-        openBookOptionsActivity(serverBookId, Uri.parse(localUriString), fileType, title, annotation);
+        Observer<List<Book>> observer = new Observer<List<Book>>() {
+            @Override
+            public void onChanged(List<Book> localBooks) {
+                viewModel.getAllBooks().removeObserver(this);
+                Book existingBook = findMatchingLocalBook(localBooks, serverBookId, title, author);
+                if (existingBook != null) {
+                    updateLocalBookFromCatalog(existingBook, serverBookId, title, author, localUriString, fileType, imageUrl, annotation);
+                    bookRepository.update(existingBook);
+                } else {
+                    Book book = new Book(title, author, localUriString, fileType);
+                    updateLocalBookFromCatalog(book, serverBookId, title, author, localUriString, fileType, imageUrl, annotation);
+                    bookRepository.insert(book);
+                }
+                openBookOptionsActivity(serverBookId, Uri.parse(localUriString), fileType, title, annotation);
+            }
+        };
+        viewModel.getAllBooks().observe(this, observer);
     }
 
     private void openBookOptionsActivity(long serverBookId, Uri fileUri, String fileType, String title, String annotation) {

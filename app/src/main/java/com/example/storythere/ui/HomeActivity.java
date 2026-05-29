@@ -55,6 +55,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
+import java.util.Locale;
+import java.util.Objects;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -654,7 +656,7 @@ public class HomeActivity extends AppCompatActivity {
         String bookTitle = book.title != null ? book.title : "Unknown Title";
         String bookAuthor = book.author != null ? book.author : "Unknown Author";
         String fileUrl = book.fileUrl;
-        String fileType = book.fileType;
+        String fileType = safeFileType(book.fileType, fileUrl);
         String imageUrl = book.image;
         String annotation = book.annotation;
 
@@ -682,41 +684,17 @@ public class HomeActivity extends AppCompatActivity {
             public void onChanged(List<Book> books) {
                 viewModel.getAllBooks().removeObserver(this);
                 isCheckingBook = false;
-                Book existingBook = null;
-                for (Book b : books) {
-                    if (b.getTitle().equals(bookTitle) && b.getAuthor().equals(bookAuthor)) {
-                        existingBook = b;
-                        break;
-                    }
-                }
+                Book existingBook = findMatchingLocalBook(books, book.id, bookTitle, bookAuthor);
                 if (existingBook != null) {
-                    // Check if the file referenced in database actually exists
-                    boolean fileExists = false;
-                    try {
-                        Uri bookUri = Uri.parse(existingBook.getFilePath());
-                        if ("content".equals(bookUri.getScheme())) {
-                            // Content URI - try to open input stream
-                            try (InputStream is = getContentResolver().openInputStream(bookUri)) {
-                                fileExists = (is != null);
-                            }
-                        } else {
-                            // File path - check if file exists
-                            File dbFile = new File(existingBook.getFilePath());
-                            fileExists = dbFile.exists();
-                        }
-                    } catch (Exception e) {
-                        Log.e("HomeActivity", "Error checking file existence: " + e.getMessage());
-                        fileExists = false;
-                    }
-                    
-                    if (fileExists) {
+                    if (doesBookFileExist(existingBook)) {
                         Log.d("HomeActivity", "Book found in database and file exists: " + existingBook.getFilePath());
                         // Always use the URI stored in the database (which should be content URI)
                         openBookOptionsActivity(book.id, Uri.parse(existingBook.getFilePath()), fileType, bookTitle, annotation);
                     } else {
                         Log.d("HomeActivity", "Book in database but file missing, will re-download");
-                        // File doesn't exist, remove from database and download again
-                        bookRepository.delete(existingBook);
+                        if (shouldDeleteMissingLocalBook(existingBook)) {
+                            bookRepository.delete(existingBook);
+                        }
                         startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
                     }
                 } else {
@@ -742,26 +720,16 @@ public class HomeActivity extends AppCompatActivity {
                     return;
                 }
                 
-                // Check if book is already in database
-                boolean bookExists = false;
-                for (Book b : books) {
-                    if (b.getTitle().equals(title) && b.getAuthor().equals(author)) {
-                        bookExists = true;
-                        // Update file path if it's different (always use content URI)
-                        if (!b.getFilePath().equals(contentUri)) {
-                            b.setFilePath(contentUri);
-                            bookRepository.update(b);
-                            Log.d("HomeActivity", "Updated file path for existing book: " + title + " to content URI");
-                        }
-                        break;
-                    }
-                }
+                Book existingBook = findMatchingLocalBook(books, serverBookId, title, author);
                 
-                if (!bookExists) {
+                if (existingBook != null) {
+                    updateLocalBookFromRecommendation(existingBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation);
+                    bookRepository.update(existingBook);
+                    Log.d("HomeActivity", "Updated existing book from recommendation: " + title + " to content URI");
+                } else {
                     // Add to database with content URI
                     Book newBook = new Book(title, author, contentUri, fileType);
-                    newBook.setPreviewImagePath(imageUrl);
-                    newBook.setAnnotation(annotation);
+                    updateLocalBookFromRecommendation(newBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation);
                     bookRepository.insert(newBook);
                     Log.d("HomeActivity", "Added existing file to database: " + title + " with URI: " + contentUri);
                 }
@@ -790,7 +758,113 @@ public class HomeActivity extends AppCompatActivity {
         return null;
     }
 
+    private boolean doesBookFileExist(Book book) {
+        if (book == null || book.getFilePath() == null || book.getFilePath().trim().isEmpty()) {
+            return false;
+        }
+        try {
+            Uri bookUri = Uri.parse(book.getFilePath());
+            if ("content".equals(bookUri.getScheme())) {
+                try (InputStream is = getContentResolver().openInputStream(bookUri)) {
+                    return is != null;
+                }
+            }
+            File dbFile = new File(book.getFilePath());
+            return dbFile.exists();
+        } catch (Exception e) {
+            Log.e("HomeActivity", "Error checking file existence: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean shouldDeleteMissingLocalBook(Book book) {
+        return book != null
+            && book.getServerBookId() <= 0
+            && !book.isAlreadyRead()
+            && book.getFilePath() != null
+            && !book.getFilePath().trim().isEmpty();
+    }
+
+    private Book findMatchingLocalBook(List<Book> books, long serverBookId, String title, String author) {
+        if (books == null) {
+            return null;
+        }
+        if (serverBookId > 0) {
+            for (Book book : books) {
+                if (book != null && !book.isAudiobook() && book.getServerBookId() == serverBookId) {
+                    return book;
+                }
+            }
+        }
+        for (Book book : books) {
+            if (book != null
+                && !book.isAudiobook()
+                && safeEquals(book.getTitle(), title)
+                && safeEquals(book.getAuthor(), author)) {
+                return book;
+            }
+        }
+        return null;
+    }
+
+    private void updateLocalBookFromRecommendation(
+        Book book,
+        long serverBookId,
+        String title,
+        String author,
+        String filePath,
+        String fileType,
+        String imageUrl,
+        String annotation
+    ) {
+        book.setAudiobook(false);
+        if (serverBookId > 0) {
+            book.setServerBookId(serverBookId);
+        }
+        book.setTitle(safeText(title, book.getTitle()));
+        book.setAuthor(safeText(author, book.getAuthor()));
+        book.setFilePath(filePath);
+        book.setFileType(safeText(fileType, book.getFileType()));
+        book.setPreviewImagePath(imageUrl);
+        book.setImage(imageUrl);
+        book.setAnnotation(annotation);
+        book.setLastOpened(new Date());
+    }
+
+    private boolean safeEquals(String first, String second) {
+        return Objects.equals(normalizeText(first), normalizeText(second));
+    }
+
+    private String normalizeText(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private String safeText(String value, String fallback) {
+        return value == null || value.trim().isEmpty() ? fallback : value;
+    }
+
+    private String safeFileType(String fileType, String fileUrl) {
+        if (fileType != null && !fileType.trim().isEmpty()) {
+            return fileType.trim().toLowerCase(Locale.US);
+        }
+        if (fileUrl == null) {
+            return "";
+        }
+        int queryIndex = fileUrl.indexOf('?');
+        String cleanUrl = queryIndex >= 0 ? fileUrl.substring(0, queryIndex) : fileUrl;
+        int dotIndex = cleanUrl.lastIndexOf('.');
+        if (dotIndex < 0 || dotIndex == cleanUrl.length() - 1) {
+            return "";
+        }
+        return cleanUrl.substring(dotIndex + 1).toLowerCase(Locale.US);
+    }
+
     private void startDownload(long serverBookId, String title, String author, String fileUrl, String fileType, String imageUrl, String annotation) {
+        if (fileUrl == null || fileUrl.trim().isEmpty()) {
+            isDownloading = false;
+            Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
+            return;
+        }
         isDownloading = true;
         Log.d("HomeActivity", "=== DOWNLOAD START ===");
         Log.d("HomeActivity", "Title: " + title);
@@ -929,11 +1003,23 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void saveBookAndOpenFromServer(long serverBookId, String title, String author, String localUriString, String fileType, String imageUrl, String annotation) {
-        Book book = new Book(title, author, localUriString, fileType);
-        book.setPreviewImagePath(imageUrl);
-        book.setAnnotation(annotation);
-        bookRepository.insert(book);
-        openBookOptionsActivity(serverBookId, Uri.parse(localUriString), fileType, title, annotation);
+        Observer<List<Book>> observer = new Observer<List<Book>>() {
+            @Override
+            public void onChanged(List<Book> books) {
+                viewModel.getAllBooks().removeObserver(this);
+                Book existingBook = findMatchingLocalBook(books, serverBookId, title, author);
+                if (existingBook != null) {
+                    updateLocalBookFromRecommendation(existingBook, serverBookId, title, author, localUriString, fileType, imageUrl, annotation);
+                    bookRepository.update(existingBook);
+                } else {
+                    Book book = new Book(title, author, localUriString, fileType);
+                    updateLocalBookFromRecommendation(book, serverBookId, title, author, localUriString, fileType, imageUrl, annotation);
+                    bookRepository.insert(book);
+                }
+                openBookOptionsActivity(serverBookId, Uri.parse(localUriString), fileType, title, annotation);
+            }
+        };
+        viewModel.getAllBooks().observe(this, observer);
     }
 
     private void openBookOptionsActivity(long serverBookId, Uri fileUri, String fileType, String title, String annotation) {

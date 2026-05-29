@@ -6,21 +6,28 @@ import com.example.storythere.api.model.ApiBook;
 import com.example.storythere.api.model.ApiUser;
 import com.example.storythere.api.model.ApiUserAudiobook;
 import com.example.storythere.api.model.ApiUserBook;
+import com.example.storythere.api.model.AssetUploadResponse;
 import com.example.storythere.api.model.AudiobookInteractionRequest;
 import com.example.storythere.api.model.AudiobookRecommendationEventRequest;
+import com.example.storythere.api.model.AudiobookWriteRequest;
+import com.example.storythere.api.model.AuthorWriteRequest;
 import com.example.storythere.api.model.BookInteractionRequest;
 import com.example.storythere.api.model.BookRecommendationEventRequest;
+import com.example.storythere.api.model.BookWriteRequest;
 import com.example.storythere.api.model.SyncMeRequest;
 import com.example.storythere.api.model.TrackingWriteResponse;
 import com.example.storythere.api.model.UserLibraryStateRequest;
 
 import java.util.List;
 
+import okhttp3.MultipartBody;
 import retrofit2.Call;
 import retrofit2.http.DELETE;
 import retrofit2.http.GET;
+import retrofit2.http.Multipart;
 import retrofit2.http.PATCH;
 import retrofit2.http.POST;
+import retrofit2.http.Part;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
 import retrofit2.http.Body;
@@ -102,6 +109,13 @@ public interface ApiService {
         @Query("offset") int offset
     );
 
+    @GET("v1/authors")
+    Call<List<ApiAuthor>> searchAuthors(
+        @Query("limit") int limit,
+        @Query("offset") int offset,
+        @Query("query") String query
+    );
+
     @GET("v1/authors/{authorId}")
     Call<ApiAuthor> getAuthorById(@Path("authorId") long authorId);
 
@@ -117,5 +131,48 @@ public interface ApiService {
         @Path("authorId") long authorId,
         @Query("limit") int limit,
         @Query("offset") int offset
+    );
+
+    @POST("v1/admin/authors")
+    Call<ApiAuthor> createAuthor(@Body AuthorWriteRequest request);
+
+    @PATCH("v1/admin/authors/{authorId}")
+    Call<ApiAuthor> updateAuthor(
+        @Path("authorId") long authorId,
+        @Body AuthorWriteRequest request
+    );
+
+    @DELETE("v1/admin/authors/{authorId}")
+    Call<TrackingWriteResponse> deleteAuthor(@Path("authorId") long authorId);
+
+    @POST("v1/admin/books")
+    Call<ApiBook> createBook(@Body BookWriteRequest request);
+
+    @PATCH("v1/admin/books/{bookId}")
+    Call<ApiBook> updateBook(
+        @Path("bookId") long bookId,
+        @Body BookWriteRequest request
+    );
+
+    @DELETE("v1/admin/books/{bookId}")
+    Call<TrackingWriteResponse> deleteBook(@Path("bookId") long bookId);
+
+    @POST("v1/admin/audiobooks")
+    Call<ApiAudiobook> createAudiobook(@Body AudiobookWriteRequest request);
+
+    @PATCH("v1/admin/audiobooks/{audiobookId}")
+    Call<ApiAudiobook> updateAudiobook(
+        @Path("audiobookId") long audiobookId,
+        @Body AudiobookWriteRequest request
+    );
+
+    @DELETE("v1/admin/audiobooks/{audiobookId}")
+    Call<TrackingWriteResponse> deleteAudiobook(@Path("audiobookId") long audiobookId);
+
+    @Multipart
+    @POST("v1/admin/assets/{assetType}")
+    Call<AssetUploadResponse> uploadAsset(
+        @Path("assetType") String assetType,
+        @Part MultipartBody.Part upload
     );
 }

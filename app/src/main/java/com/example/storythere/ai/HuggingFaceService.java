@@ -106,7 +106,6 @@ public class HuggingFaceService {
                         .post(body)
                         .build();
                 
-                Log.i(TAG, "Request Headers:");
                 Log.i(TAG, "  Content-Type: application/json");
                 Log.i(TAG, "  User-Agent: " + request.header("User-Agent"));
                 
@@ -122,15 +121,6 @@ public class HuggingFaceService {
                     Log.i(TAG, "Response Code: " + response.code());
                     Log.i(TAG, "Response Message: " + response.message());
                     Log.i(TAG, "Request Duration: " + requestDuration + "ms");
-                    
-                    // Log response headers for token usage info
-                    Log.i(TAG, "Response Headers:");
-                    Headers headers = response.headers();
-                    for (int i = 0; i < headers.size(); i++) {
-                        String name = headers.name(i);
-                        String value = headers.value(i);
-                        Log.i(TAG, "  " + name + ": " + value);
-                    }
                     
                     if (!response.isSuccessful()) {
                         String errorBody = response.body() != null ? response.body().string() : "Unknown error";

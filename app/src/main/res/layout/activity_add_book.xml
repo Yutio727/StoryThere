@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/background_light"
     android:clipToPadding="true"
-    android:fitsSystemWindows="true"
-    android:background="@color/background_light">
+    android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -13,188 +12,245 @@
         android:orientation="vertical"
         android:padding="24dp">
 
-        <!-- Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:layout_marginBottom="24dp"
             android:gravity="center_vertical"
-            android:layout_marginBottom="24dp">
+            android:orientation="horizontal">
 
             <Button
                 android:id="@+id/button_back"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
+                android:layout_marginEnd="16dp"
                 android:background="@drawable/rounded_button"
-                android:text="←"
-                android:textSize="18sp"
+                android:text="&lt;"
                 android:textColor="@color/white"
-                android:layout_marginEnd="16dp"/>
+                android:textSize="18sp" />
 
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/add_new_book"
-                android:textSize="24sp"
-                android:textStyle="bold"
+                android:fontFamily="@font/montserrat_bold"
+                android:text="@string/add_new_book_admin"
                 android:textColor="@color/text_primary_light"
-                android:fontFamily="@font/montserrat_bold"/>
-
+                android:textSize="24sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Title -->
         <TextView
-            android:layout_width="wrap_content"
+            style="@style/AddBookLabel"
+            android:text="@string/catalog_item_type" />
+
+        <CheckBox
+            android:id="@+id/checkbox_is_audiobook"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/title"
-            android:textSize="16sp"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="@font/montserrat_regular"
+            android:minHeight="48dp"
+            android:text="@string/add_as_audiobook"
             android:textColor="@color/text_primary_light"
-            android:fontFamily="@font/montserrat_bold"
-            android:layout_marginBottom="8dp"/>
+            android:textSize="16sp" />
+
+        <TextView
+            style="@style/AddBookLabel"
+            android:text="@string/title" />
 
         <EditText
             android:id="@+id/edit_text_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            style="@style/AddBookInput"
             android:hint="@string/enter_book_title"
-            android:background="@drawable/rounded_edittext"
-            android:padding="16dp"
-            android:textSize="16sp"
-            android:layout_marginBottom="16dp"
-            android:fontFamily="@font/montserrat_regular"/>
+            android:inputType="textCapSentences" />
 
-        <!-- Author -->
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/author"
-            android:textSize="16sp"
-            android:textColor="@color/text_primary_light"
-            android:fontFamily="@font/montserrat_bold"
-            android:layout_marginBottom="8dp"/>
+            style="@style/AddBookLabel"
+            android:text="@string/author" />
 
         <EditText
             android:id="@+id/edit_text_author"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/enter_author_name"
-            android:background="@drawable/rounded_edittext"
-            android:padding="16dp"
-            android:textSize="16sp"
+            style="@style/AddBookInput"
             android:layout_marginBottom="4dp"
-            android:fontFamily="@font/montserrat_regular"/>
+            android:hint="@string/enter_author_name"
+            android:inputType="textCapWords" />
 
-        <!-- Author Suggestions -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/author_suggestions_recycler"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             android:background="@drawable/rounded_edittext"
-            android:visibility="gone"
-            android:maxHeight="200dp"/>
+            android:maxHeight="200dp"
+            android:visibility="gone" />
 
-        <!-- Annotation -->
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/annotation"
-            android:textSize="16sp"
-            android:textColor="@color/text_primary_light"
-            android:fontFamily="@font/montserrat_bold"
-            android:layout_marginBottom="8dp"/>
+            style="@style/AddBookLabel"
+            android:text="@string/recommendation_item_id" />
 
         <EditText
-            android:id="@+id/edit_text_annotation"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/enter_book_description_annotation"
-            android:background="@drawable/rounded_edittext"
-            android:padding="16dp"
-            android:textSize="16sp"
-            android:layout_marginBottom="16dp"
-            android:fontFamily="@font/montserrat_regular"
-            android:inputType="textMultiLine"
-            android:minLines="3"
-            android:gravity="top"/>
+            android:id="@+id/edit_text_recommendation_item_id"
+            style="@style/AddBookInput"
+            android:hint="@string/enter_recommendation_item_id"
+            android:inputType="number" />
 
-        <!-- File URL -->
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/file_url"
-            android:textSize="16sp"
-            android:textColor="@color/text_primary_light"
-            android:fontFamily="@font/montserrat_bold"
-            android:layout_marginBottom="8dp"/>
+            style="@style/AddBookLabel"
+            android:text="@string/publication_year" />
 
         <EditText
-            android:id="@+id/edit_text_file_url"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/enter_file_url_e_g_https_example_com_book_epub"
-            android:background="@drawable/rounded_edittext"
-            android:padding="16dp"
-            android:textSize="16sp"
-            android:layout_marginBottom="16dp"
-            android:fontFamily="@font/montserrat_regular"
-            android:inputType="textUri"/>
+            android:id="@+id/edit_text_publication_year"
+            style="@style/AddBookInput"
+            android:hint="@string/enter_publication_year"
+            android:inputType="number" />
 
-        <!-- Image URL -->
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/image_url"
-            android:textSize="16sp"
-            android:textColor="@color/text_primary_light"
-            android:fontFamily="@font/montserrat_bold"
-            android:layout_marginBottom="8dp"/>
+            style="@style/AddBookLabel"
+            android:text="@string/genres" />
+
+        <EditText
+            android:id="@+id/edit_text_genres"
+            style="@style/AddBookInput"
+            android:hint="@string/enter_genres_comma_separated"
+            android:inputType="text" />
+
+        <TextView
+            style="@style/AddBookLabel"
+            android:text="@string/license" />
+
+        <EditText
+            android:id="@+id/edit_text_license"
+            style="@style/AddBookInput"
+            android:hint="@string/enter_license"
+            android:inputType="text" />
+
+        <TextView
+            style="@style/AddBookLabel"
+            android:text="@string/image_url" />
 
         <EditText
             android:id="@+id/edit_text_image_url"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            style="@style/AddBookInput"
             android:hint="@string/enter_cover_image_url_optional"
-            android:background="@drawable/rounded_edittext"
-            android:padding="16dp"
-            android:textSize="16sp"
-            android:layout_marginBottom="16dp"
-            android:fontFamily="@font/montserrat_regular"
-            android:inputType="textUri"/>
+            android:inputType="textUri" />
 
-        <!-- File Type -->
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/file_type"
-            android:textSize="16sp"
-            android:textColor="@color/text_primary_light"
-            android:fontFamily="@font/montserrat_bold"
-            android:layout_marginBottom="8dp"/>
+            style="@style/AddBookLabel"
+            android:text="@string/annotation" />
 
         <EditText
-            android:id="@+id/edit_text_file_type"
+            android:id="@+id/edit_text_annotation"
+            style="@style/AddBookInput"
+            android:gravity="top"
+            android:hint="@string/enter_book_description_annotation"
+            android:inputType="textMultiLine|textCapSentences"
+            android:minLines="3" />
+
+        <LinearLayout
+            android:id="@+id/book_fields_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/enter_file_type_e_g_epub_pdf"
-            android:background="@drawable/rounded_edittext"
-            android:padding="16dp"
-            android:textSize="16sp"
-            android:layout_marginBottom="32dp"
-            android:fontFamily="@font/montserrat_regular"/>
+            android:orientation="vertical">
 
-        <!-- Add Book Button -->
+            <TextView
+                style="@style/AddBookLabel"
+                android:text="@string/file_url" />
+
+            <EditText
+                android:id="@+id/edit_text_file_url"
+                style="@style/AddBookInput"
+                android:hint="@string/enter_file_url_e_g_https_example_com_book_epub"
+                android:inputType="textUri" />
+
+            <TextView
+                style="@style/AddBookLabel"
+                android:text="@string/file_type" />
+
+            <EditText
+                android:id="@+id/edit_text_file_type"
+                style="@style/AddBookInput"
+                android:hint="@string/enter_file_type_e_g_epub_pdf"
+                android:inputType="text" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/audiobook_fields_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                style="@style/AddBookLabel"
+                android:text="@string/audio_url" />
+
+            <EditText
+                android:id="@+id/edit_text_audio_url"
+                style="@style/AddBookInput"
+                android:hint="@string/enter_audio_url"
+                android:inputType="textUri" />
+
+            <TextView
+                style="@style/AddBookLabel"
+                android:text="@string/audio_type" />
+
+            <EditText
+                android:id="@+id/edit_text_audio_type"
+                style="@style/AddBookInput"
+                android:hint="@string/enter_audio_type"
+                android:inputType="text" />
+
+            <TextView
+                style="@style/AddBookLabel"
+                android:text="@string/dictor" />
+
+            <EditText
+                android:id="@+id/edit_text_dictor"
+                style="@style/AddBookInput"
+                android:hint="@string/enter_dictor"
+                android:inputType="textCapWords" />
+
+            <TextView
+                style="@style/AddBookLabel"
+                android:text="@string/duration_seconds" />
+
+            <EditText
+                android:id="@+id/edit_text_duration_seconds"
+                style="@style/AddBookInput"
+                android:hint="@string/enter_duration_seconds"
+                android:inputType="number" />
+
+            <TextView
+                style="@style/AddBookLabel"
+                android:text="@string/source_text_url" />
+
+            <EditText
+                android:id="@+id/edit_text_source_text_url"
+                style="@style/AddBookInput"
+                android:hint="@string/enter_source_text_url"
+                android:inputType="textUri" />
+
+            <TextView
+                style="@style/AddBookLabel"
+                android:text="@string/source_url" />
+
+            <EditText
+                android:id="@+id/edit_text_source_url"
+                style="@style/AddBookInput"
+                android:hint="@string/enter_source_url"
+                android:inputType="textUri" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/button_add_book"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:text="@string/add_book"
-            android:textSize="18sp"
-            android:textColor="@color/white"
+            android:layout_marginTop="16dp"
             android:background="@drawable/rounded_button"
-            android:fontFamily="@font/montserrat_bold"/>
-
+            android:fontFamily="@font/montserrat_bold"
+            android:text="@string/add_book"
+            android:textColor="@color/white"
+            android:textSize="18sp" />
     </LinearLayout>
-
-</ScrollView> 
+</ScrollView>

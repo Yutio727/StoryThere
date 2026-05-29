@@ -1,375 +1,431 @@
 package com.example.storythere.ui;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.storythere.R;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QuerySnapshot;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import androidx.annotation.NonNull;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import com.example.storythere.data.Author;
 import com.example.storythere.adapters.AuthorSuggestionsAdapter;
+import com.example.storythere.api.ApiClient;
+import com.example.storythere.api.ApiService;
+import com.example.storythere.api.model.ApiAuthor;
+import com.example.storythere.api.model.ApiAudiobook;
+import com.example.storythere.api.model.ApiBook;
+import com.example.storythere.api.model.AudiobookWriteRequest;
+import com.example.storythere.api.model.AuthorWriteRequest;
+import com.example.storythere.api.model.BookWriteRequest;
+import com.example.storythere.data.Author;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class AddBookActivity extends AppCompatActivity {
-    
-    private EditText titleEditText, authorEditText, annotationEditText, fileUrlEditText, imageUrlEditText, fileTypeEditText;
-    private Button addBookButton, backButton;
+    private static final int AUTHOR_SEARCH_LIMIT = 5;
+
+    private EditText titleEditText;
+    private EditText authorEditText;
+    private EditText annotationEditText;
+    private EditText imageUrlEditText;
+    private EditText publicationYearEditText;
+    private EditText licenseEditText;
+    private EditText recommendationItemIdEditText;
+    private EditText genresEditText;
+    private EditText fileUrlEditText;
+    private EditText fileTypeEditText;
+    private EditText dictorEditText;
+    private EditText audioUrlEditText;
+    private EditText audioTypeEditText;
+    private EditText durationSecondsEditText;
+    private EditText sourceTextUrlEditText;
+    private EditText sourceUrlEditText;
+    private CheckBox audiobookCheckBox;
+    private View bookFieldsContainer;
+    private View audiobookFieldsContainer;
+    private Button addBookButton;
+    private Button backButton;
     private RecyclerView authorSuggestionsRecyclerView;
     private AuthorSuggestionsAdapter authorSuggestionsAdapter;
-    private FirebaseFirestore db;
-    private ScheduledExecutorService scheduler;
-    private String selectedAuthorId = null;
+
+    private ApiService apiService;
+    private final Handler searchHandler = new Handler(Looper.getMainLooper());
+    private Runnable pendingAuthorSearch;
+    private Long selectedAuthorId = null;
     private String selectedAuthorName = null;
-    
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_book);
-        
+
+        apiService = ApiClient.getApiService();
         initializeViews();
-        setupFirebase();
         setupAuthorSearch();
         setupButtons();
-        scheduler = Executors.newScheduledThreadPool(1);
+        updateCatalogTypeFields();
     }
-    
+
     private void initializeViews() {
         titleEditText = findViewById(R.id.edit_text_title);
         authorEditText = findViewById(R.id.edit_text_author);
         annotationEditText = findViewById(R.id.edit_text_annotation);
-        fileUrlEditText = findViewById(R.id.edit_text_file_url);
         imageUrlEditText = findViewById(R.id.edit_text_image_url);
+        publicationYearEditText = findViewById(R.id.edit_text_publication_year);
+        licenseEditText = findViewById(R.id.edit_text_license);
+        recommendationItemIdEditText = findViewById(R.id.edit_text_recommendation_item_id);
+        genresEditText = findViewById(R.id.edit_text_genres);
+        fileUrlEditText = findViewById(R.id.edit_text_file_url);
         fileTypeEditText = findViewById(R.id.edit_text_file_type);
+        dictorEditText = findViewById(R.id.edit_text_dictor);
+        audioUrlEditText = findViewById(R.id.edit_text_audio_url);
+        audioTypeEditText = findViewById(R.id.edit_text_audio_type);
+        durationSecondsEditText = findViewById(R.id.edit_text_duration_seconds);
+        sourceTextUrlEditText = findViewById(R.id.edit_text_source_text_url);
+        sourceUrlEditText = findViewById(R.id.edit_text_source_url);
+        audiobookCheckBox = findViewById(R.id.checkbox_is_audiobook);
+        bookFieldsContainer = findViewById(R.id.book_fields_container);
+        audiobookFieldsContainer = findViewById(R.id.audiobook_fields_container);
         addBookButton = findViewById(R.id.button_add_book);
         backButton = findViewById(R.id.button_back);
         authorSuggestionsRecyclerView = findViewById(R.id.author_suggestions_recycler);
     }
-    
-    private void setupFirebase() {
-        db = FirebaseFirestore.getInstance();
-    }
-    
+
     private void setupAuthorSearch() {
-        // Setup RecyclerView for author suggestions
         authorSuggestionsAdapter = new AuthorSuggestionsAdapter(new ArrayList<>(), author -> {
-            selectedAuthorId = author.getAuthorId();
+            selectedAuthorId = parseLong(author.getAuthorId());
             selectedAuthorName = author.getName();
             authorEditText.setText(author.getName());
+            authorEditText.setSelection(authorEditText.getText().length());
             authorSuggestionsRecyclerView.setVisibility(View.GONE);
         });
-        
+
         authorSuggestionsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         authorSuggestionsRecyclerView.setAdapter(authorSuggestionsAdapter);
-        
-        // Setup text watcher with debouncing
+
         authorEditText.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
             @Override
             public void afterTextChanged(Editable s) {
                 String query = s.toString().trim();
-                if (query.length() >= 2) {
-                    // Cancel previous search and schedule new one with delay
-                    scheduler.schedule(() -> searchAuthors(query), 500, TimeUnit.MILLISECONDS);
-                } else {
-                    authorSuggestionsRecyclerView.setVisibility(View.GONE);
+                if (selectedAuthorName != null && !selectedAuthorName.equals(query)) {
                     selectedAuthorId = null;
                     selectedAuthorName = null;
                 }
+                if (pendingAuthorSearch != null) {
+                    searchHandler.removeCallbacks(pendingAuthorSearch);
+                }
+                if (query.length() < 2) {
+                    authorSuggestionsRecyclerView.setVisibility(View.GONE);
+                    return;
+                }
+                pendingAuthorSearch = () -> searchAuthors(query);
+                searchHandler.postDelayed(pendingAuthorSearch, 350);
             }
         });
     }
-    
-    private void searchAuthors(String query) {
-        // Convert query to lowercase for case-insensitive search
-        String searchQuery = query.toLowerCase().trim();
-        
-        db.collection("authors")
-            .get()
-            .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-                @Override
-                public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                    if (task.isSuccessful() && task.getResult() != null) {
-                        List<Author> authors = new ArrayList<>();
-                        for (DocumentSnapshot document : task.getResult()) {
-                            Author author = document.toObject(Author.class);
-                            if (author != null) {
-                                author.setAuthorId(document.getId());
-                                
-                                // Check if author name contains the search query (case-insensitive)
-                                String authorName = author.getName();
-                                if (authorName != null && authorName.toLowerCase().contains(searchQuery)) {
-                                    authors.add(author);
-                                }
-                            }
-                        }
-                        
-                        // Sort results by relevance (exact matches first, then partial matches)
-                        authors.sort((a1, a2) -> {
-                            String name1 = a1.getName().toLowerCase();
-                            String name2 = a2.getName().toLowerCase();
-                            
-                            // Check if name starts with query (higher priority)
-                            boolean startsWith1 = name1.startsWith(searchQuery);
-                            boolean startsWith2 = name2.startsWith(searchQuery);
-                            
-                            if (startsWith1 && !startsWith2) return -1;
-                            if (!startsWith1 && startsWith2) return 1;
-                            
-                            // If both start with query or neither does, sort alphabetically
-                            return name1.compareTo(name2);
-                        });
-                        
-                        // Limit results to 5
-                        if (authors.size() > 5) {
-                            authors = authors.subList(0, 5);
-                        }
-                        
-                        if (!authors.isEmpty()) {
-                            authorSuggestionsAdapter.updateAuthors(authors);
-                            authorSuggestionsRecyclerView.setVisibility(View.VISIBLE);
-                        } else {
-                            authorSuggestionsRecyclerView.setVisibility(View.GONE);
-                        }
-                    } else {
-                        authorSuggestionsRecyclerView.setVisibility(View.GONE);
-                    }
-                }
-            });
-    }
-    
+
     private void setupButtons() {
-        addBookButton.setOnClickListener(v -> addBookToFirebase());
+        audiobookCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> updateCatalogTypeFields());
+        addBookButton.setOnClickListener(v -> submitCatalogItem());
         backButton.setOnClickListener(v -> finish());
     }
-    
-    private void addBookToFirebase() {
-        String title = titleEditText.getText().toString().trim();
-        String authorName = authorEditText.getText().toString().trim();
-        String annotation = annotationEditText.getText().toString().trim();
-        String fileUrl = fileUrlEditText.getText().toString().trim();
-        String imageUrl = imageUrlEditText.getText().toString().trim();
-        String fileType = fileTypeEditText.getText().toString().trim();
-        
-        // Validate input
-        if (title.isEmpty() || authorName.isEmpty() || fileUrl.isEmpty() || fileType.isEmpty()) {
+
+    private void updateCatalogTypeFields() {
+        boolean isAudiobook = audiobookCheckBox.isChecked();
+        bookFieldsContainer.setVisibility(isAudiobook ? View.GONE : View.VISIBLE);
+        audiobookFieldsContainer.setVisibility(isAudiobook ? View.VISIBLE : View.GONE);
+    }
+
+    private void searchAuthors(String query) {
+        apiService.searchAuthors(AUTHOR_SEARCH_LIMIT, 0, query).enqueue(new Callback<List<ApiAuthor>>() {
+            @Override
+            public void onResponse(@NonNull Call<List<ApiAuthor>> call, @NonNull Response<List<ApiAuthor>> response) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    authorSuggestionsRecyclerView.setVisibility(View.GONE);
+                    return;
+                }
+                List<Author> authors = new ArrayList<>();
+                for (ApiAuthor apiAuthor : response.body()) {
+                    authors.add(mapApiAuthor(apiAuthor));
+                }
+                authorSuggestionsAdapter.updateAuthors(authors);
+                authorSuggestionsRecyclerView.setVisibility(authors.isEmpty() ? View.GONE : View.VISIBLE);
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<List<ApiAuthor>> call, @NonNull Throwable t) {
+                authorSuggestionsRecyclerView.setVisibility(View.GONE);
+            }
+        });
+    }
+
+    private void submitCatalogItem() {
+        String title = text(titleEditText);
+        String authorName = text(authorEditText);
+        if (title.isEmpty() || authorName.isEmpty()) {
             Toast.makeText(this, R.string.please_fill_in_all_required_fields, Toast.LENGTH_SHORT).show();
             return;
         }
-        
-        // Show loading
-        addBookButton.setEnabled(false);
-        addBookButton.setText(R.string.adding);
-        
-        // Generate book document ID from title
-        String bookDocumentId = generateDocumentIdFromTitle(title);
-        
-        // Log the generated document ID for debugging
-        System.out.println("Generated book document ID: " + bookDocumentId);
-        
-        // Create book data
-        Map<String, Object> book = new HashMap<>();
-        book.put("title", title);
-        book.put("author", authorName);
-        book.put("annotation", annotation);
-        book.put("fileUrl", fileUrl);
-        book.put("image", imageUrl);
-        book.put("fileType", fileType);
-        
-        // If we have a selected author, add only the authorID reference
-        if (selectedAuthorId != null) {
-            // Create reference to author document (only this field, no string field)
-            book.put("authorID", db.collection("authors").document(selectedAuthorId));
+        if (audiobookCheckBox.isChecked() && parseLong(text(recommendationItemIdEditText)) == null) {
+            Toast.makeText(this, R.string.recommendation_item_id_required, Toast.LENGTH_SHORT).show();
+            return;
         }
-        
-        // Add book to Firebase
-        db.collection("books").document(bookDocumentId)
-            .set(book)
-            .addOnSuccessListener(aVoid -> {
-                System.out.println("Book added successfully with ID: " + bookDocumentId);
-                // If we have a selected author, create/update the author's books collection
-                if (selectedAuthorId != null) {
-                    createAuthorBookReference(selectedAuthorId, bookDocumentId, title);
-                } else {
-                    // Create new author and link the book
-                    createNewAuthorAndLinkBook(authorName, bookDocumentId, title);
-                }
-            })
-            .addOnFailureListener(e -> {
-                System.err.println("Failed to add book: " + e.getMessage());
-                Toast.makeText(this, getString(R.string.failed_to_add_book) + e.getMessage(), Toast.LENGTH_LONG).show();
-                addBookButton.setEnabled(true);
-                addBookButton.setText(R.string.add_book);
-            });
+        if (!audiobookCheckBox.isChecked()
+            && (text(fileUrlEditText).isEmpty() || text(fileTypeEditText).isEmpty())) {
+            Toast.makeText(this, R.string.please_fill_in_all_required_fields, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (audiobookCheckBox.isChecked()
+            && (text(audioUrlEditText).isEmpty() || text(audioTypeEditText).isEmpty())) {
+            Toast.makeText(this, R.string.please_fill_in_all_required_fields, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        setSubmitting(true);
+        resolveAuthor(authorName);
     }
-    
-    private void createAuthorBookReference(String authorId, String bookDocumentId, String bookTitle) {
-        Map<String, Object> bookReference = new HashMap<>();
-        bookReference.put("bookId", bookDocumentId);
-        
-        db.collection("authors").document(authorId)
-            .collection("books").document(bookDocumentId)
-            .set(bookReference)
-            .addOnSuccessListener(aVoid -> {
-                // Update author's totalBooks count by counting documents in books subcollection
-                updateAuthorBookCount(authorId);
-            })
-            .addOnFailureListener(e -> {
-                Toast.makeText(this, "Book added but failed to link to author", Toast.LENGTH_SHORT).show();
-            });
-        
-        Toast.makeText(this, R.string.book_added_successfully, Toast.LENGTH_LONG).show();
-        clearFields();
-        addBookButton.setEnabled(true);
-        addBookButton.setText(R.string.add_book);
-    }
-    
-    private void createNewAuthorAndLinkBook(String authorName, String bookDocumentId, String bookTitle) {
-        // Create new author document with special ID format
-        String authorDocumentId = "author" + System.currentTimeMillis();
-        
-        Map<String, Object> author = new HashMap<>();
-        author.put("name", authorName);
-        author.put("biography", "");
-        author.put("birthdayDate", "");
-        author.put("deathDate", "");
-        author.put("nationality", "");
-        author.put("photoUrl", "");
-        author.put("totalBooks", 0); // Start with 0, will be updated after adding book
-        
-        db.collection("authors").document(authorDocumentId)
-            .set(author)
-            .addOnSuccessListener(aVoid -> {
-                System.out.println("New author created with ID: " + authorDocumentId);
-                
-                // Update the book with the new author reference
-                Map<String, Object> bookUpdate = new HashMap<>();
-                bookUpdate.put("authorID", db.collection("authors").document(authorDocumentId));
-                
-                db.collection("books").document(bookDocumentId)
-                    .update(bookUpdate)
-                    .addOnSuccessListener(aVoid2 -> {
-                        // Create author's books collection and add book reference
-                        Map<String, Object> bookReference = new HashMap<>();
-                        bookReference.put("bookId", bookDocumentId);
-                        
-                        db.collection("authors").document(authorDocumentId)
-                            .collection("books").document(bookDocumentId)
-                            .set(bookReference)
-                            .addOnSuccessListener(aVoid3 -> {
-                                // Update author's totalBooks count by counting documents in books subcollection
-                                updateAuthorBookCount(authorDocumentId);
-                                Toast.makeText(this, R.string.book_added_successfully, Toast.LENGTH_LONG).show();
-                                clearFields();
-                                addBookButton.setEnabled(true);
-                                addBookButton.setText(R.string.add_book);
-                            })
-                            .addOnFailureListener(e -> {
-                                Toast.makeText(this, "Book and author added but failed to link", Toast.LENGTH_SHORT).show();
-                                addBookButton.setEnabled(true);
-                                addBookButton.setText(R.string.add_book);
-                            });
-                    })
-                    .addOnFailureListener(e -> {
-                        System.err.println("Failed to update book with author reference: " + e.getMessage());
-                        Toast.makeText(this, "Author created but failed to update book", Toast.LENGTH_SHORT).show();
-                        addBookButton.setEnabled(true);
-                        addBookButton.setText(R.string.add_book);
-                    });
-            })
-            .addOnFailureListener(e -> {
-                System.err.println("Failed to create new author: " + e.getMessage());
-                Toast.makeText(this, getString(R.string.failed_to_add_book) + e.getMessage(), Toast.LENGTH_LONG).show();
-                addBookButton.setEnabled(true);
-                addBookButton.setText(R.string.add_book);
-            });
-    }
-    
-    private void updateAuthorBookCount(String authorId) {
-        db.collection("authors").document(authorId)
-            .collection("books")
-            .get()
-            .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-                @Override
-                public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                    if (task.isSuccessful() && task.getResult() != null) {
-                        int bookCount = task.getResult().size();
-                        // Update the totalBooks field with the actual count of documents
-                        db.collection("authors").document(authorId)
-                            .update("totalBooks", bookCount)
-                            .addOnSuccessListener(aVoid -> {
-                                // Successfully updated totalBooks
-                            })
-                            .addOnFailureListener(e -> {
-                                // Log error but don't show to user since book was already added
-                                System.err.println("Failed to update totalBooks: " + e.getMessage());
-                            });
+
+    private void resolveAuthor(String authorName) {
+        if (selectedAuthorId != null && authorName.equals(selectedAuthorName)) {
+            submitWithAuthor(selectedAuthorId, authorName);
+            return;
+        }
+
+        apiService.searchAuthors(10, 0, authorName).enqueue(new Callback<List<ApiAuthor>>() {
+            @Override
+            public void onResponse(@NonNull Call<List<ApiAuthor>> call, @NonNull Response<List<ApiAuthor>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    for (ApiAuthor author : response.body()) {
+                        if (author.name != null && author.name.trim().equalsIgnoreCase(authorName.trim())) {
+                            submitWithAuthor(author.id, author.name);
+                            return;
+                        }
                     }
                 }
-            });
+                createAuthorThenSubmit(authorName);
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<List<ApiAuthor>> call, @NonNull Throwable t) {
+                createAuthorThenSubmit(authorName);
+            }
+        });
     }
-    
-    private String generateDocumentIdFromTitle(String title) {
-        // Convert title to a valid document ID
-        String documentId = title.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
-        
-        // Ensure the document ID is not empty and has valid characters
-        if (documentId.isEmpty()) {
-            documentId = "book_" + System.currentTimeMillis();
-        }
-        
-        // Ensure it starts with a letter or number (not special characters)
-        if (!documentId.matches("^[a-zA-Z0-9].*")) {
-            documentId = "book_" + documentId;
-        }
-        
-        // Limit length to avoid issues
-        if (documentId.length() > 50) {
-            documentId = documentId.substring(0, 50);
-        }
-        
-        return documentId;
+
+    private void createAuthorThenSubmit(String authorName) {
+        AuthorWriteRequest request = new AuthorWriteRequest();
+        request.name = authorName;
+        apiService.createAuthor(request).enqueue(new Callback<ApiAuthor>() {
+            @Override
+            public void onResponse(@NonNull Call<ApiAuthor> call, @NonNull Response<ApiAuthor> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    submitWithAuthor(response.body().id, response.body().name);
+                } else {
+                    failSubmit(getString(R.string.failed_to_add_author) + response.code());
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<ApiAuthor> call, @NonNull Throwable t) {
+                failSubmit(getString(R.string.failed_to_add_author) + t.getMessage());
+            }
+        });
     }
-    
+
+    private void submitWithAuthor(long authorId, String authorName) {
+        if (audiobookCheckBox.isChecked()) {
+            submitAudiobook(authorId, authorName);
+        } else {
+            submitBook(authorId, authorName);
+        }
+    }
+
+    private void submitBook(long authorId, String authorName) {
+        BookWriteRequest request = new BookWriteRequest();
+        request.recommendationItemId = parseLong(text(recommendationItemIdEditText));
+        request.title = text(titleEditText);
+        request.author = authorName;
+        request.authorID = authorId;
+        request.publicationYear = parseInt(text(publicationYearEditText));
+        request.annotation = optionalText(annotationEditText);
+        request.image = optionalText(imageUrlEditText);
+        request.license = optionalText(licenseEditText);
+        request.fileType = text(fileTypeEditText).toLowerCase(Locale.US);
+        request.fileUrl = text(fileUrlEditText);
+        request.genres = genres();
+
+        apiService.createBook(request).enqueue(new Callback<ApiBook>() {
+            @Override
+            public void onResponse(@NonNull Call<ApiBook> call, @NonNull Response<ApiBook> response) {
+                if (response.isSuccessful()) {
+                    finishSubmit();
+                } else {
+                    failSubmit(getString(R.string.failed_to_add_book) + response.code());
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<ApiBook> call, @NonNull Throwable t) {
+                failSubmit(getString(R.string.failed_to_add_book) + t.getMessage());
+            }
+        });
+    }
+
+    private void submitAudiobook(long authorId, String authorName) {
+        AudiobookWriteRequest request = new AudiobookWriteRequest();
+        request.recommendationItemId = parseLong(text(recommendationItemIdEditText));
+        request.title = text(titleEditText);
+        request.author = authorName;
+        request.authorID = authorId;
+        request.dictor = optionalText(dictorEditText);
+        request.publicationYear = parseInt(text(publicationYearEditText));
+        request.annotation = optionalText(annotationEditText);
+        request.image = optionalText(imageUrlEditText);
+        request.license = optionalText(licenseEditText);
+        request.audioType = text(audioTypeEditText).toLowerCase(Locale.US);
+        request.audioUrl = text(audioUrlEditText);
+        request.durationSeconds = parseInt(text(durationSecondsEditText));
+        request.sourceTextUrl = optionalText(sourceTextUrlEditText);
+        request.sourceUrl = optionalText(sourceUrlEditText);
+        request.genres = genres();
+
+        apiService.createAudiobook(request).enqueue(new Callback<ApiAudiobook>() {
+            @Override
+            public void onResponse(@NonNull Call<ApiAudiobook> call, @NonNull Response<ApiAudiobook> response) {
+                if (response.isSuccessful()) {
+                    finishSubmit();
+                } else {
+                    failSubmit(getString(R.string.failed_to_add_book) + response.code());
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<ApiAudiobook> call, @NonNull Throwable t) {
+                failSubmit(getString(R.string.failed_to_add_book) + t.getMessage());
+            }
+        });
+    }
+
+    private Author mapApiAuthor(ApiAuthor apiAuthor) {
+        Author author = new Author();
+        author.setAuthorId(String.valueOf(apiAuthor.id));
+        author.setName(apiAuthor.name);
+        author.setBiography(apiAuthor.biography);
+        author.setBirthDate(apiAuthor.birthdayDate);
+        author.setDeathDate(apiAuthor.deathDate);
+        author.setNationality(apiAuthor.nationality);
+        author.setPhotoUrl(apiAuthor.photoUrl);
+        author.setTotalBooks(apiAuthor.totalBooks);
+        return author;
+    }
+
+    private void finishSubmit() {
+        Toast.makeText(this, R.string.book_added_successfully, Toast.LENGTH_LONG).show();
+        clearFields();
+        setSubmitting(false);
+    }
+
+    private void failSubmit(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        setSubmitting(false);
+    }
+
+    private void setSubmitting(boolean submitting) {
+        addBookButton.setEnabled(!submitting);
+        addBookButton.setText(submitting ? R.string.adding : R.string.add_book);
+    }
+
     private void clearFields() {
-        titleEditText.setText("");
-        authorEditText.setText("");
-        annotationEditText.setText("");
-        fileUrlEditText.setText("");
-        imageUrlEditText.setText("");
-        fileTypeEditText.setText("");
-        authorSuggestionsRecyclerView.setVisibility(View.GONE);
+        for (EditText editText : Arrays.asList(
+            titleEditText,
+            authorEditText,
+            annotationEditText,
+            imageUrlEditText,
+            publicationYearEditText,
+            licenseEditText,
+            recommendationItemIdEditText,
+            genresEditText,
+            fileUrlEditText,
+            fileTypeEditText,
+            dictorEditText,
+            audioUrlEditText,
+            audioTypeEditText,
+            durationSecondsEditText,
+            sourceTextUrlEditText,
+            sourceUrlEditText
+        )) {
+            editText.setText("");
+        }
         selectedAuthorId = null;
         selectedAuthorName = null;
+        authorSuggestionsRecyclerView.setVisibility(View.GONE);
     }
-    
+
+    private String text(EditText editText) {
+        return editText.getText() == null ? "" : editText.getText().toString().trim();
+    }
+
+    private String optionalText(EditText editText) {
+        String value = text(editText);
+        return value.isEmpty() ? null : value;
+    }
+
+    private Long parseLong(String value) {
+        try {
+            return value == null || value.trim().isEmpty() ? null : Long.parseLong(value.trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private Integer parseInt(String value) {
+        try {
+            return value == null || value.trim().isEmpty() ? null : Integer.parseInt(value.trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private List<String> genres() {
+        String value = text(genresEditText);
+        if (value.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> out = new ArrayList<>();
+        for (String part : value.split(",")) {
+            String genre = part.trim();
+            if (!genre.isEmpty()) {
+                out.add(genre);
+            }
+        }
+        return out;
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (scheduler != null && !scheduler.isShutdown()) {
-            scheduler.shutdown();
+        if (pendingAuthorSearch != null) {
+            searchHandler.removeCallbacks(pendingAuthorSearch);
         }
     }
-} 
+}

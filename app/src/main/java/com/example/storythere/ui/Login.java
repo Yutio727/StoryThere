@@ -85,7 +85,7 @@ public class Login extends AppCompatActivity {
                 if (task.isSuccessful() && task.getResult() != null) {
                     Log.d("Login", "User already authenticated.");
                 } else {
-                    Log.w("Login", "User already authenticated, but failed to get token.");
+                    Log.w("Login", "User already authenticated, but session validation failed.");
                 }
                 navigateAfterSuccessfulLogin();
             });

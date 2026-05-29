@@ -160,8 +160,6 @@ public class GigaChatService {
     }
     
     private String obtainAccessToken() throws IOException {
-        Log.d(TAG, "Attempting to obtain access token...");
-        
         URL authUrl = new URL(AUTH_TOKEN_ENDPOINT);
         HttpsURLConnection connection = (HttpsURLConnection) authUrl.openConnection();
         connection.setDoOutput(true);
@@ -176,8 +174,6 @@ public class GigaChatService {
         connection.addRequestProperty("Authorization", "Basic " + ENCODED_API_KEY);
         connection.addRequestProperty("User-Agent", "StoryThere/1.0");
         connection.addRequestProperty("Connection", "close");
-
-        Log.d(TAG, "Making authentication request to: " + AUTH_TOKEN_ENDPOINT);
 
         try (OutputStream os = connection.getOutputStream();
              BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os))) {
@@ -197,7 +193,6 @@ public class GigaChatService {
             try {
                 JSONObject jsonResponse = new JSONObject(responseBody);
                 String accessToken = jsonResponse.getString("access_token");
-                Log.d(TAG, "Access token obtained successfully");
                 return accessToken;
             } catch (JSONException e) {
                 Log.e(TAG, "Failed to parse authentication response");

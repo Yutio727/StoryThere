@@ -161,7 +161,6 @@ public class GigaChatService {
     
     private String obtainAccessToken() throws IOException {
         Log.d(TAG, "Attempting to obtain access token...");
-        Log.d(TAG, "Using API key: " + ENCODED_API_KEY);
         
         URL authUrl = new URL(AUTH_TOKEN_ENDPOINT);
         HttpsURLConnection connection = (HttpsURLConnection) authUrl.openConnection();
@@ -194,16 +193,14 @@ public class GigaChatService {
             }
             
             String responseBody = builder.toString();
-            Log.d(TAG, "Authentication response: " + responseBody);
             
             try {
                 JSONObject jsonResponse = new JSONObject(responseBody);
                 String accessToken = jsonResponse.getString("access_token");
                 Log.d(TAG, "Access token obtained successfully");
-                Log.d(TAG, "Access token: " + accessToken);
                 return accessToken;
             } catch (JSONException e) {
-                Log.e(TAG, "Failed to parse authentication response: " + responseBody);
+                Log.e(TAG, "Failed to parse authentication response");
                 throw new IOException("Failed to parse JSON response: " + e.getMessage());
             }
         }

@@ -83,8 +83,7 @@ public class Login extends AppCompatActivity {
             PersonalDataConsentActivity.markAccepted(this);
             user.getIdToken(false).addOnCompleteListener(task -> {
                 if (task.isSuccessful() && task.getResult() != null) {
-                    String token = task.getResult().getToken();
-                    Log.d("Login", "User already authenticated. Token: " + token);
+                    Log.d("Login", "User already authenticated.");
                 } else {
                     Log.w("Login", "User already authenticated, but failed to get token.");
                 }

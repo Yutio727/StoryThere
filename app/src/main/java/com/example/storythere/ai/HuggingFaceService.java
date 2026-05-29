@@ -76,7 +76,6 @@ public class HuggingFaceService {
         Log.i(TAG, "Original Book Title: " + bookTitle);
         Log.i(TAG, "Book Annotation: " + (annotation != null ? annotation : "null"));
         Log.i(TAG, "API Endpoint: " + API_URL);
-        Log.i(TAG, "API Key (first 10 chars): " + API_KEY.substring(0, Math.min(10, API_KEY.length())) + "...");
         
         CompletableFuture.runAsync(() -> {
             try {
@@ -108,7 +107,6 @@ public class HuggingFaceService {
                         .build();
                 
                 Log.i(TAG, "Request Headers:");
-                Log.i(TAG, "  Authorization: Bearer " + API_KEY.substring(0, Math.min(10, API_KEY.length())) + "...");
                 Log.i(TAG, "  Content-Type: application/json");
                 Log.i(TAG, "  User-Agent: " + request.header("User-Agent"));
                 

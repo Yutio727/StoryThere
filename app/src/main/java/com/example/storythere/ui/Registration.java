@@ -465,7 +465,7 @@ public class Registration extends AppCompatActivity {
                 }
                 if (!valid) {
                     Toast.makeText(Registration.this, getString(R.string.please_fill_all_fields_correctly), Toast.LENGTH_SHORT).show();
-                    Log.d("Registration", "Unfilled/invalid fields: username=" + username + ", birthday=" + birthday + ", email=" + email + ", password=" + password + ", confirmPassword=" + confirmPassword);
+                    Log.d("Registration", "Unfilled or invalid registration fields.");
                     setRegistrationInProgress(false);
                     return;
                 }

@@ -44,6 +44,7 @@ public class SearchActivity extends AppCompatActivity {
             Intent intent = new Intent(this, HomeActivity.class);
             startActivity(intent);
             finish();
+            ActivityTransitions.applyTabOpen(this, 2, 0);
         });
         
         findViewById(R.id.nav_search).setOnClickListener(v -> {
@@ -54,18 +55,21 @@ public class SearchActivity extends AppCompatActivity {
             Intent intent = new Intent(this, MainActivity.class);
             startActivity(intent);
             finish();
+            ActivityTransitions.applySlideRightOpen(this);
         });
 
         findViewById(R.id.nav_catalog).setOnClickListener(v -> {
             Intent intent = new Intent(this, CatalogActivity.class);
             startActivity(intent);
             finish();
+            ActivityTransitions.applySlideLeftOpen(this);
         });
         
         findViewById(R.id.nav_profile).setOnClickListener(v -> {
             Intent intent = new Intent(this, ProfileActivity.class);
             startActivity(intent);
             finish();
+            ActivityTransitions.applyTabOpen(this, 2, 4);
         });
     }
     

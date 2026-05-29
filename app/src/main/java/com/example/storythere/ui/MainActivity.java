@@ -239,6 +239,7 @@ public class MainActivity extends AppCompatActivity {
             // TODO: Clear any user cache here if you store user info
             startActivity(new Intent(this, Login.class));
             finish();
+            ActivityTransitions.applyFadeOpen(this);
         } else {
             // Log the user's token for debug (remove in production)
             user.getIdToken(false).addOnCompleteListener(task -> {
@@ -394,6 +395,7 @@ public class MainActivity extends AppCompatActivity {
         }
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
+        ActivityTransitions.applyFadeOpen(this);
     }
     
     @SuppressLint("Range")
@@ -513,6 +515,7 @@ public class MainActivity extends AppCompatActivity {
         }
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
+        ActivityTransitions.applyFadeOpen(this);
     }
 
     private boolean hasStoragePermission() {
@@ -781,6 +784,7 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra(AudiobookPlayerActivity.EXTRA_START_POSITION_MS, safeLongToInt(book.getPlaybackPositionMs()));
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
+        ActivityTransitions.applyFadeOpen(this);
     }
 
     private void openServerBackedBook(Book book) {
@@ -1369,6 +1373,7 @@ public class MainActivity extends AppCompatActivity {
             }
             startActivity(intent);
             finish();
+            ActivityTransitions.applyTabOpen(this, 3, 0);
         });
         
         findViewById(R.id.nav_search).setOnClickListener(v -> {
@@ -1378,6 +1383,7 @@ public class MainActivity extends AppCompatActivity {
             }
             startActivity(intent);
             finish();
+            ActivityTransitions.applySlideLeftOpen(this);
         });
         
         findViewById(R.id.nav_my_books).setOnClickListener(v -> {
@@ -1391,6 +1397,7 @@ public class MainActivity extends AppCompatActivity {
             }
             startActivity(intent);
             finish();
+            ActivityTransitions.applyTabOpen(this, 3, 1);
         });
         
         findViewById(R.id.nav_profile).setOnClickListener(v -> {
@@ -1400,6 +1407,7 @@ public class MainActivity extends AppCompatActivity {
             }
             startActivity(intent);
             finish();
+            ActivityTransitions.applySlideRightOpen(this);
         });
     }
 

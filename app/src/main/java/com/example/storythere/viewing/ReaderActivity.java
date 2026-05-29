@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import com.example.storythere.R;
+import com.example.storythere.ui.ActivityTransitions;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -207,7 +208,7 @@ public class ReaderActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
-            onBackPressed();
+            closeWithFade();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -218,7 +219,12 @@ public class ReaderActivity extends AppCompatActivity {
         if (webView.canGoBack()) {
             webView.goBack();
         } else {
-            super.onBackPressed();
+            closeWithFade();
         }
+    }
+
+    private void closeWithFade() {
+        finish();
+        ActivityTransitions.applyFadeClose(this);
     }
 } 

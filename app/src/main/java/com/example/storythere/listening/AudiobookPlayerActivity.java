@@ -24,6 +24,7 @@ import com.bumptech.glide.Glide;
 import com.example.storythere.R;
 import com.example.storythere.data.BookRepository;
 import com.example.storythere.data.RecommendationTrackingRepository;
+import com.example.storythere.ui.ActivityTransitions;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -102,7 +103,7 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setDisplayShowHomeEnabled(true);
         }
-        toolbar.setNavigationOnClickListener(v -> onBackPressed());
+        toolbar.setNavigationOnClickListener(v -> closeWithFade());
     }
 
     private void initializeViews() {
@@ -487,6 +488,16 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
             return String.format(Locale.US, "%d:%02d:%02d", hours, minutes, secs);
         }
         return String.format(Locale.US, "%02d:%02d", minutes, secs);
+    }
+
+    @Override
+    public void onBackPressed() {
+        closeWithFade();
+    }
+
+    private void closeWithFade() {
+        finish();
+        ActivityTransitions.applyFadeClose(this);
     }
 
     @Override

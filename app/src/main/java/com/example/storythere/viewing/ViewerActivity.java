@@ -38,6 +38,7 @@ import java.util.concurrent.Executors;
 import com.example.storythere.R;
 import com.example.storythere.adapters.PageAdapter;
 import com.example.storythere.listening.AudioReaderActivity;
+import com.example.storythere.ui.ActivityTransitions;
 import com.example.storythere.data.Book;
 import com.example.storythere.data.BookRepository;
 import com.example.storythere.data.RecommendationTrackingRepository;
@@ -1222,7 +1223,7 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
         int id = item.getItemId();
 
         if (id == android.R.id.home) {
-            finish();
+            closeWithFade();
             return true;
         } else if (id == R.id.action_text_settings) {
             showTextSettingsDialog();
@@ -1365,6 +1366,16 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onBackPressed() {
+        closeWithFade();
+    }
+
+    private void closeWithFade() {
+        finish();
+        ActivityTransitions.applyFadeClose(this);
     }
 
     private void showTextSettingsDialog() {

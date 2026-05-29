@@ -160,6 +160,7 @@ public class ResetPassword extends AppCompatActivity {
                                 
                                 handler.postDelayed(() -> {
                                     finish(); // Go back to login screen
+                                    ActivityTransitions.applyFadeClose(ResetPassword.this);
                                 }, 2000);
                             } else {
                                 overlayAppIcon.setVisibility(View.GONE);
@@ -194,5 +195,11 @@ public class ResetPassword extends AppCompatActivity {
                         });
             }
         });
+    }
+
+    @Override
+    public void onBackPressed() {
+        finish();
+        ActivityTransitions.applyFadeClose(this);
     }
 }

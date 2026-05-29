@@ -726,6 +726,7 @@ public class CatalogActivity extends AppCompatActivity {
         intent.putExtra("annotation", annotation);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
+        ActivityTransitions.applyFadeOpen(this);
     }
 
     private void openAudiobookOptionsActivity(HomeActivity.RecommendedBook book) {
@@ -750,6 +751,7 @@ public class CatalogActivity extends AppCompatActivity {
         intent.putExtra("annotation", book.annotation);
         intent.putExtra("previewImagePath", book.image);
         startActivity(intent);
+        ActivityTransitions.applyFadeOpen(this);
     }
 
     private boolean hasStoragePermission() {
@@ -782,6 +784,7 @@ public class CatalogActivity extends AppCompatActivity {
             if (isOfflineMode) intent.putExtra("offline_mode", true);
             startActivity(intent);
             finish();
+            ActivityTransitions.applySlideLeftOpen(this);
         });
 
         findViewById(R.id.nav_search).setOnClickListener(v -> {
@@ -789,6 +792,7 @@ public class CatalogActivity extends AppCompatActivity {
             if (isOfflineMode) intent.putExtra("offline_mode", true);
             startActivity(intent);
             finish();
+            ActivityTransitions.applySlideRightOpen(this);
         });
 
         findViewById(R.id.nav_my_books).setOnClickListener(v -> {
@@ -796,6 +800,7 @@ public class CatalogActivity extends AppCompatActivity {
             if (isOfflineMode) intent.putExtra("offline_mode", true);
             startActivity(intent);
             finish();
+            ActivityTransitions.applyTabOpen(this, 1, 3);
         });
 
         findViewById(R.id.nav_catalog).setOnClickListener(v -> {
@@ -807,6 +812,7 @@ public class CatalogActivity extends AppCompatActivity {
             if (isOfflineMode) intent.putExtra("offline_mode", true);
             startActivity(intent);
             finish();
+            ActivityTransitions.applyTabOpen(this, 1, 4);
         });
     }
 

@@ -103,7 +103,7 @@ public class AuthorDetailActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayShowTitleEnabled(true);
         }
         
-        toolbar.setNavigationOnClickListener(v -> onBackPressed());
+        toolbar.setNavigationOnClickListener(v -> closeWithFade());
     }
     
     private void setupRecyclerView() {
@@ -583,5 +583,15 @@ public class AuthorDetailActivity extends AppCompatActivity {
         intent.putExtra("annotation", book.annotation);
         intent.putExtra("previewImagePath", book.image);
         startActivity(intent);
+    }
+
+    @Override
+    public void onBackPressed() {
+        closeWithFade();
+    }
+
+    private void closeWithFade() {
+        finish();
+        ActivityTransitions.applyFadeClose(this);
     }
 }

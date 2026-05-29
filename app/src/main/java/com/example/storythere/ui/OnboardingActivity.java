@@ -577,6 +577,7 @@ public class OnboardingActivity extends AppCompatActivity {
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();
+        ActivityTransitions.applyFadeOpen(this);
     }
 
     private void showLoadError() {

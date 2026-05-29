@@ -170,6 +170,7 @@ public class HomeActivity extends AppCompatActivity {
             }
             startActivity(intent);
             finish();
+            ActivityTransitions.applyTabOpen(this, 0, 2);
         });
         
         findViewById(R.id.nav_my_books).setOnClickListener(v -> {
@@ -179,6 +180,7 @@ public class HomeActivity extends AppCompatActivity {
             }
             startActivity(intent);
             finish();
+            ActivityTransitions.applyTabOpen(this, 0, 3);
         });
 
         findViewById(R.id.nav_catalog).setOnClickListener(v -> {
@@ -188,6 +190,7 @@ public class HomeActivity extends AppCompatActivity {
             }
             startActivity(intent);
             finish();
+            ActivityTransitions.applySlideRightOpen(this);
         });
         
         findViewById(R.id.nav_profile).setOnClickListener(v -> {
@@ -197,6 +200,7 @@ public class HomeActivity extends AppCompatActivity {
             }
             startActivity(intent);
             finish();
+            ActivityTransitions.applyTabOpen(this, 0, 4);
         });
     }
     
@@ -300,6 +304,7 @@ public class HomeActivity extends AppCompatActivity {
                 intent.putExtra("offline_mode", true);
             }
             startActivity(intent);
+            ActivityTransitions.applyTabOpen(this, 0, 2);
         };
         searchBar.setOnClickListener(listener);
         searchIcon.setOnClickListener(listener);
@@ -969,6 +974,7 @@ public class HomeActivity extends AppCompatActivity {
         intent.putExtra("annotation", annotation);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
+        ActivityTransitions.applyFadeOpen(this);
     }
 
     private void openAudiobookOptionsActivity(RecommendedBook book) {
@@ -993,6 +999,7 @@ public class HomeActivity extends AppCompatActivity {
         intent.putExtra("annotation", book.annotation);
         intent.putExtra("previewImagePath", book.image);
         startActivity(intent);
+        ActivityTransitions.applyFadeOpen(this);
     }
 
     private void trackBookRecommendationImpressions(List<RecommendedBook> books) {

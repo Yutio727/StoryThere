@@ -235,6 +235,7 @@ public class ProfileActivity extends AppCompatActivity {
             // User not logged in, redirect to login
             startActivity(new Intent(this, Login.class));
             finish();
+            ActivityTransitions.applyFadeOpen(this);
         }
     }
     
@@ -494,6 +495,7 @@ public class ProfileActivity extends AppCompatActivity {
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();
+        ActivityTransitions.applyFadeOpen(this);
     }
     
     private void setupBottomNavigation() {
@@ -507,6 +509,7 @@ public class ProfileActivity extends AppCompatActivity {
             }
             startActivity(intent);
             finish();
+            ActivityTransitions.applyTabOpen(this, 4, 0);
         });
         
         findViewById(R.id.nav_search).setOnClickListener(v -> {
@@ -516,6 +519,7 @@ public class ProfileActivity extends AppCompatActivity {
             }
             startActivity(intent);
             finish();
+            ActivityTransitions.applyTabOpen(this, 4, 2);
         });
         
         findViewById(R.id.nav_my_books).setOnClickListener(v -> {
@@ -525,6 +529,7 @@ public class ProfileActivity extends AppCompatActivity {
             }
             startActivity(intent);
             finish();
+            ActivityTransitions.applySlideLeftOpen(this);
         });
 
         findViewById(R.id.nav_catalog).setOnClickListener(v -> {
@@ -534,6 +539,7 @@ public class ProfileActivity extends AppCompatActivity {
             }
             startActivity(intent);
             finish();
+            ActivityTransitions.applyTabOpen(this, 4, 1);
         });
         
         findViewById(R.id.nav_profile).setOnClickListener(v -> {

@@ -96,6 +96,7 @@ public class Login extends AppCompatActivity {
         if (!PersonalDataConsentActivity.isAccepted(this)) {
             startActivity(new Intent(Login.this, PersonalDataConsentActivity.class));
             finish();
+            ActivityTransitions.applyFadeOpen(this);
             return;
         }
 
@@ -150,6 +151,7 @@ public class Login extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(Login.this, Registration.class));
+                ActivityTransitions.applyFadeOpen(Login.this);
             }
         });
 
@@ -159,6 +161,7 @@ public class Login extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(Login.this, ResetPassword.class));
+                ActivityTransitions.applyFadeOpen(Login.this);
             }
         });
 
@@ -267,6 +270,7 @@ public class Login extends AppCompatActivity {
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();
+        ActivityTransitions.applyFadeOpen(this);
     }
 
     private void showErrorAndStay(Exception exception) {
@@ -676,6 +680,7 @@ public class Login extends AppCompatActivity {
             intent.putExtra("offline_mode", true); // Add flag to indicate offline mode
             startActivity(intent);
             finish();
+            ActivityTransitions.applyFadeOpen(this);
         } catch (Exception e) {
             Log.e("Login", "Error navigating to offline mode: " + e.getMessage());
             // Fallback: try to restart the app
@@ -686,6 +691,7 @@ public class Login extends AppCompatActivity {
                     intent.putExtra("offline_mode", true);
                     startActivity(intent);
                     finish();
+                    ActivityTransitions.applyFadeOpen(this);
                 }
             } catch (Exception fallbackException) {
                 Log.e("Login", "Fallback navigation also failed: " + fallbackException.getMessage());

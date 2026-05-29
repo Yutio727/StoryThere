@@ -277,6 +277,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     pdfIntent.putExtra("title", title);
                     putBookTrackingExtras(pdfIntent);
                     startActivity(pdfIntent);
+                    ActivityTransitions.applyFadeOpen(this);
                 } else if ("txt".equals(fileType)) {
                     // Cache parsed .txt content to a file and pass file path to ViewerActivity
                     TextParser.ParsedText parsed = TextParser.parseText(this, contentUri);
@@ -300,6 +301,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     pdfIntent.putExtra("title", title);
                     putBookTrackingExtras(pdfIntent);
                     startActivity(pdfIntent);
+                    ActivityTransitions.applyFadeOpen(this);
                 } else if ("epub".equals(fileType)) {
                     // Open EPUB in ViewerActivity
                     Intent epubIntent = new Intent(this, ViewerActivity.class);
@@ -309,6 +311,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     epubIntent.putExtra("title", title);
                     putBookTrackingExtras(epubIntent);
                     startActivity(epubIntent);
+                    ActivityTransitions.applyFadeOpen(this);
                 } else {
                     // Open reader activity for other file types
                     Intent readerIntent = new Intent(this, ReaderActivity.class);
@@ -318,6 +321,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                     readerIntent.putExtra("title", title);
                     putBookTrackingExtras(readerIntent);
                     startActivity(readerIntent);
+                    ActivityTransitions.applyFadeOpen(this);
                 }
             } else {
                 trackBookConversion();
@@ -518,6 +522,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                         audioIntent.putExtra("previewImagePath", currentBook.getPreviewImagePath());
                     }
                     startActivity(audioIntent);
+                    ActivityTransitions.applyFadeOpen(this);
                 } catch (Exception e) {
                     e.printStackTrace();
                     Toast.makeText(this, R.string.error_preparing_text_for_listening, Toast.LENGTH_SHORT).show();
@@ -692,6 +697,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_FROM_RECOMMENDATION, fromRecommendation);
         audioIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(audioIntent);
+        ActivityTransitions.applyFadeOpen(this);
     }
 
     private void putBookTrackingExtras(Intent intent) {
@@ -768,11 +774,22 @@ public class BookOptionsActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
-            onBackPressed();
+            closeWithFade();
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
+
+    @Override
+    public void onBackPressed() {
+        closeWithFade();
+    }
+
+    private void closeWithFade() {
+        finish();
+        ActivityTransitions.applyFadeClose(this);
+    }
+
     private void saveBookCover(Uri imageUri) {
         if (currentBook == null || imageUri == null) return;
 

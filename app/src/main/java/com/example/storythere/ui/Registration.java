@@ -96,6 +96,7 @@ public class Registration extends AppCompatActivity {
             public void onClick(View widget) {
                 startActivity(new Intent(Registration.this, Login.class));
                 finish();
+                ActivityTransitions.applyFadeClose(Registration.this);
             }
         }, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         tvAlreadyHaveAccount.setText(spannable);
@@ -586,6 +587,7 @@ public class Registration extends AppCompatActivity {
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
             finish();
+            ActivityTransitions.applyFadeOpen(Registration.this);
         }, 700);
     }
 
@@ -697,5 +699,11 @@ public class Registration extends AppCompatActivity {
             editor.putString(KEY_SEX_PREFIX + uid, sex);
         }
         editor.apply();
+    }
+
+    @Override
+    public void onBackPressed() {
+        finish();
+        ActivityTransitions.applyFadeClose(this);
     }
 }

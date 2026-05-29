@@ -44,6 +44,7 @@ import com.example.storythere.data.BookRepository;
 import com.example.storythere.data.Book;
 import com.example.storythere.data.RecommendationTrackingRepository;
 import com.example.storythere.parsers.PDFParser;
+import com.example.storythere.ui.ActivityTransitions;
 
 public class AudioReaderActivity extends AppCompatActivity {
     private static final String TAG = "AudioReaderActivity";
@@ -238,7 +239,7 @@ public class AudioReaderActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == android.R.id.home) {
-            onBackPressed();
+            closeWithFade();
             return true;
         } else if (id == R.id.action_playback_speed) {
             showPlaybackSpeedDialog();
@@ -293,6 +294,16 @@ public class AudioReaderActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onBackPressed() {
+        closeWithFade();
+    }
+
+    private void closeWithFade() {
+        finish();
+        ActivityTransitions.applyFadeClose(this);
     }
     
     private void showPlaybackSpeedDialog() {

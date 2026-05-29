@@ -2,6 +2,7 @@ package com.example.storythere.adapters;
 
 import android.content.Context;
 import android.content.Intent;
+import android.app.Activity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.storythere.R;
 import com.example.storythere.data.Author;
+import com.example.storythere.ui.ActivityTransitions;
 import com.example.storythere.ui.AuthorDetailActivity;
 import java.util.List;
 
@@ -65,6 +67,9 @@ public class AuthorAdapter extends RecyclerView.Adapter<AuthorAdapter.AuthorView
                     Intent intent = new Intent(context, AuthorDetailActivity.class);
                     intent.putExtra("authorId", author.getAuthorId());
                     context.startActivity(intent);
+                    if (context instanceof Activity) {
+                        ActivityTransitions.applyFadeOpen((Activity) context);
+                    }
                 }
             });
         }

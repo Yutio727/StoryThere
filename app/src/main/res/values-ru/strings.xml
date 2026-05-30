@@ -272,6 +272,7 @@
     <string name="genres">Жанры</string>
     <string name="enter_genres_comma_separated">Введите жанры через запятую</string>
     <string name="license">Лицензия</string>
+    <string name="license_format">Лицензия: %1$s</string>
     <string name="enter_license">Введите лицензию</string>
     <string name="audio_url">URL аудио *</string>
     <string name="enter_audio_url">Введите URL аудио</string>

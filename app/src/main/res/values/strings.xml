@@ -159,6 +159,7 @@
     <string name="genres">Genres</string>
     <string name="enter_genres_comma_separated">Enter genres separated by commas</string>
     <string name="license">License</string>
+    <string name="license_format">License: %1$s</string>
     <string name="enter_license">Enter license</string>
     <string name="audio_url">Audio URL *</string>
     <string name="enter_audio_url">Enter audio URL</string>

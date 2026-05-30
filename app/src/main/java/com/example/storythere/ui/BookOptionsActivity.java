@@ -80,6 +80,7 @@ public class BookOptionsActivity extends AppCompatActivity {
     private TextView bookReadingTimeText;
     private TextView bookEstimatedTimeText;
     private TextView bookAnnotationText;
+    private TextView bookLicenseText;
     private BookRepository bookRepository;
     private Book currentBook;
     private String filePath;
@@ -113,6 +114,7 @@ public class BookOptionsActivity extends AppCompatActivity {
     private int playbackPositionMs = -1;
     private String authorFromIntent;
     private String dictorFromIntent;
+    private String licenseFromIntent;
     private String previewImagePathFromIntent;
     private boolean isFooterActionInProgress = false;
 
@@ -147,6 +149,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                 : -1;
             authorFromIntent = intent.getStringExtra("author");
             dictorFromIntent = intent.getStringExtra("dictor");
+            licenseFromIntent = intent.getStringExtra("license");
             previewImagePathFromIntent = intent.getStringExtra("previewImagePath");
             if (isAudiobook && (fileType == null || fileType.trim().isEmpty())) {
                 fileType = audioType != null ? audioType : "mp3";
@@ -165,6 +168,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         bookReadingTimeText = findViewById(R.id.bookReadingTimeText);
         bookEstimatedTimeText = findViewById(R.id.bookEstimatedTimeText);
         bookAnnotationText = findViewById(R.id.bookAnnotationText);
+        bookLicenseText = findViewById(R.id.bookLicenseText);
         btnReadMode = findViewById(R.id.btnReadMode);
         btnListenMode = findViewById(R.id.btnListenMode);
         btnSummarize = findViewById(R.id.btnSummarize);
@@ -182,6 +186,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         if (intent != null) {
             String annotation = intent.getStringExtra("annotation");
             updateAnnotationDisplay(annotation);
+            updateLicenseDisplay(licenseFromIntent);
         }
 
         if (isAudiobook) {
@@ -237,6 +242,7 @@ public class BookOptionsActivity extends AppCompatActivity {
                                     .skipMemoryCache(false)
                                     .into(bookCoverImage);
                         }
+                        updateLicenseDisplay(book.getLicense() != null ? book.getLicense() : licenseFromIntent);
                         // Update viewing time text with initial stateAdd commentMore actions
                         updateBookReadingTimeText();
                     }
@@ -727,6 +733,9 @@ public class BookOptionsActivity extends AppCompatActivity {
         if ((dictorFromIntent == null || dictorFromIntent.trim().isEmpty()) && book.getDictor() != null) {
             dictorFromIntent = book.getDictor();
         }
+        if ((licenseFromIntent == null || licenseFromIntent.trim().isEmpty()) && book.getLicense() != null) {
+            licenseFromIntent = book.getLicense();
+        }
 
         String dictor = resolveAudiobookDictor();
         if (dictor != null && !dictor.trim().isEmpty()) {
@@ -740,6 +749,7 @@ public class BookOptionsActivity extends AppCompatActivity {
             previewImagePathFromIntent = book.getPreviewImagePath();
         }
         bindAudiobookCover();
+        updateLicenseDisplay(licenseFromIntent);
         updateBookReadingTimeText();
     }
 
@@ -1414,6 +1424,18 @@ public class BookOptionsActivity extends AppCompatActivity {
                 bookAnnotationText.setText(getString(R.string.no_annotation_no_internet));
                 btnSummarize.setVisibility(View.GONE);
             }
+        }
+    }
+
+    private void updateLicenseDisplay(String license) {
+        if (bookLicenseText == null) {
+            return;
+        }
+        if (license != null && !license.trim().isEmpty()) {
+            bookLicenseText.setText(getString(R.string.license_format, license.trim()));
+            bookLicenseText.setVisibility(View.VISIBLE);
+        } else {
+            bookLicenseText.setVisibility(View.GONE);
         }
     }
 

@@ -239,6 +239,20 @@
                     android:textColor="@color/text_primary_light"
                     android:lineSpacingExtra="2dp" />
 
+                <TextView
+                    android:id="@+id/bookLicenseText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="@font/montserrat"
+                    android:gravity="center_horizontal"
+                    android:paddingHorizontal="24dp"
+                    android:textColor="@color/text_activity_secondary"
+                    android:textSize="14sp"
+                    android:visibility="gone"
+                    tools:text="License: Public domain"
+                    tools:visibility="visible" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSummarize"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"

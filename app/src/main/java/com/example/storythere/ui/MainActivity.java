@@ -389,6 +389,7 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("fileType", book.getFileType());
         intent.putExtra("title", book.getTitle());
         intent.putExtra("annotation", book.getAnnotation());
+        intent.putExtra("license", book.getLicense());
         if (book.getServerBookId() > 0) {
             intent.putExtra("bookId", book.getServerBookId());
             intent.putExtra("fromRecommendation", false);
@@ -509,6 +510,7 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("fileType", book.getFileType());
         intent.putExtra("title", book.getTitle());
         intent.putExtra("annotation", book.getAnnotation());
+        intent.putExtra("license", book.getLicense());
         if (book.getServerBookId() > 0) {
             intent.putExtra("bookId", book.getServerBookId());
             intent.putExtra("fromRecommendation", false);
@@ -708,6 +710,7 @@ public class MainActivity extends AppCompatActivity {
         book.setAuthor(safeText(apiBook.author, book.getAuthor()));
         book.setFileType(safeText(apiBook.fileType, book.getFileType()));
         book.setAnnotation(apiBook.annotation);
+        book.setLicense(apiBook.license);
         book.setPreviewImagePath(apiBook.image);
         book.setImage(apiBook.image);
         if (apiBook.authorID != null) {
@@ -740,6 +743,7 @@ public class MainActivity extends AppCompatActivity {
         book.setTitle(safeText(apiAudiobook.title, book.getTitle()));
         book.setAuthor(safeText(apiAudiobook.author, book.getAuthor()));
         book.setAnnotation(apiAudiobook.annotation);
+        book.setLicense(apiAudiobook.license);
         book.setPreviewImagePath(apiAudiobook.image);
         book.setImage(apiAudiobook.image);
         if (apiAudiobook.authorID != null) {
@@ -780,6 +784,7 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("author", book.getAuthor());
         intent.putExtra("dictor", book.getDictor());
         intent.putExtra("annotation", book.getAnnotation());
+        intent.putExtra("license", book.getLicense());
         intent.putExtra("previewImagePath", book.getPreviewImagePath());
         intent.putExtra(AudiobookPlayerActivity.EXTRA_START_POSITION_MS, safeLongToInt(book.getPlaybackPositionMs()));
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);

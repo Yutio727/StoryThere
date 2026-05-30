@@ -355,6 +355,7 @@ public class HomeActivity extends AppCompatActivity {
         public String fileType;
         public String image;
         public String annotation;
+        public String license;
         public boolean isAudiobook;
         public String audioUrl;
         public String audioType;
@@ -375,7 +376,19 @@ public class HomeActivity extends AppCompatActivity {
         }
 
         public RecommendedBook(long id, String title, String author, String fileUrl, String fileType, String image,
+                               String annotation, String license, boolean isAudiobook, String audioUrl, String audioType,
+                               int durationSeconds) {
+            this(id, title, author, fileUrl, fileType, image, annotation, license, isAudiobook, audioUrl, audioType, null, durationSeconds);
+        }
+
+        public RecommendedBook(long id, String title, String author, String fileUrl, String fileType, String image,
                                String annotation, boolean isAudiobook, String audioUrl, String audioType,
+                               String dictor, int durationSeconds) {
+            this(id, title, author, fileUrl, fileType, image, annotation, null, isAudiobook, audioUrl, audioType, dictor, durationSeconds);
+        }
+
+        public RecommendedBook(long id, String title, String author, String fileUrl, String fileType, String image,
+                               String annotation, String license, boolean isAudiobook, String audioUrl, String audioType,
                                String dictor, int durationSeconds) {
             this.id = id;
             this.title = title;
@@ -384,6 +397,7 @@ public class HomeActivity extends AppCompatActivity {
             this.fileType = fileType;
             this.image = image;
             this.annotation = annotation;
+            this.license = license;
             this.isAudiobook = isAudiobook;
             this.audioUrl = audioUrl;
             this.audioType = audioType;
@@ -412,6 +426,7 @@ public class HomeActivity extends AppCompatActivity {
                     book.getFileType(),
                     book.getImage(),
                     book.getAnnotation(),
+                    book.getLicense(),
                     false,
                     null,
                     null,
@@ -621,6 +636,7 @@ public class HomeActivity extends AppCompatActivity {
                 audioType,
                 audiobook.image,
                 audiobook.annotation,
+                audiobook.license,
                 true,
                 audiobook.audioUrl,
                 audioType,
@@ -663,6 +679,7 @@ public class HomeActivity extends AppCompatActivity {
         String fileType = safeFileType(book.fileType, fileUrl);
         String imageUrl = book.image;
         String annotation = book.annotation;
+        String license = book.license;
 
         if (isDownloading || isCheckingBook) {
             Toast.makeText(this, R.string.processing_in_progress, Toast.LENGTH_SHORT).show();
@@ -678,7 +695,7 @@ public class HomeActivity extends AppCompatActivity {
         if (existingFile.exists()) {
             Log.d("HomeActivity", "File already exists on device: " + existingFile.getAbsolutePath());
             // File exists, check if it's in our database
-            checkDatabaseAndAddIfNeeded(book.id, bookTitle, bookAuthor, existingFile.getAbsolutePath(), fileType, imageUrl, annotation);
+            checkDatabaseAndAddIfNeeded(book.id, bookTitle, bookAuthor, existingFile.getAbsolutePath(), fileType, imageUrl, annotation, license);
             return;
         }
 
@@ -693,23 +710,23 @@ public class HomeActivity extends AppCompatActivity {
                     if (doesBookFileExist(existingBook)) {
                         Log.d("HomeActivity", "Book found in database and file exists: " + existingBook.getFilePath());
                         // Always use the URI stored in the database (which should be content URI)
-                        openBookOptionsActivity(book.id, Uri.parse(existingBook.getFilePath()), fileType, bookTitle, annotation);
+                        openBookOptionsActivity(book.id, Uri.parse(existingBook.getFilePath()), fileType, bookTitle, annotation, license);
                     } else {
                         Log.d("HomeActivity", "Book in database but file missing, will re-download");
                         if (shouldDeleteMissingLocalBook(existingBook)) {
                             bookRepository.delete(existingBook);
                         }
-                        startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
+                        startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation, license);
                     }
                 } else {
-                    startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
+                    startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation, license);
                 }
             }
         };
         viewModel.getAllBooks().observe(this, observer);
     }
 
-    private void checkDatabaseAndAddIfNeeded(long serverBookId, String title, String author, String filePath, String fileType, String imageUrl, String annotation) {
+    private void checkDatabaseAndAddIfNeeded(long serverBookId, String title, String author, String filePath, String fileType, String imageUrl, String annotation, String license) {
         Observer<List<Book>> observer = new Observer<List<Book>>() {
             @Override
             public void onChanged(List<Book> books) {
@@ -727,19 +744,19 @@ public class HomeActivity extends AppCompatActivity {
                 Book existingBook = findMatchingLocalBook(books, serverBookId, title, author);
                 
                 if (existingBook != null) {
-                    updateLocalBookFromRecommendation(existingBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation);
+                    updateLocalBookFromRecommendation(existingBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation, license);
                     bookRepository.update(existingBook);
                     Log.d("HomeActivity", "Updated existing book from recommendation: " + title + " to content URI");
                 } else {
                     // Add to database with content URI
                     Book newBook = new Book(title, author, contentUri, fileType);
-                    updateLocalBookFromRecommendation(newBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation);
+                    updateLocalBookFromRecommendation(newBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation, license);
                     bookRepository.insert(newBook);
                     Log.d("HomeActivity", "Added existing file to database: " + title + " with URI: " + contentUri);
                 }
                 
                 // Always open the book with content URI
-                openBookOptionsActivity(serverBookId, Uri.parse(contentUri), fileType, title, annotation);
+                openBookOptionsActivity(serverBookId, Uri.parse(contentUri), fileType, title, annotation, license);
             }
         };
         viewModel.getAllBooks().observe(this, observer);
@@ -819,7 +836,8 @@ public class HomeActivity extends AppCompatActivity {
         String filePath,
         String fileType,
         String imageUrl,
-        String annotation
+        String annotation,
+        String license
     ) {
         book.setAudiobook(false);
         if (serverBookId > 0) {
@@ -832,6 +850,7 @@ public class HomeActivity extends AppCompatActivity {
         book.setPreviewImagePath(imageUrl);
         book.setImage(imageUrl);
         book.setAnnotation(annotation);
+        book.setLicense(license);
         book.setLastOpened(new Date());
     }
 
@@ -863,7 +882,7 @@ public class HomeActivity extends AppCompatActivity {
         return cleanUrl.substring(dotIndex + 1).toLowerCase(Locale.US);
     }
 
-    private void startDownload(long serverBookId, String title, String author, String fileUrl, String fileType, String imageUrl, String annotation) {
+    private void startDownload(long serverBookId, String title, String author, String fileUrl, String fileType, String imageUrl, String annotation, String license) {
         if (fileUrl == null || fileUrl.trim().isEmpty()) {
             isDownloading = false;
             Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
@@ -928,7 +947,7 @@ public class HomeActivity extends AppCompatActivity {
                             isDownloading = false;
                             if (uriString != null) {
                                 Log.d("HomeActivity", "Saving book to database...");
-                                saveBookAndOpenFromServer(serverBookId, title, author, uriString, fileType, imageUrl, annotation);
+                                saveBookAndOpenFromServer(serverBookId, title, author, uriString, fileType, imageUrl, annotation, license);
                             } else {
                                 Log.e("HomeActivity", "Download succeeded but local URI is null!");
                                 Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
@@ -1006,27 +1025,27 @@ public class HomeActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void saveBookAndOpenFromServer(long serverBookId, String title, String author, String localUriString, String fileType, String imageUrl, String annotation) {
+    private void saveBookAndOpenFromServer(long serverBookId, String title, String author, String localUriString, String fileType, String imageUrl, String annotation, String license) {
         Observer<List<Book>> observer = new Observer<List<Book>>() {
             @Override
             public void onChanged(List<Book> books) {
                 viewModel.getAllBooks().removeObserver(this);
                 Book existingBook = findMatchingLocalBook(books, serverBookId, title, author);
                 if (existingBook != null) {
-                    updateLocalBookFromRecommendation(existingBook, serverBookId, title, author, localUriString, fileType, imageUrl, annotation);
+                    updateLocalBookFromRecommendation(existingBook, serverBookId, title, author, localUriString, fileType, imageUrl, annotation, license);
                     bookRepository.update(existingBook);
                 } else {
                     Book book = new Book(title, author, localUriString, fileType);
-                    updateLocalBookFromRecommendation(book, serverBookId, title, author, localUriString, fileType, imageUrl, annotation);
+                    updateLocalBookFromRecommendation(book, serverBookId, title, author, localUriString, fileType, imageUrl, annotation, license);
                     bookRepository.insert(book);
                 }
-                openBookOptionsActivity(serverBookId, Uri.parse(localUriString), fileType, title, annotation);
+                openBookOptionsActivity(serverBookId, Uri.parse(localUriString), fileType, title, annotation, license);
             }
         };
         viewModel.getAllBooks().observe(this, observer);
     }
 
-    private void openBookOptionsActivity(long serverBookId, Uri fileUri, String fileType, String title, String annotation) {
+    private void openBookOptionsActivity(long serverBookId, Uri fileUri, String fileType, String title, String annotation, String license) {
         // Update the lastOpened timestamp if this book exists in the database
         String filePath = fileUri.toString();
         androidx.lifecycle.Observer<Book> observer = new androidx.lifecycle.Observer<Book>() {
@@ -1062,6 +1081,7 @@ public class HomeActivity extends AppCompatActivity {
         intent.putExtra("fileType", fileType);
         intent.putExtra("title", title);
         intent.putExtra("annotation", annotation);
+        intent.putExtra("license", license);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
         ActivityTransitions.applyFadeOpen(this);
@@ -1087,6 +1107,7 @@ public class HomeActivity extends AppCompatActivity {
         intent.putExtra("author", book.author);
         intent.putExtra("dictor", book.dictor);
         intent.putExtra("annotation", book.annotation);
+        intent.putExtra("license", book.license);
         intent.putExtra("previewImagePath", book.image);
         startActivity(intent);
         ActivityTransitions.applyFadeOpen(this);

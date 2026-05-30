@@ -9,6 +9,7 @@ public class ApiBook {
     public Integer publicationYear;
     public String annotation;
     public String image;
+    public String license;
     public String fileType;
     public String fileUrl;
     public String createdAt;

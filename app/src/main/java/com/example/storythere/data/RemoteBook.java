@@ -14,6 +14,7 @@ public class RemoteBook {
     private String fileType;
     private String image;
     private String annotation;
+    private String license;
     private int recommendationRank;
     private long cachedAtMillis;
     private String recommendationSource;
@@ -38,6 +39,9 @@ public class RemoteBook {
 
     public String getAnnotation() { return annotation; }
     public void setAnnotation(String annotation) { this.annotation = annotation; }
+
+    public String getLicense() { return license; }
+    public void setLicense(String license) { this.license = license; }
 
     public int getRecommendationRank() { return recommendationRank; }
     public void setRecommendationRank(int recommendationRank) { this.recommendationRank = recommendationRank; }

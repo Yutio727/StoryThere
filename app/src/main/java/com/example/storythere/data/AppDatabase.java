@@ -8,7 +8,7 @@ import androidx.room.TypeConverters;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-@Database(entities = {Book.class, Author.class, RemoteBook.class}, version = 14, exportSchema = false)
+@Database(entities = {Book.class, Author.class, RemoteBook.class}, version = 15, exportSchema = false)
 @TypeConverters({DateConverter.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
@@ -142,6 +142,14 @@ public abstract class AppDatabase extends RoomDatabase {
             database.execSQL("ALTER TABLE books ADD COLUMN dictor TEXT");
         }
     };
+
+    private static final Migration MIGRATION_14_15 = new Migration(14, 15) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE books ADD COLUMN license TEXT");
+            database.execSQL("ALTER TABLE remote_books ADD COLUMN license TEXT");
+        }
+    };
     
     public static AppDatabase getDatabase(final Context context) {
         if (INSTANCE == null) {
@@ -152,7 +160,7 @@ public abstract class AppDatabase extends RoomDatabase {
                         AppDatabase.class,
                         "storythere_database"
                     )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
                     .fallbackToDestructiveMigration()
                     .build();
                 }

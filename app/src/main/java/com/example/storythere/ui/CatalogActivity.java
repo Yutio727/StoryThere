@@ -405,6 +405,7 @@ public class CatalogActivity extends AppCompatActivity {
             safeFileType(apiBook.fileType, apiBook.fileUrl),
             apiBook.image,
             apiBook.annotation,
+            apiBook.license,
             false,
             null,
             null,
@@ -423,6 +424,7 @@ public class CatalogActivity extends AppCompatActivity {
             audioType,
             apiAudiobook.image,
             apiAudiobook.annotation,
+            apiAudiobook.license,
             true,
             apiAudiobook.audioUrl,
             audioType,
@@ -510,6 +512,7 @@ public class CatalogActivity extends AppCompatActivity {
         String fileType = safeFileType(book.fileType, fileUrl);
         String imageUrl = book.image;
         String annotation = book.annotation;
+        String license = book.license;
 
         if (isDownloading || isCheckingBook) {
             Toast.makeText(this, R.string.processing_in_progress, Toast.LENGTH_SHORT).show();
@@ -522,7 +525,7 @@ public class CatalogActivity extends AppCompatActivity {
         File existingFile = new File(downloadsDir, fileName);
 
         if (existingFile.exists()) {
-            checkDatabaseAndAddIfNeeded(book.id, bookTitle, bookAuthor, existingFile.getAbsolutePath(), fileType, imageUrl, annotation);
+            checkDatabaseAndAddIfNeeded(book.id, bookTitle, bookAuthor, existingFile.getAbsolutePath(), fileType, imageUrl, annotation, license);
             return;
         }
 
@@ -535,17 +538,17 @@ public class CatalogActivity extends AppCompatActivity {
                 Book existingBook = findMatchingLocalBook(localBooks, book.id, bookTitle, bookAuthor);
 
                 if (existingBook == null) {
-                    startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
+                    startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation, license);
                     return;
                 }
 
                 if (doesBookFileExist(existingBook)) {
-                    openBookOptionsActivity(book.id, Uri.parse(existingBook.getFilePath()), fileType, bookTitle, annotation);
+                    openBookOptionsActivity(book.id, Uri.parse(existingBook.getFilePath()), fileType, bookTitle, annotation, license);
                 } else {
                     if (shouldDeleteMissingLocalBook(existingBook)) {
                         bookRepository.delete(existingBook);
                     }
-                    startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation);
+                    startDownload(book.id, bookTitle, bookAuthor, fileUrl, fileType, imageUrl, annotation, license);
                 }
             }
         };
@@ -578,7 +581,7 @@ public class CatalogActivity extends AppCompatActivity {
             && !book.getFilePath().trim().isEmpty();
     }
 
-    private void checkDatabaseAndAddIfNeeded(long serverBookId, String title, String author, String filePath, String fileType, String imageUrl, String annotation) {
+    private void checkDatabaseAndAddIfNeeded(long serverBookId, String title, String author, String filePath, String fileType, String imageUrl, String annotation, String license) {
         Observer<List<Book>> observer = new Observer<List<Book>>() {
             @Override
             public void onChanged(List<Book> localBooks) {
@@ -594,15 +597,15 @@ public class CatalogActivity extends AppCompatActivity {
                 Book existingBook = findMatchingLocalBook(localBooks, serverBookId, title, author);
 
                 if (existingBook != null) {
-                    updateLocalBookFromCatalog(existingBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation);
+                    updateLocalBookFromCatalog(existingBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation, license);
                     bookRepository.update(existingBook);
                 } else {
                     Book newBook = new Book(title, author, contentUri, fileType);
-                    updateLocalBookFromCatalog(newBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation);
+                    updateLocalBookFromCatalog(newBook, serverBookId, title, author, contentUri, fileType, imageUrl, annotation, license);
                     bookRepository.insert(newBook);
                 }
 
-                openBookOptionsActivity(serverBookId, Uri.parse(contentUri), fileType, title, annotation);
+                openBookOptionsActivity(serverBookId, Uri.parse(contentUri), fileType, title, annotation, license);
             }
         };
         viewModel.getAllBooks().observe(this, observer);
@@ -653,7 +656,8 @@ public class CatalogActivity extends AppCompatActivity {
         String filePath,
         String fileType,
         String imageUrl,
-        String annotation
+        String annotation,
+        String license
     ) {
         book.setAudiobook(false);
         if (serverBookId > 0) {
@@ -666,6 +670,7 @@ public class CatalogActivity extends AppCompatActivity {
         book.setPreviewImagePath(imageUrl);
         book.setImage(imageUrl);
         book.setAnnotation(annotation);
+        book.setLicense(license);
         book.setLastOpened(new Date());
     }
 
@@ -697,7 +702,7 @@ public class CatalogActivity extends AppCompatActivity {
         return cleanUrl.substring(dotIndex + 1).toLowerCase(Locale.US);
     }
 
-    private void startDownload(long serverBookId, String title, String author, String fileUrl, String fileType, String imageUrl, String annotation) {
+    private void startDownload(long serverBookId, String title, String author, String fileUrl, String fileType, String imageUrl, String annotation, String license) {
         if (fileUrl == null || fileUrl.trim().isEmpty()) {
             isDownloading = false;
             Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
@@ -736,7 +741,7 @@ public class CatalogActivity extends AppCompatActivity {
                         runOnUiThread(() -> {
                             isDownloading = false;
                             if (uriString != null) {
-                                saveBookAndOpenFromServer(serverBookId, title, author, uriString, fileType, imageUrl, annotation);
+                                saveBookAndOpenFromServer(serverBookId, title, author, uriString, fileType, imageUrl, annotation, license);
                             } else {
                                 Toast.makeText(this, R.string.download_failed_file_not_found, Toast.LENGTH_SHORT).show();
                             }
@@ -770,27 +775,27 @@ public class CatalogActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void saveBookAndOpenFromServer(long serverBookId, String title, String author, String localUriString, String fileType, String imageUrl, String annotation) {
+    private void saveBookAndOpenFromServer(long serverBookId, String title, String author, String localUriString, String fileType, String imageUrl, String annotation, String license) {
         Observer<List<Book>> observer = new Observer<List<Book>>() {
             @Override
             public void onChanged(List<Book> localBooks) {
                 viewModel.getAllBooks().removeObserver(this);
                 Book existingBook = findMatchingLocalBook(localBooks, serverBookId, title, author);
                 if (existingBook != null) {
-                    updateLocalBookFromCatalog(existingBook, serverBookId, title, author, localUriString, fileType, imageUrl, annotation);
+                    updateLocalBookFromCatalog(existingBook, serverBookId, title, author, localUriString, fileType, imageUrl, annotation, license);
                     bookRepository.update(existingBook);
                 } else {
                     Book book = new Book(title, author, localUriString, fileType);
-                    updateLocalBookFromCatalog(book, serverBookId, title, author, localUriString, fileType, imageUrl, annotation);
+                    updateLocalBookFromCatalog(book, serverBookId, title, author, localUriString, fileType, imageUrl, annotation, license);
                     bookRepository.insert(book);
                 }
-                openBookOptionsActivity(serverBookId, Uri.parse(localUriString), fileType, title, annotation);
+                openBookOptionsActivity(serverBookId, Uri.parse(localUriString), fileType, title, annotation, license);
             }
         };
         viewModel.getAllBooks().observe(this, observer);
     }
 
-    private void openBookOptionsActivity(long serverBookId, Uri fileUri, String fileType, String title, String annotation) {
+    private void openBookOptionsActivity(long serverBookId, Uri fileUri, String fileType, String title, String annotation, String license) {
         String filePath = fileUri.toString();
         Observer<Book> observer = new Observer<Book>() {
             @Override
@@ -819,6 +824,7 @@ public class CatalogActivity extends AppCompatActivity {
         intent.putExtra("fileType", fileType);
         intent.putExtra("title", title);
         intent.putExtra("annotation", annotation);
+        intent.putExtra("license", license);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
         ActivityTransitions.applyFadeOpen(this);
@@ -844,6 +850,7 @@ public class CatalogActivity extends AppCompatActivity {
         intent.putExtra("author", book.author);
         intent.putExtra("dictor", book.dictor);
         intent.putExtra("annotation", book.annotation);
+        intent.putExtra("license", book.license);
         intent.putExtra("previewImagePath", book.image);
         startActivity(intent);
         ActivityTransitions.applyFadeOpen(this);

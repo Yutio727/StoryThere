@@ -15,6 +15,7 @@ public class Book {
     private String filePath;
     private String fileType;
     private String annotation;
+    private String license;
     private String previewImagePath;
     private Date lastOpened;
     private int currentPage;
@@ -77,6 +78,9 @@ public class Book {
     
     public String getAnnotation() { return annotation; }
     public void setAnnotation(String annotation) { this.annotation = annotation; }
+
+    public String getLicense() { return license; }
+    public void setLicense(String license) { this.license = license; }
     
     public String getPreviewImagePath() { return previewImagePath; }
     public void setPreviewImagePath(String previewImagePath) { this.previewImagePath = previewImagePath; }

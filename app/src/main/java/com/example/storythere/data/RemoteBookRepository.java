@@ -190,6 +190,7 @@ public class RemoteBookRepository {
         book.setFileType(apiBook.fileType);
         book.setImage(apiBook.image);
         book.setAnnotation(apiBook.annotation);
+        book.setLicense(apiBook.license);
         book.setRecommendationRank(rank);
         book.setCachedAtMillis(cachedAtMillis);
         book.setRecommendationSource(source);

@@ -195,7 +195,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         }
         // Fetch book info from repository
         bookRepository = new BookRepository(getApplication());
-        if (!isAudiobook && filePath != null) {
+        if (filePath != null) {
             bookRepository.getBookByPath(filePath).observe(this, new Observer<Book>() {
                 @Override
                 public void onChanged(Book book) {
@@ -204,6 +204,11 @@ public class BookOptionsActivity extends AppCompatActivity {
                         if (bookId <= 0 && book.getServerBookId() > 0) {
                             bookId = book.getServerBookId();
                         }
+                        if (book.isAudiobook()) {
+                            bindLocalAudiobookInfo(book);
+                            return;
+                        }
+
                         bookAuthorText.setText(book.getAuthor() != null ? book.getAuthor() : "Unknown Author");
                         
                         // Display annotation from database if not already set from intent
@@ -567,7 +572,7 @@ public class BookOptionsActivity extends AppCompatActivity {
         );
 
         // Setup book cover click listener
-        if (!isAudiobook) {
+        if (!isAudiobook || isLocalImportedAudiobook()) {
             bookCoverImage.setOnClickListener(v -> showCoverOptionsDialog());
         }
 
@@ -700,6 +705,58 @@ public class BookOptionsActivity extends AppCompatActivity {
         ActivityTransitions.applyFadeOpen(this);
     }
 
+    private void bindLocalAudiobookInfo(Book book) {
+        if (book.getServerAudiobookId() > 0 && audiobookId <= 0) {
+            audiobookId = book.getServerAudiobookId();
+        }
+        if ((audioUrl == null || audioUrl.trim().isEmpty()) && book.getRemoteAudioUrl() != null) {
+            audioUrl = book.getRemoteAudioUrl();
+        }
+        if ((audioType == null || audioType.trim().isEmpty()) && book.getAudioType() != null) {
+            audioType = book.getAudioType();
+            fileType = book.getAudioType();
+        }
+        if (durationSeconds <= 0 && book.getDurationSeconds() > 0) {
+            durationSeconds = book.getDurationSeconds();
+        }
+        if (playbackPositionMs < 0 && book.getPlaybackPositionMs() > 0L) {
+            playbackPositionMs = safeLongToInt(book.getPlaybackPositionMs());
+        }
+
+        bookAuthorText.setText(book.getAuthor() != null ? book.getAuthor() : getString(R.string.unknown_author));
+        if ((dictorFromIntent == null || dictorFromIntent.trim().isEmpty()) && book.getDictor() != null) {
+            dictorFromIntent = book.getDictor();
+        }
+
+        String dictor = resolveAudiobookDictor();
+        if (dictor != null && !dictor.trim().isEmpty()) {
+            bookDictorText.setText(getString(R.string.audiobook_dictor_label) + " " + dictor);
+            bookDictorText.setVisibility(View.VISIBLE);
+        } else {
+            bookDictorText.setVisibility(View.GONE);
+        }
+
+        if (book.getPreviewImagePath() != null && !book.getPreviewImagePath().trim().isEmpty()) {
+            previewImagePathFromIntent = book.getPreviewImagePath();
+        }
+        bindAudiobookCover();
+        updateBookReadingTimeText();
+    }
+
+    private void bindAudiobookCover() {
+        if (previewImagePathFromIntent != null && !previewImagePathFromIntent.trim().isEmpty()) {
+            Glide.with(this)
+                .load(previewImagePathFromIntent)
+                .placeholder(R.drawable.ic_book_placeholder)
+                .error(R.drawable.ic_book_placeholder)
+                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
+                .skipMemoryCache(false)
+                .into(bookCoverImage);
+        } else {
+            bookCoverImage.setImageResource(R.drawable.ic_book_placeholder);
+        }
+    }
+
     private void putBookTrackingExtras(Intent intent) {
         intent.putExtra("bookId", bookId);
         intent.putExtra("fromRecommendation", fromRecommendation);
@@ -817,6 +874,9 @@ public class BookOptionsActivity extends AppCompatActivity {
                 // Update book record with new cover path
                 String newPath = internalFile.getAbsolutePath();
                 currentBook.setPreviewImagePath(newPath);
+                if (isAudiobook) {
+                    previewImagePathFromIntent = newPath;
+                }
                 bookRepository.update(currentBook);
                 
                 // Force reload the image
@@ -841,6 +901,20 @@ public class BookOptionsActivity extends AppCompatActivity {
         int minutes = seconds / 60;
         seconds = seconds % 60;
         return String.format("%02d:%02d", minutes, seconds);
+    }
+
+    private boolean isLocalImportedAudiobook() {
+        return isAudiobook && audiobookId <= 0;
+    }
+
+    private int safeLongToInt(long value) {
+        if (value > Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        if (value < Integer.MIN_VALUE) {
+            return Integer.MIN_VALUE;
+        }
+        return (int) value;
     }
 
     // Helper method to update button states

@@ -103,7 +103,8 @@
                 android:text="@string/recommend_books"
                 android:textSize="18sp"
                 android:textColor="@color/text_activity_primary"
-                android:fontFamily="@font/montserrat_bold"
+                    android:background="@color/light_blue_background"
+                    android:fontFamily="@font/montserrat_bold"
                 android:textStyle="bold"
                 android:layout_marginTop="16dp"
                 android:layout_marginStart="16dp" />

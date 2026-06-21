@@ -69,6 +69,7 @@ import java.io.IOException;
 
 public class BookOptionsActivity extends AppCompatActivity {
     private static final String DEFAULT_AUDIOBOOK_DICTOR = "Xenia Silero v5_5_rus";
+    private static final int MAX_COVER_IMAGE_DIMENSION_PX = 1600;
 
     private Button footerButton;
     private Uri contentUri;
@@ -556,16 +557,14 @@ public class BookOptionsActivity extends AppCompatActivity {
                         Uri imageUri = result.getData().getData();
                         if (imageUri != null) {
                             newCoverUri = imageUri;
-                            try (InputStream inputStream = getContentResolver().openInputStream(imageUri)) {
-                                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                                bookCoverImage.setImageBitmap(bitmap);
-                                if (inputStream != null) {
-                                    inputStream.close();
-                                }
-                            } catch (Exception e) {
-                                Toast.makeText(this, R.string.failed_to_load_image, Toast.LENGTH_SHORT).show();
-                            }
-                            // Prompt user to save changesAdd commentMore actions
+                            Glide.with(this)
+                                .load(imageUri)
+                                .placeholder(R.drawable.ic_book_placeholder)
+                                .error(R.drawable.ic_book_placeholder)
+                                .centerCrop()
+                                .override(600, 900)
+                                .into(bookCoverImage);
+                            // Prompt user to save changes
                             new AlertDialog.Builder(this)
                                     .setTitle("Save Changes")
                                     .setMessage("Do you want to save the new book cover?")
@@ -864,23 +863,24 @@ public class BookOptionsActivity extends AppCompatActivity {
         String timestamp = String.valueOf(System.currentTimeMillis());
         File internalFile = new File(getFilesDir(), "cover_" + timestamp + ".jpg");
         
-        // Delete old cover image if it exists
-        if (currentBook.getPreviewImagePath() != null) {
-            File oldCoverFile = new File(currentBook.getPreviewImagePath());
-            if (oldCoverFile.exists()) {
-                oldCoverFile.delete();
-            }
-        }
+        String oldCoverPath = currentBook.getPreviewImagePath();
 
-        try (InputStream inputStream = getContentResolver().openInputStream(imageUri);
-             FileOutputStream outputStream = new FileOutputStream(internalFile)) {
-            if (inputStream != null) {
-                byte[] buffer = new byte[1024];
-                int read;
-                while ((read = inputStream.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, read);
+        try {
+            Bitmap coverBitmap = decodeCoverBitmap(imageUri);
+            if (coverBitmap != null) {
+                try {
+                    try (FileOutputStream outputStream = new FileOutputStream(internalFile)) {
+                        boolean saved = coverBitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream);
+                        if (!saved) {
+                            internalFile.delete();
+                            Toast.makeText(this, R.string.error_saving_cover, Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                    }
+                } finally {
+                    coverBitmap.recycle();
                 }
-                
+
                 // Update book record with new cover path
                 String newPath = internalFile.getAbsolutePath();
                 currentBook.setPreviewImagePath(newPath);
@@ -894,16 +894,20 @@ public class BookOptionsActivity extends AppCompatActivity {
                     .load(newPath)
                     .placeholder(R.drawable.ic_book_placeholder)
                     .error(R.drawable.ic_book_placeholder)
+                    .centerCrop()
                     .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                     .skipMemoryCache(false)
                     .into(bookCoverImage);
+
+                deleteOldCoverIfNeeded(oldCoverPath, newPath);
                 
                 Toast.makeText(this, R.string.cover_saved, Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(this, R.string.error_saving_cover, Toast.LENGTH_SHORT).show();
             }
         } catch (Exception e) {
-            Toast.makeText(this, R.string.error_saving_cover + e.getMessage(), Toast.LENGTH_SHORT).show();
+            internalFile.delete();
+            Toast.makeText(this, getString(R.string.error_saving_cover) + ": " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1436,6 +1440,54 @@ public class BookOptionsActivity extends AppCompatActivity {
             bookLicenseText.setVisibility(View.VISIBLE);
         } else {
             bookLicenseText.setVisibility(View.GONE);
+        }
+    }
+
+    private Bitmap decodeCoverBitmap(Uri imageUri) throws IOException {
+        BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
+        boundsOptions.inJustDecodeBounds = true;
+        try (InputStream boundsStream = getContentResolver().openInputStream(imageUri)) {
+            if (boundsStream == null) {
+                return null;
+            }
+            BitmapFactory.decodeStream(boundsStream, null, boundsOptions);
+        }
+
+        if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
+            return null;
+        }
+
+        BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+        decodeOptions.inPreferredConfig = Bitmap.Config.RGB_565;
+        decodeOptions.inSampleSize = calculateCoverSampleSize(
+            boundsOptions.outWidth,
+            boundsOptions.outHeight
+        );
+
+        try (InputStream decodeStream = getContentResolver().openInputStream(imageUri)) {
+            if (decodeStream == null) {
+                return null;
+            }
+            return BitmapFactory.decodeStream(decodeStream, null, decodeOptions);
+        }
+    }
+
+    private int calculateCoverSampleSize(int width, int height) {
+        int sampleSize = 1;
+        int largestSide = Math.max(width, height);
+        while ((largestSide / sampleSize) > MAX_COVER_IMAGE_DIMENSION_PX) {
+            sampleSize *= 2;
+        }
+        return sampleSize;
+    }
+
+    private void deleteOldCoverIfNeeded(String oldCoverPath, String newCoverPath) {
+        if (oldCoverPath == null || oldCoverPath.equals(newCoverPath)) {
+            return;
+        }
+        File oldCoverFile = new File(oldCoverPath);
+        if (oldCoverFile.exists() && oldCoverFile.isFile()) {
+            oldCoverFile.delete();
         }
     }
 

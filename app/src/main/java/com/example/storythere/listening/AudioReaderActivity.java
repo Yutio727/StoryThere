@@ -173,6 +173,7 @@ public class AudioReaderActivity extends AppCompatActivity {
                     .load(previewImagePath)
                     .placeholder(R.drawable.ic_book_placeholder)
                     .error(R.drawable.ic_book_placeholder)
+                    .centerCrop()
                     .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                     .skipMemoryCache(false)
                     .into(bookCoverImage);

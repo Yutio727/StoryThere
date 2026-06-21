@@ -1,10 +1,13 @@
 package com.example.storythere;
 
 import android.app.Application;
+import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.os.Bundle;
 import androidx.appcompat.app.AppCompatDelegate;
+import com.example.storythere.ui.SystemBarUtils;
 import com.google.firebase.FirebaseApp;
 import java.util.Locale;
 
@@ -19,6 +22,27 @@ public class StoryThereApplication extends Application {
     public void onCreate() {
         super.onCreate();
         FirebaseApp.initializeApp(this);
+        registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
+            @Override
+            public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+                SystemBarUtils.applyStatusBar(activity);
+            }
+
+            @Override
+            public void onActivityStarted(Activity activity) {
+                SystemBarUtils.applyStatusBar(activity);
+            }
+
+            @Override
+            public void onActivityResumed(Activity activity) {
+                SystemBarUtils.applyStatusBar(activity);
+            }
+
+            @Override public void onActivityPaused(Activity activity) {}
+            @Override public void onActivityStopped(Activity activity) {}
+            @Override public void onActivitySaveInstanceState(Activity activity, Bundle outState) {}
+            @Override public void onActivityDestroyed(Activity activity) {}
+        });
         
         // Check if this is the first launch
         SharedPreferences sharedPreferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE);

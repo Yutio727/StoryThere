@@ -19,39 +19,45 @@ public interface BookDao {
     @Delete
     void delete(Book book);
     
-    @Query("SELECT * FROM books ORDER BY lastOpened DESC")
-    LiveData<List<Book>> getAllBooks();
+    @Query("SELECT * FROM books WHERE ownerUid = :ownerUid ORDER BY lastOpened DESC")
+    LiveData<List<Book>> getAllBooks(String ownerUid);
     
-    @Query("SELECT * FROM books WHERE id = :bookId")
-    LiveData<Book> getBookById(long bookId);
+    @Query("SELECT * FROM books WHERE id = :bookId AND ownerUid = :ownerUid")
+    LiveData<Book> getBookById(long bookId, String ownerUid);
     
-    @Query("SELECT * FROM books WHERE fileType = :fileType")
-    LiveData<List<Book>> getBooksByType(String fileType);
+    @Query("SELECT * FROM books WHERE fileType = :fileType AND ownerUid = :ownerUid")
+    LiveData<List<Book>> getBooksByType(String fileType, String ownerUid);
     
-    @Query("SELECT * FROM books WHERE filePath = :filePath")
-    LiveData<Book> getBookByPath(String filePath);
+    @Query("SELECT * FROM books WHERE filePath = :filePath AND ownerUid = :ownerUid")
+    LiveData<Book> getBookByPath(String filePath, String ownerUid);
 
-    @Query("SELECT * FROM books WHERE serverBookId = :serverBookId LIMIT 1")
-    LiveData<Book> getBookByServerBookId(long serverBookId);
+    @Query("SELECT * FROM books WHERE filePath = :filePath AND ownerUid = :ownerUid LIMIT 1")
+    Book findBookByPath(String filePath, String ownerUid);
 
-    @Query("SELECT * FROM books WHERE serverBookId = :serverBookId LIMIT 1")
-    Book findBookByServerBookId(long serverBookId);
+    @Query("SELECT * FROM books WHERE serverBookId = :serverBookId AND ownerUid = :ownerUid LIMIT 1")
+    LiveData<Book> getBookByServerBookId(long serverBookId, String ownerUid);
 
-    @Query("SELECT * FROM books WHERE title = :title AND author = :author LIMIT 1")
-    Book findBookByTitleAndAuthor(String title, String author);
+    @Query("SELECT * FROM books WHERE serverBookId = :serverBookId AND ownerUid = :ownerUid LIMIT 1")
+    Book findBookByServerBookId(long serverBookId, String ownerUid);
 
-    @Query("SELECT * FROM books WHERE serverAudiobookId = :serverAudiobookId LIMIT 1")
-    LiveData<Book> getBookByServerAudiobookId(long serverAudiobookId);
+    @Query("SELECT * FROM books WHERE title = :title AND author = :author AND ownerUid = :ownerUid LIMIT 1")
+    Book findBookByTitleAndAuthor(String title, String author, String ownerUid);
 
-    @Query("UPDATE books SET isAlreadyRead = 1 WHERE id = :bookId")
-    void markAlreadyReadById(long bookId);
+    @Query("SELECT * FROM books WHERE serverAudiobookId = :serverAudiobookId AND ownerUid = :ownerUid LIMIT 1")
+    LiveData<Book> getBookByServerAudiobookId(long serverAudiobookId, String ownerUid);
 
-    @Query("UPDATE books SET isAlreadyRead = 1 WHERE serverBookId = :serverBookId AND serverBookId > 0")
-    void markAlreadyReadByServerBookId(long serverBookId);
+    @Query("UPDATE books SET isAlreadyRead = 1 WHERE id = :bookId AND ownerUid = :ownerUid")
+    void markAlreadyReadById(long bookId, String ownerUid);
 
-    @Query("UPDATE books SET isAlreadyRead = 1 WHERE serverAudiobookId = :serverAudiobookId AND serverAudiobookId > 0")
-    void markAlreadyReadByServerAudiobookId(long serverAudiobookId);
+    @Query("UPDATE books SET isAlreadyRead = 1 WHERE serverBookId = :serverBookId AND serverBookId > 0 AND ownerUid = :ownerUid")
+    void markAlreadyReadByServerBookId(long serverBookId, String ownerUid);
 
-    @Query("UPDATE books SET isAlreadyRead = 1 WHERE filePath = :filePath")
-    void markAlreadyReadByPath(String filePath);
-} 
+    @Query("UPDATE books SET isAlreadyRead = 1 WHERE serverAudiobookId = :serverAudiobookId AND serverAudiobookId > 0 AND ownerUid = :ownerUid")
+    void markAlreadyReadByServerAudiobookId(long serverAudiobookId, String ownerUid);
+
+    @Query("UPDATE books SET isAlreadyRead = 1 WHERE filePath = :filePath AND ownerUid = :ownerUid")
+    void markAlreadyReadByPath(String filePath, String ownerUid);
+
+    @Query("DELETE FROM books WHERE ownerUid = :ownerUid")
+    void deleteBooksForOwner(String ownerUid);
+}

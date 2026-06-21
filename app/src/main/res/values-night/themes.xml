@@ -10,7 +10,9 @@
         <item name="colorSecondaryVariant">@color/progress_blue</item>
         <item name="colorOnSecondary">@color/black</item>
         <!-- Status bar color. -->
-        <item name="android:statusBarColor">@color/progress_blue</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@color/status_bar_background</item>
+        <item name="android:windowLightStatusBar">false</item>
         <!-- Customize your theme here. -->
         <item name="android:colorBackground">@color/background_activity</item>
         <item name="android:windowBackground">@color/background_activity</item>
@@ -41,6 +43,9 @@
     <style name="Theme.StoryThere.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@color/status_bar_background</item>
+        <item name="android:windowLightStatusBar">false</item>
         <item name="android:fontFamily">@font/montserrat</item>
         <item name="fontFamily">@font/montserrat</item>
 

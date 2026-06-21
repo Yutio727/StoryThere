@@ -8,7 +8,7 @@ import androidx.room.TypeConverters;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-@Database(entities = {Book.class, Author.class, RemoteBook.class}, version = 15, exportSchema = false)
+@Database(entities = {Book.class, Author.class, RemoteBook.class}, version = 16, exportSchema = false)
 @TypeConverters({DateConverter.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
@@ -150,6 +150,39 @@ public abstract class AppDatabase extends RoomDatabase {
             database.execSQL("ALTER TABLE remote_books ADD COLUMN license TEXT");
         }
     };
+
+    private static final Migration MIGRATION_15_16 = new Migration(15, 16) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE books ADD COLUMN ownerUid TEXT");
+            database.execSQL("CREATE TABLE IF NOT EXISTS remote_books_new (" +
+                "id INTEGER NOT NULL, " +
+                "ownerUid TEXT NOT NULL DEFAULT '', " +
+                "title TEXT, " +
+                "author TEXT, " +
+                "fileUrl TEXT, " +
+                "fileType TEXT, " +
+                "image TEXT, " +
+                "annotation TEXT, " +
+                "license TEXT, " +
+                "recommendationRank INTEGER NOT NULL DEFAULT 0, " +
+                "cachedAtMillis INTEGER NOT NULL DEFAULT 0, " +
+                "recommendationSource TEXT, " +
+                "PRIMARY KEY(id, ownerUid)" +
+                ")");
+            database.execSQL("INSERT INTO remote_books_new (" +
+                "id, ownerUid, title, author, fileUrl, fileType, image, annotation, license, " +
+                "recommendationRank, cachedAtMillis, recommendationSource" +
+                ") SELECT id, '', title, author, fileUrl, fileType, image, annotation, license, " +
+                "recommendationRank, cachedAtMillis, recommendationSource FROM remote_books");
+            database.execSQL("DROP TABLE remote_books");
+            database.execSQL("ALTER TABLE remote_books_new RENAME TO remote_books");
+            database.execSQL("CREATE INDEX IF NOT EXISTS idx_books_ownerUid ON books(ownerUid)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS idx_books_owner_serverBookId ON books(ownerUid, serverBookId)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS idx_books_owner_serverAudiobookId ON books(ownerUid, serverAudiobookId)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS idx_remote_books_ownerUid ON remote_books(ownerUid)");
+        }
+    };
     
     public static AppDatabase getDatabase(final Context context) {
         if (INSTANCE == null) {
@@ -160,7 +193,7 @@ public abstract class AppDatabase extends RoomDatabase {
                         AppDatabase.class,
                         "storythere_database"
                     )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
                     .fallbackToDestructiveMigration()
                     .build();
                 }

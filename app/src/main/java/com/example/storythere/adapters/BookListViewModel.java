@@ -44,4 +44,8 @@ public class BookListViewModel extends AndroidViewModel {
     public LiveData<Book> getBookByServerAudiobookId(long serverAudiobookId) {
         return repository.getBookByServerAudiobookId(serverAudiobookId);
     }
+
+    public void clearCurrentUserBooks() {
+        repository.clearCurrentUserBooks();
+    }
 } 

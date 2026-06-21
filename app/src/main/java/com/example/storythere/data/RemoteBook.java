@@ -1,13 +1,14 @@
 package com.example.storythere.data;
 
+import androidx.annotation.NonNull;
 import androidx.room.Entity;
-import androidx.room.PrimaryKey;
 
-@Entity(tableName = "remote_books")
+@Entity(tableName = "remote_books", primaryKeys = {"id", "ownerUid"})
 public class RemoteBook {
-    @PrimaryKey
     private long id;
 
+    @NonNull
+    private String ownerUid = "";
     private String title;
     private String author;
     private String fileUrl;
@@ -42,6 +43,10 @@ public class RemoteBook {
 
     public String getLicense() { return license; }
     public void setLicense(String license) { this.license = license; }
+
+    @NonNull
+    public String getOwnerUid() { return ownerUid; }
+    public void setOwnerUid(@NonNull String ownerUid) { this.ownerUid = ownerUid; }
 
     public int getRecommendationRank() { return recommendationRank; }
     public void setRecommendationRank(int recommendationRank) { this.recommendationRank = recommendationRank; }

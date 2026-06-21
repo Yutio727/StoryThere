@@ -32,6 +32,7 @@ public class RemoteBookRepository {
     private final ApiService apiService;
     private final ExecutorService executorService;
     private final Handler retryHandler;
+    private final String ownerUid;
     private int modelCacheRetryAttempts = 0;
     private boolean modelCacheRetryScheduled = false;
     private Runnable scheduledModelCacheRefresh;
@@ -42,16 +43,17 @@ public class RemoteBookRepository {
         apiService = ApiClient.getApiService();
         executorService = Executors.newFixedThreadPool(2);
         retryHandler = new Handler(Looper.getMainLooper());
+        ownerUid = LocalUserScope.currentOwnerUid();
     }
 
     public LiveData<List<RemoteBook>> getRecommendedBooks(int limit) {
-        return remoteBookDao.getRecommendedBooks(limit);
+        return remoteBookDao.getRecommendedBooks(limit, ownerUid);
     }
 
     public void loadRecommendedBooksFromApi(int limit) {
         executorService.execute(() -> {
-            Long latestCache = remoteBookDao.getLatestCacheTimestampMillis();
-            String latestSource = remoteBookDao.getLatestRecommendationSource();
+            Long latestCache = remoteBookDao.getLatestCacheTimestampMillis(ownerUid);
+            String latestSource = remoteBookDao.getLatestRecommendationSource(ownerUid);
             long now = System.currentTimeMillis();
             if (SOURCE_MODEL_CACHE.equals(latestSource)
                 && latestCache != null
@@ -113,7 +115,7 @@ public class RemoteBookRepository {
         }
 
         executorService.execute(() -> {
-            if (remoteBookDao.getRecommendedBookCount() <= 0) {
+            if (remoteBookDao.getRecommendedBookCount(ownerUid) <= 0) {
                 replaceAllBooks(mapApiBooks(response.body(), 0L, source));
             } else {
                 Log.d(TAG, "Preserving existing book recommendations while server returns " + source);
@@ -159,7 +161,7 @@ public class RemoteBookRepository {
 
     private void replaceFallbackBooksIfCacheIsEmpty(List<ApiBook> apiBooks) {
         executorService.execute(() -> {
-            if (remoteBookDao.getRecommendedBookCount() <= 0) {
+            if (remoteBookDao.getRecommendedBookCount(ownerUid) <= 0) {
                 replaceAllBooks(mapApiBooks(apiBooks, 0L, "catalog-fallback"));
             }
         });
@@ -176,7 +178,7 @@ public class RemoteBookRepository {
 
     private void replaceAllBooks(List<RemoteBook> books) {
         executorService.execute(() -> {
-            remoteBookDao.deleteAllBooks();
+            remoteBookDao.deleteAllBooks(ownerUid);
             remoteBookDao.insertBooks(books);
         });
     }
@@ -191,6 +193,7 @@ public class RemoteBookRepository {
         book.setImage(apiBook.image);
         book.setAnnotation(apiBook.annotation);
         book.setLicense(apiBook.license);
+        book.setOwnerUid(ownerUid);
         book.setRecommendationRank(rank);
         book.setCachedAtMillis(cachedAtMillis);
         book.setRecommendationSource(source);

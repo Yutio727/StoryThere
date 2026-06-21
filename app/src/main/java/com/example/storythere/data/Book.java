@@ -26,6 +26,7 @@ public class Book {
     private int readingPosition; // Store viewing position for all document types
     private String readingStats; // for word count/listening time
     private String authorId; // Link to author collection
+    private String ownerUid; // Firebase uid that owns this local cached library row
     private long serverBookId; // Backend books.id for server library/progress sync
     private String remoteFileUrl; // Original download URL for server-backed books
     private double serverProgress; // Last progress percentage received from backend
@@ -112,6 +113,9 @@ public class Book {
 
     public String getAuthorId() { return authorId; }
     public void setAuthorId(String authorId) { this.authorId = authorId; }
+
+    public String getOwnerUid() { return ownerUid; }
+    public void setOwnerUid(String ownerUid) { this.ownerUid = ownerUid; }
 
     public long getServerBookId() { return serverBookId; }
     public void setServerBookId(long serverBookId) { this.serverBookId = serverBookId; }

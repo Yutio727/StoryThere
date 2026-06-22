@@ -1030,7 +1030,7 @@ public class MainActivity extends AppCompatActivity {
         List<Book> filteredBooks = new ArrayList<>();
         for (Book book : allBooks) {
             if (tab.equals(getString(R.string.reading))) {
-                if (!book.isFavourite() && !book.isAlreadyRead()) {
+                if (!book.isAlreadyRead()) {
                     filteredBooks.add(book);
                 }
             } else if (tab.equals(getString(R.string.favourite))) {

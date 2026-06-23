@@ -109,6 +109,7 @@ public class BookOptionsActivity extends AppCompatActivity {
     private boolean fromRecommendation = false;
     private long bookId = -1L;
     private long audiobookId = -1L;
+    private long localBookId = -1L;
     private String audioUrl;
     private String audioType;
     private int durationSeconds = 0;
@@ -142,6 +143,7 @@ public class BookOptionsActivity extends AppCompatActivity {
             fromRecommendation = intent.getBooleanExtra("fromRecommendation", false);
             bookId = intent.getLongExtra("bookId", -1L);
             audiobookId = intent.getLongExtra("audiobookId", -1L);
+            localBookId = intent.getLongExtra("localBookId", -1L);
             audioUrl = intent.getStringExtra("audioUrl");
             audioType = intent.getStringExtra("audioType");
             durationSeconds = intent.getIntExtra("durationSeconds", 0);
@@ -207,6 +209,9 @@ public class BookOptionsActivity extends AppCompatActivity {
                 public void onChanged(Book book) {
                     if (book != null) {
                         currentBook = book;
+                        if (localBookId <= 0 && book.getId() > 0) {
+                            localBookId = book.getId();
+                        }
                         if (bookId <= 0 && book.getServerBookId() > 0) {
                             bookId = book.getServerBookId();
                         }
@@ -696,6 +701,9 @@ public class BookOptionsActivity extends AppCompatActivity {
         Intent audioIntent = new Intent(this, AudiobookPlayerActivity.class);
         audioIntent.setData(playbackUri);
         audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_AUDIOBOOK_ID, audiobookId);
+        if (localBookId > 0) {
+            audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_LOCAL_BOOK_ID, localBookId);
+        }
         audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_AUDIO_URL, playbackUri.toString());
         audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_TITLE, title);
         audioIntent.putExtra(AudiobookPlayerActivity.EXTRA_AUTHOR, authorFromIntent);
@@ -711,6 +719,9 @@ public class BookOptionsActivity extends AppCompatActivity {
     }
 
     private void bindLocalAudiobookInfo(Book book) {
+        if (localBookId <= 0 && book.getId() > 0) {
+            localBookId = book.getId();
+        }
         if (book.getServerAudiobookId() > 0 && audiobookId <= 0) {
             audiobookId = book.getServerAudiobookId();
         }

@@ -124,7 +124,7 @@ public class RecommendationTrackingRepository {
             return;
         }
         enqueue(
-            apiService.updateMyBookLibraryState(bookId, new UserLibraryStateRequest(null, true)),
+            apiService.updateMyBookLibraryState(bookId, new UserLibraryStateRequest(false, true)),
             "book read state"
         );
     }
@@ -134,7 +134,7 @@ public class RecommendationTrackingRepository {
             return;
         }
         enqueue(
-            apiService.updateMyAudiobookLibraryState(audiobookId, new UserLibraryStateRequest(null, true)),
+            apiService.updateMyAudiobookLibraryState(audiobookId, new UserLibraryStateRequest(false, true)),
             "audiobook read state"
         );
     }

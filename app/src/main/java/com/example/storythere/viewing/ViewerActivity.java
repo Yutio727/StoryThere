@@ -912,6 +912,7 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
                     currentBook.setLastOpened(new java.util.Date());
                     if (lastPageVisible) {
                         currentBook.setAlreadyRead(true);
+                        currentBook.setFavourite(false);
                         currentBook.setServerProgress(100.0);
                     }
                     bookRepository.update(currentBook);
@@ -965,6 +966,7 @@ public class ViewerActivity extends AppCompatActivity implements TextSettingsDia
         alreadyReadMarked = true;
         if (currentBook != null) {
             currentBook.setAlreadyRead(true);
+            currentBook.setFavourite(false);
             currentBook.setServerProgress(100.0);
             bookRepository.update(currentBook);
         }

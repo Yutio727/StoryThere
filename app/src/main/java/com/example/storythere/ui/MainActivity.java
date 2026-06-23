@@ -702,10 +702,10 @@ public class MainActivity extends AppCompatActivity {
         book.setServerBookId(apiBook.id);
         book.setRemoteFileUrl(apiBook.fileUrl);
         book.setServerProgress(clampProgress(apiBook.progress));
-        book.setFavourite(apiBook.isFavourite);
         if (apiBook.isAlreadyRead || apiBook.progress >= 100.0) {
             book.setAlreadyRead(true);
         }
+        mergeFavouriteFromServer(book, apiBook.isFavourite);
         book.setTitle(safeText(apiBook.title, book.getTitle()));
         book.setAuthor(safeText(apiBook.author, book.getAuthor()));
         book.setFileType(safeText(apiBook.fileType, book.getFileType()));
@@ -739,7 +739,12 @@ public class MainActivity extends AppCompatActivity {
         book.setDurationSeconds(durationSeconds);
         book.setPlaybackPositionMs(playbackPositionMs);
         book.setServerProgress(serverProgress);
-        book.setFavourite(apiAudiobook.isFavourite);
+        if (apiAudiobook.isAlreadyRead
+            || apiAudiobook.progress >= 100.0
+            || apiAudiobook.completedAt != null) {
+            book.setAlreadyRead(true);
+        }
+        mergeFavouriteFromServer(book, apiAudiobook.isFavourite);
         book.setTitle(safeText(apiAudiobook.title, book.getTitle()));
         book.setAuthor(safeText(apiAudiobook.author, book.getAuthor()));
         book.setAnnotation(apiAudiobook.annotation);
@@ -753,8 +758,15 @@ public class MainActivity extends AppCompatActivity {
         if (lastOpenedAt != null) {
             book.setLastOpened(lastOpenedAt);
         }
-        if (apiAudiobook.isAlreadyRead || apiAudiobook.progress >= 100.0 || apiAudiobook.completedAt != null) {
-            book.setAlreadyRead(true);
+    }
+
+    private void mergeFavouriteFromServer(Book book, boolean serverFavourite) {
+        if (serverFavourite) {
+            book.setFavourite(true);
+            return;
+        }
+        if (!book.isFavourite()) {
+            book.setFavourite(false);
         }
     }
 
@@ -775,6 +787,7 @@ public class MainActivity extends AppCompatActivity {
         intent.setData(Uri.parse(audioUrl));
         intent.putExtra("isAudiobook", true);
         intent.putExtra("fromRecommendation", false);
+        intent.putExtra("localBookId", book.getId());
         intent.putExtra("audiobookId", book.getServerAudiobookId());
         intent.putExtra("audioUrl", audioUrl);
         intent.putExtra("audioType", safeText(book.getAudioType(), book.getFileType()));
@@ -1132,13 +1145,16 @@ public class MainActivity extends AppCompatActivity {
         final int[] failedCount = {0};
 
         for (Book book : selectedBooks) {
+            final boolean previousFavourite = book.isFavourite();
+            book.setFavourite(targetFavourite);
+            viewModel.update(book);
             updateRemoteFavouriteIfNeeded(book, targetFavourite, success -> {
-                if (success) {
-                    book.setFavourite(targetFavourite);
+                if (!success) {
+                    book.setFavourite(previousFavourite);
                     viewModel.update(book);
-                    updatedCount[0]++;
-                } else {
                     failedCount[0]++;
+                } else {
+                    updatedCount[0]++;
                 }
 
                 pendingCount[0]--;
@@ -1160,12 +1176,12 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (book.isAudiobook() && book.getServerAudiobookId() > 0) {
-            updateRemoteAudiobookFavourite(book.getServerAudiobookId(), targetFavourite, callback);
+            updateRemoteAudiobookFavourite(book, book.getServerAudiobookId(), targetFavourite, callback);
             return;
         }
 
         if (!book.isAudiobook() && book.getServerBookId() > 0) {
-            updateRemoteBookFavourite(book.getServerBookId(), targetFavourite, callback);
+            updateRemoteBookFavourite(book, book.getServerBookId(), targetFavourite, callback);
             return;
         }
 
@@ -1173,6 +1189,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateRemoteBookFavourite(
+        Book book,
         long serverBookId,
         boolean targetFavourite,
         FavouriteLibraryItemCallback callback
@@ -1184,7 +1201,7 @@ public class MainActivity extends AppCompatActivity {
 
         apiService.updateMyBookLibraryState(
             serverBookId,
-            new UserLibraryStateRequest(targetFavourite)
+            buildBookLibraryStateRequest(book, targetFavourite)
         ).enqueue(new Callback<TrackingWriteResponse>() {
             @Override
             public void onResponse(Call<TrackingWriteResponse> call, Response<TrackingWriteResponse> response) {
@@ -1203,6 +1220,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateRemoteAudiobookFavourite(
+        Book book,
         long serverAudiobookId,
         boolean targetFavourite,
         FavouriteLibraryItemCallback callback
@@ -1214,7 +1232,7 @@ public class MainActivity extends AppCompatActivity {
 
         apiService.updateMyAudiobookLibraryState(
             serverAudiobookId,
-            new UserLibraryStateRequest(targetFavourite)
+            buildAudiobookLibraryStateRequest(book, targetFavourite)
         ).enqueue(new Callback<TrackingWriteResponse>() {
             @Override
             public void onResponse(Call<TrackingWriteResponse> call, Response<TrackingWriteResponse> response) {
@@ -1230,6 +1248,20 @@ public class MainActivity extends AppCompatActivity {
                 callback.onComplete(false);
             }
         });
+    }
+
+    private UserLibraryStateRequest buildBookLibraryStateRequest(Book book, boolean targetFavourite) {
+        if (targetFavourite && book != null && book.isAlreadyRead()) {
+            return new UserLibraryStateRequest(true, true);
+        }
+        return new UserLibraryStateRequest(targetFavourite);
+    }
+
+    private UserLibraryStateRequest buildAudiobookLibraryStateRequest(Book book, boolean targetFavourite) {
+        if (targetFavourite && book != null && book.isAlreadyRead()) {
+            return new UserLibraryStateRequest(true, true);
+        }
+        return new UserLibraryStateRequest(targetFavourite);
     }
 
     private void showFavouriteResultToast(int updatedCount, int failedCount, boolean isRemoving) {

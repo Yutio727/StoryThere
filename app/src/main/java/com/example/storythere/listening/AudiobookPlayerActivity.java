@@ -41,6 +41,7 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
     public static final String EXTRA_DURATION_SECONDS = "durationSeconds";
     public static final String EXTRA_START_POSITION_MS = "start_position_ms";
     public static final String EXTRA_FROM_RECOMMENDATION = "fromRecommendation";
+    public static final String EXTRA_LOCAL_BOOK_ID = "localBookId";
 
     private static final String TAG = "AudiobookPlayerActivity";
     private static final String PREFS_NAME = "AudiobookPlayerPrefs";
@@ -70,6 +71,7 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
 
     private Uri audioUri;
     private long audiobookId = -1L;
+    private long localBookId = -1L;
     private boolean fromRecommendation = false;
     private String title;
     private String author;
@@ -147,8 +149,11 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
         }
 
         audiobookId = intent != null ? intent.getLongExtra(EXTRA_AUDIOBOOK_ID, -1L) : -1L;
+        localBookId = intent != null ? intent.getLongExtra(EXTRA_LOCAL_BOOK_ID, -1L) : -1L;
         fromRecommendation = intent != null && intent.getBooleanExtra(EXTRA_FROM_RECOMMENDATION, false);
-        cacheKey = audiobookId > 0 ? String.valueOf(audiobookId) : String.valueOf(audioUri);
+        cacheKey = audiobookId > 0
+            ? String.valueOf(audiobookId)
+            : (localBookId > 0 ? "local_" + localBookId : String.valueOf(audioUri));
 
         int durationSeconds = intent != null ? intent.getIntExtra(EXTRA_DURATION_SECONDS, 0) : 0;
         if (durationSeconds > 0) {
@@ -390,9 +395,6 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
     }
 
     private void syncAudiobookProgress(int positionMs, boolean force) {
-        if (trackingRepository == null || audiobookId <= 0) {
-            return;
-        }
         int duration = durationMs;
         if (duration <= 0 && mediaPlayer != null && isPrepared) {
             duration = mediaPlayer.getDuration();
@@ -413,14 +415,16 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
         double progress = isAlreadyRead
             ? 100.0
             : Math.max(0.0, Math.min(100.0, (positionMs * 100.0) / duration));
-        trackingRepository.trackAudiobookProgress(
-            audiobookId,
-            progress,
-            syncedPositionMs,
-            null,
-            null,
-            isAlreadyRead ? currentTimestampIso() : null
-        );
+        if (trackingRepository != null && audiobookId > 0) {
+            trackingRepository.trackAudiobookProgress(
+                audiobookId,
+                progress,
+                syncedPositionMs,
+                null,
+                null,
+                isAlreadyRead ? currentTimestampIso() : null
+            );
+        }
         if (isAlreadyRead) {
             markAudiobookAlreadyReadIfNeeded();
         }
@@ -454,7 +458,9 @@ public class AudiobookPlayerActivity extends AppCompatActivity {
             return;
         }
         completionTracked = true;
-        if (bookRepository != null && audioUri != null) {
+        if (bookRepository != null && localBookId > 0) {
+            bookRepository.markAlreadyReadById(localBookId);
+        } else if (bookRepository != null && audioUri != null) {
             bookRepository.markAlreadyReadByPath(audioUri.toString());
         }
         if (bookRepository != null && audiobookId > 0) {

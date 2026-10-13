@@ -3,31 +3,26 @@
 
 <div align="center">
   <img width="160" height="160" alt="docs/media/logo.png" src="https://github.com/user-attachments/assets/0d0c194b-bec8-4e33-a0ff-a302aeb4bd43" />
-
   <h3>StoryThere</h3>
   <p><i>Читайте, слушайте и управляйте своей библиотекой в одном приложении.</i></p>
-
-  <img src="https://img.shields.io/badge/Платформа-Android%208.0%2B-3DDC84?logo=android&logoColor=white" alt="Android 8.0+"/>
-  <img src="https://img.shields.io/badge/Java-8-ED8B00?logo=openjdk&logoColor=white" alt="Java 8"/>
-  <img src="https://img.shields.io/badge/Лицензия-не%20указана-lightgrey" alt="Лицензия"/>
 </div>
 
 > **Статус:** в активной разработке.
 
 ---
 
-## 🌐 Экосистема проекта
+## Экосистема проекта
 
 | Репозиторий | Описание |
 |---|---|
 | [**StoryThere**](https://github.com/Yutio727/StoryThere) | Android-клиент (этот репозиторий) |
-| [**StoryThere API**](https://github.com/<owner>/<backend-repo>) | Бэкенд: каталог, библиотека пользователя, рекомендации, админ-API |
+| StoryThere API | Бэкенд: каталог, библиотека пользователя, рекомендации, админ-API |
 
 **Локализация:** 🇷🇺 русский — полностью · 🇬🇧 английский — полностью
 
 ---
 
-## 📥 Скачать
+## Скачать
 
 <table>
   <tr>
@@ -48,7 +43,7 @@
 
 ---
 
-## 📸 Скриншоты и видео
+## Скриншоты
 
 <table>
   <tr>
@@ -70,9 +65,9 @@
 
 ---
 
-## ✨ Возможности и архитектура
+## Возможности и архитектура
 
-### 📱 Мобильный клиент
+### Мобильный клиент
 - **Чтение** — импорт PDF, EPUB и TXT; настройки текста, закладки, выделение текста, сохранение прогресса.
 - **Прослушивание** — встроенный синтез речи на русском и английском с выбором голоса и скорости; отдельный плеер аудиокниг.
 - **Библиотека** — избранное, «прочитано», личная библиотека с синхронизацией на сервере; локальное хранение в Room для работы офлайн.
@@ -81,13 +76,13 @@
 - **Аккаунты** — регистрация, вход и сброс пароля через Firebase Authentication; экран согласия на обработку персональных данных.
 - **Интерфейс** — Material Design, светлая и тёмная темы, RU/EN.
 
-### 🛠 Администрирование
+### Администрирование
 - Пользователям с ролью `admin` доступно управление каталогом прямо в приложении: добавление, редактирование и удаление книг, аудиокниг и авторов.
 - Загрузка обложек и аудиофайлов на сервер.
 
 ---
 
-## 🧰 Технологии
+## Технологии
 
 | Область | Технологии |
 |---|---|
@@ -98,7 +93,7 @@
 
 ---
 
-## 🔨 Сборка из исходников
+## Сборка из исходников
 
 **Требуется:** JDK 17, Android Studio (последняя версия), Android SDK 35, Git.
 
@@ -129,33 +124,26 @@ APK появится в `app/build/outputs/apk/debug/app-debug.apk`.
 
 <div align="center">
   <img width="160" height="160" alt="docs/media/logo.png" src="https://github.com/user-attachments/assets/0d0c194b-bec8-4e33-a0ff-a302aeb4bd43" />
-
-
-
   <h3>StoryThere</h3>
   <p><i>Read, listen to, and manage your book collection — all in one app.</i></p>
-
-  <img src="https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84?logo=android&logoColor=white" alt="Android 8.0+"/>
-  <img src="https://img.shields.io/badge/Java-8-ED8B00?logo=openjdk&logoColor=white" alt="Java 8"/>
-  <img src="https://img.shields.io/badge/License-not%20specified-lightgrey" alt="License"/>
 </div>
 
 > **Status:** in active development.
 
 ---
 
-## 🌐 Project Ecosystem
+## Project Ecosystem
 
 | Repository | Description |
 |---|---|
 | [**StoryThere**](https://github.com/Yutio727/StoryThere) | Android client (this repository) |
-| [**StoryThere API**](https://github.com/<owner>/<backend-repo>) | Backend: catalog, user library, recommendations, admin API |
+| StoryThere API | Backend: catalog, user library, recommendations, admin API |
 
 **Localization:** 🇷🇺 Russian — full · 🇬🇧 English — full
 
 ---
 
-## 📥 Download
+## Download
 
 <table>
   <tr>
@@ -176,7 +164,7 @@ APK появится в `app/build/outputs/apk/debug/app-debug.apk`.
 
 ---
 
-## 📸 Showcase & Media
+## Showcase
 
 <table>
   <tr>
@@ -198,9 +186,9 @@ APK появится в `app/build/outputs/apk/debug/app-debug.apk`.
 
 ---
 
-## ✨ Features & Architecture
+## Features & Architecture
 
-### 📱 Mobile client
+### Mobile client
 - **Reading** — import PDF, EPUB, and TXT; adjustable text settings, bookmarks, text selection, progress tracking.
 - **Listening** — built-in Text-to-Speech in Russian and English with voice selection and playback speed; dedicated audiobook player.
 - **Library** — favourites, "already read", per-user library synced with the server; local storage via Room for offline access.
@@ -209,13 +197,13 @@ APK появится в `app/build/outputs/apk/debug/app-debug.apk`.
 - **Accounts** — registration, login, and password reset via Firebase Authentication; personal data consent screen.
 - **UI** — Material Design, light/dark themes, RU/EN interface.
 
-### 🛠 Admin tools
+### Admin tools
 - Users with the `admin` role get in-app management of the catalog: create, edit, and delete books, audiobooks, and authors.
 - Upload of covers and audio assets to the server.
 
 ---
 
-## 🧰 Tech Stack
+## Tech Stack
 
 | Area | Technologies |
 |---|---|
@@ -226,7 +214,7 @@ APK появится в `app/build/outputs/apk/debug/app-debug.apk`.
 
 ---
 
-## 🔨 Building from Source
+## Building from Source
 
 **Prerequisites:** JDK 17, Android Studio (latest), Android SDK 35, Git.
 
